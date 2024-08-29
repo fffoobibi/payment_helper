@@ -136,7 +136,7 @@ const form = reactive({
 
 // 详情查看
 const viewTransit = async (out_account_id, data) => {
-  const resp = await api.transit.getAccountDetail({ user_id: store.user.id, account_id: out_account_id })
+  // const resp = await api.transit.getAccountDetail({ user_id: store.user.id, account_id: out_account_id })
   form.post = {
     user_id: store.user.id,
     out_account_id: data.out_account_id,

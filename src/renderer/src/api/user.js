@@ -5,7 +5,8 @@ const user = {
   getAccountList: data => http({ url: '/account/getAccountAllList', params: data }),
   getPayOutList: () => http({ url: "/accountTitle/getClientSubject", method: "get" }),
   getInComeList: () => http({ url: "/accountTitle/getClientSubject?type=1", method: "get" }),
-  getCurrencyList: () => http({ url: "/incomeRecord/getCurrencies", method: "get" })
+  getCurrencyList: () => http({ url: "/incomeRecord/getCurrencies", method: "get" }),
+  getAccountDetail: data=>http({url: '/account/getAccountDetail', params: data, showLoading: false})
 }
 
 export default user

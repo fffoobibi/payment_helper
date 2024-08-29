@@ -5,3 +5,6 @@ out
 *.log*
 .svn
 .git
+.env.local
+.env.development
+.package-lock.json

@@ -34,7 +34,7 @@ function createWindow() {
   })
 
   if (NODE_ENV === 'development') {
-    // mainWindow.webContents.openDevTools()
+    mainWindow.webContents.openDevTools()
   }
 
   mainWindow.on('ready-to-show', () => {
