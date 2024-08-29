@@ -1,0 +1,31 @@
+@import './base.css';
+
+body {
+  background-color: #0000;
+  overflow: hidden;
+  user-select: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+code {
+  font-weight: 600;
+  padding: 3px 5px;
+  border-radius: 2px;
+  background-color: var(--color-background-mute);
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    SF Mono,
+    Menlo,
+    Consolas,
+    Liberation Mono,
+    monospace;
+  font-size: 85%;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 6px;
+  overflow: hidden;
+}

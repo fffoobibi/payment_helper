@@ -1,0 +1,2320 @@
+资金日报相关功能接口描述文档
+
+
+
+
+2、获取银行账户列表信息(用于银行账号管理，有人员权限限制)
+http://192.168.0.10:20011/account/getAccountList
+
+参数列表
+page：页码数，可为空
+limit：每页条数，默认10条，可为空
+account_name：银行账户名称，支持模糊查询，可为空
+user_id：登录用户编号，必填项，根据用户权限加载不同的银行账户信息
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 1,
+        "list": [
+            {
+                "id": 1,
+                "account_name": "aaa",
+                "currency": "CNY",
+                "company_id": 3,
+                "available_balance": "100.00",
+                "unavailable_balance": "200.00",
+                "create_time": 1642495029,
+                "creator": "root",
+                "update_time": 1642495250,
+                "operator": "SMIT",
+                "check_accounts_time": null,
+                "account_type": 1,
+                "is_available": 1,
+				"is_check_accounts": 1,	//是否需要盘账操作权限参数
+                "note": "",
+                "company_name": "迈蒂",
+                "type_name": "人民币账户",
+                "account": null,
+                "type": null,
+				"balance_change_time": 1664250140    //今日余额最后变动时间
+            }
+        ],
+        "pages": 1,
+        "limit": 10
+    }
+}
+
+
+
+3、获取银行账户列表信息(用于下拉选择框，没有权限限制)
+http://192.168.0.10:20011/account/getAccountAllList
+
+参数列表
+page：页码数，可为空
+limit：每页条数，默认10条，可为空
+account_name：银行账户名称，支持模糊查询，可为空
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 1,
+        "list": [
+            {
+                "id": 1,
+                "account_name": "aaa",
+                "currency": "CNY",
+                "company_id": 3,
+                "available_balance": "100.00",
+                "unavailable_balance": "200.00",
+                "create_time": 1642495029,
+                "creator": "root",
+                "update_time": 1642495250,
+                "operator": "SMIT",
+                "check_accounts_time": null,
+                "account_type": 1,
+                "is_available": 1,
+                "note": "",
+                "company_name": "迈蒂",
+                "type_name": "人民币账户",
+                "account": null,
+                "type": null
+            }
+        ],
+        "pages": 1,
+        "limit": 10
+    }
+}
+
+
+4、获取银行账户或paypal账户多币种余额信息列表
+http://192.168.0.10:20011/account/getAccountCurrencyList
+
+参数列表：
+account_id，银行账户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": [
+        {
+            "currency": "GBP",
+            "available_balance": "0.00",
+            "unavailable_balance": "0"
+        },
+        {
+            "currency": "USD",
+            "available_balance": "11.00",
+            "unavailable_balance": "12"
+        },
+        {
+            "currency": "EUR",
+            "available_balance": "0.00",
+            "unavailable_balance": "0"
+        }
+    ]
+}
+
+
+
+5、财务盘账接口
+http://192.168.0.10:20011/account/inventory
+
+参数列表：
+account_id，银行账户编号
+user_id，操作用户编号
+available_balance，可用余额
+gold_rolling_balance，不可用余额子项  滚动金
+freeze_balance，不可用余额子项  冻结
+deposit_balance，不可用余额子项  押金
+withdrawable_balance，不可用余额子项  可下撤资金
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+
+返回结果：
+{
+    "code": 0,
+    "msg": "银行账户余额已更新!",
+    "response": []
+}
+
+
+
+6、用户修改密码接口
+http://192.168.0.10:20011/passport/changePws
+
+参数列表：
+username，用户名
+orig_pws，原密码
+new_pws，新密码
+
+
+返回结果：
+{"code":0,"msg":"\u5bc6\u7801\u5df2\u4fee\u6539\uff01"}
+
+
+
+7、打款付款凭证上传接口
+http://192.168.0.10:20011/voucher/uploadVoucher
+
+参数列表：
+approval_number，钉钉审批编号，支持同一个钉钉编号分多次上传凭证
+origin_total_amount，打款金额，必填项
+currency，打款币种，必选项
+account_items，多数组打款账户和流水号信息[{"account_id":1,"receiving_account":"34444444444","transaction_number":"2323324","note":""},{"account_id":3,"receiving_account":"yyyyyy@qq.com","transaction_number":"5555555555","note":"ceshi"}]
+files_relation，该参数作废，凭证图片与打款银行账户关联数组集合，[{"account_id":1, "file_names":["3.jpg","1.jpg"]},{"account_id":3, "file_names":["4.jpg","2.jpg"]}]
+
+user_id，操作用户编号
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+
+返回结果：
+{
+    "code": 0,
+    "msg": "凭证已上传和更新!",
+    "response": []
+}
+
+
+8、打款历史记录列表接口
+http://192.168.0.10:20011/voucher/getVoucherHistoryList
+
+参数列表：
+user_id，操作用户编号
+page：页码数，可为空
+limit：每页条数，默认10条，可为空
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 2,
+        "list": [
+            {
+				"voucher_id": 421,
+                "payment_id": 1021,
+                "payment_type": 5,	打款表类型(1-报销审批，2-人民币款项支付，3-外币银行支付，4-外币PayPal支付，5-财务盘账)
+                "type": 2,	附件类型，1-付款凭证，2-余额凭证
+                "status": 1,	状态，0-未关联，1-已关联，2-关联超时失效
+                "sn": "PZ202201211543092416",
+                "create_time": "2022-01-21 15:01",
+				"update_time":"2022-02-10 20:14",
+                "creator": "SMIT",					//操作人
+                "department_name": "海外业务部",	//操作人所属的部门
+                "origin_total_amount": "100.00",
+                "currency": "CNY",
+                "payment_creator": "缪亚民",			//申请人
+                "payment_department_name": "技术部",	//申请人所属的部门
+				"voucher_ext_count":1,				"voucher_ext_last":{"voucher_ext_id":319,"account_id":3,"account_name":"农业银行","receiving_account":"33","transaction_number":"33","note":"333","create_time":"2022-02-10 20:14","applicant": "王盼盼",	//修改申请人
+                "application_time": 1661744789,	//修改申请时间
+                "is_audit": 0, 					//修改审核状态(0-正常，1-修改申请中)
+				"application_reason": "测试测试测试",	//修改原因
+				},	
+                "attachment_list": [
+                    {
+                        "path": "http://bdfiletest.baizhoucn.com/payment/202201/20220127150830_0_bd.jpg"
+                    }
+				]
+				"approval_number_list": [
+                    {
+                        "approval_number": "202209261027000302344"
+                    },
+                    {
+                        "approval_number": "202209261147000348288"
+                    }
+				]
+            }
+        ],
+        "pages": 1,
+        "limit": 10
+    }
+}
+
+
+9、获取打款明细列表接口(没有使用)
+http://192.168.0.10:20011/voucher/getPaymentItemsList
+
+参数列表：
+voucher_id，凭证编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "list": [
+            {
+                "item_id": 1035,
+                "account_title_parent": "办公费",
+                "account_title": "系统运维费",
+                "origin_amount": "100.00",
+                "currency": "CNY",
+                "cny_amount": "100.00",
+                "note": "测试结算方式"
+            },
+            {
+                "item_id": 1037,
+                "account_title_parent": "其它费用",
+                "account_title": "其它费用",
+                "origin_amount": "-100.00",
+                "currency": "CNY",
+                "cny_amount": "-100.00",
+                "note": "还款冲销"
+            }
+        ],
+        "total_amount": 0,
+        "currency": "CNY"
+    }
+}
+
+
+10、获取打款流水列表接口(明细按钮)
+http://192.168.0.10:20011/voucher/getPaymentHistory
+
+参数列表：
+voucher_id，凭证编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 1,
+        "list": [
+            {
+				"voucher_ext_id": 489,
+                "voucher_id": 343,
+                "account_id": 3,
+                "receiving_account": "yyyyyy@qq.com",
+                "transaction_number": "5555555555",
+				"create_time": 1658306601,
+                "creator": "王盼盼",
+                "update_time": 1661647415,
+                "operator": "王盼盼",
+                "note": "ceshi",
+				"origin_total_amount": "20469.20",
+                "currency": "CNY",
+				"applicant": "王盼盼",
+                "application_time": 1661744789,
+                "is_audit": 0,	//修改审核状态(0-正常，1-修改申请中)
+				"application_reason": "测试测试测试",	//修改原因
+				"origin_amount": "2000.00",	//分拆打款原始金额
+                "origin_currency": "CNY",	//分拆打款原始币种
+                "attachment_list": [
+                    {
+                        "path": "http://bdfiletest.baizhoucn.com/payment/202201/20220128184011_2_bd.jpg"
+                    },
+                    {
+                        "path": "http://bdfiletest.baizhoucn.com/payment/202201/20220128184011_0_bd.jpg"
+                    }
+                ]
+            }
+        ],
+        "pages": 1,
+        "limit": 10
+    }
+}
+
+
+11、根据钉钉编号获取打款详情信息(输入钉钉编号，点查看)
+http://192.168.0.10:20011/voucher/getAccountVoucherInfo
+
+参数列表：
+approval_number，钉钉审批编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 1,
+        "list": [
+            {
+                "id": 25,
+                "voucher_id": 303,
+                "account_id": 1,
+                "receiving_account": "34444444444",
+                "transaction_number": "2323324",
+                "note": "",
+                "attachment_list": [
+                    {
+                        "path": "http://bdfiletest.baizhoucn.com/payment/202201/20220130172152_2_bd.jpg"
+                    },
+                    {
+                        "path": "http://bdfiletest.baizhoucn.com/payment/202201/20220130172152_0_bd.jpg"
+                    }
+                ]
+            }
+        ]
+    }
+}
+
+
+12、打款助手版本号获取接口
+http://192.168.0.10:20011/system/getVersion
+参数列表：无
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "version": "1.0.0",
+        "description": "新版本上线！",
+        "download": "https://bd.baizhoucn.com/upload/百舟打款助手v1.0.exe"
+    }
+}
+
+
+13、日志上传接口
+http://192.168.0.10:20011/system/uploadErrorLog
+
+参数列表：
+msg_log，日志详情信息，建议使用json字符串格式
+user_name，操作用户昵称
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": []
+}
+
+
+14、历史列表信息导出接口
+http://192.168.0.10:20011/voucher/exportHistoryList
+
+参数列表：
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 28,
+        "list": [
+            {
+                "voucher_id": 451,
+                "payment_id": 3217,
+                "payment_type": 4,
+                "type": 1,
+                "status": 1,
+                "sn": "202202110931000275919",	//
+                "create_time": 1644550316,	//打款时间
+                "creator": "SMIT",		//打款员
+                "department_name": "海外业务部",  //打款员部门
+                "origin_total_amount": "23.04",  //打款总金额
+                "currency": "EUR",	//打款币种
+                "payment_creator": "王惠",	//打款申请人
+                "payment_department_name": "海外业务部",	//打款申请人部门
+                "account_name": "浦发银行1",	//银行账户名称
+                "receiving_account": "555",		//收款人账号
+                "transaction_number": "55",		//交易流水号
+                "note": "5555",					//打款备注信息
+				"origin_amount": "110.00",		//打款金额
+                "origin_currency": "CNY"		//打款币种
+            }
+        ]
+    }
+}
+
+
+15、补充凭证图片接口
+http://192.168.0.10:20011/voucher/replenishVoucher
+
+参数列表：
+voucher_ext_id，凭证子编号id
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "凭证已上传和更新!",
+    "response": []
+}
+
+
+16、逻辑删除打款记录接口
+http://192.168.0.10:20011/voucher/deleteVoucher
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "打款信息已删除!",
+    "response": []
+}
+
+
+17、申请修改打款记录接口
+http://192.168.0.10:20011/voucher/modifyVoucher
+
+参数列表：
+voucher_ext_id，凭证子编号id
+account_id：银行账号编号
+receiving_account：顾客收款账号
+transaction_number：交易流水号
+origin_total_amount，打款金额，必填项
+currency，打款币种，必选项
+note：打款备注信息
+user_id，操作用户编号
+application_reason，修改原因
+
+返回结果：
+{
+    "code": 0,
+    "msg": "申请修改已提交!",
+    "response": []
+}
+
+
+18、取消修改申请接口
+http://192.168.0.10:20011/voucher/cancelModifyVoucher
+
+参数列表：
+voucher_ext_id，凭证子编号id
+account_id：银行账号编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "修改申请已撤销!",
+    "response": []
+}
+
+
+19、审核修改操作接口
+http://192.168.0.10:20011/voucher/auditModifyVoucher
+
+参数列表：
+voucher_ext_id，凭证子编号id
+account_id：银行账号编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "打款信息已修改!",
+    "response": []
+}
+
+
+20、获取收入记录接口
+http://192.168.0.10:20011/incomeRecord/getIncomeRecords
+
+参数列表：
+user_id，操作用户编号
+account_id，银行账号编号
+condition，1-今天，2-昨天，3-近7天，4-本月，5-上月
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 9,
+        "list": [
+            {
+                "voucher_id": 683,
+                "payment_id": 4145,
+                "payment_type": 8,
+                "type": 3,
+                "status": 1,
+                "sn": "INR202203121204379922",
+                "create_time": 1647057877,
+                "update_time": 1647057877,
+                "creator": "SMIT",
+                "department_name": "海外业务部",
+                "origin_total_amount": "55.20",
+                "currency": "USD",
+                "payment_creator": "SMIT",
+                "payment_department_name": "海外业务部",
+                "voucher_ext_count": 1,
+                "voucher_ext_last": {
+                    "voucher_ext_id": 725,
+                    "account_id": 1,
+                    "account_name": "Paypal (pay@amzgame.com)",
+                    "receiving_account": null,
+                    "transaction_number": null,
+                    "note": "sdfsdfdsfdsfds",
+                    "create_time": 1647057877,
+					"applicant": null,
+                    "application_time": null,
+                    "is_audit": 0,
+                    "application_reason": null
+                },
+                "attachment_list": [
+                    {
+                        "path": "http://bdfile.stzbtx.com1.jpg"
+                    },
+                    {
+                        "path": "http://bdfile.stzbtx.com2.jpg"
+                    }
+                ]
+            }
+        ],
+        "pages": 1,
+        "limit": 10
+    }
+}
+
+
+21、收入记录和凭证上传接口
+http://192.168.0.10:20011/incomeRecord/save
+
+参数列表：
+account_id：银行账号编号
+origin_amount：收入金额
+currency：收入币种
+user_id，操作用户编号
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+note：备注信息，可为空
+
+返回结果：
+{
+    "code": 0,
+    "msg": "收入信息已提交!",
+    "response": []
+}
+
+
+22、收入记录和凭证上传接口
+http://192.168.0.10:20011/incomeRecord/replenish
+
+参数列表：
+voucher_ext_id，凭证子编号id
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "凭证已上传和更新!",
+    "response": []
+}
+
+
+23、收入记录申请修改接口
+http://192.168.0.10:20011/incomeRecord/modify
+
+参数列表：
+voucher_ext_id，凭证子编号id
+account_id：银行账号编号
+origin_amount：收入金额
+currency：收入币种
+note：备注信息
+user_id，操作用户编号
+application_reason，修改原因
+
+返回结果：
+{
+    "code": 0,
+    "msg": "申请修改已提交!",
+    "response": []
+}
+
+
+
+24、收入记录取消修改申请接口
+http://192.168.0.10:20011/incomeRecord/cancel
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "修改申请已撤销!",
+    "response": []
+}
+
+25、收入记录修改审核操作接口
+http://192.168.0.10:20011/incomeRecord/audit
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "收入信息已修改!",
+    "response": []
+}
+
+
+26、收入记录删除接口
+http://192.168.0.10:20011/incomeRecord/delete
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "收入信息已删除!",
+    "response": []
+}
+
+
+27、多币种列表接口
+http://192.168.0.10:20011/incomeRecord/getCurrencies
+
+参数列表：无
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": [
+        {
+            "id": 1,
+            "code": "EUR",
+            "currency": "1.000000",
+            "symbol": "€",
+            "price_ratio": "1.00",
+            "threshold": "9.68",
+            "create_user_id": 1,
+            "create_user_name": "",
+            "c_date": 1466671004,
+            "update": 1520815496,
+            "remark": "欧元"
+        },
+        {
+            "id": 3,
+            "code": "USD",
+            "currency": "1.231076",
+            "symbol": "$",
+            "price_ratio": "1.00",
+            "threshold": "8.06",
+            "create_user_id": 1,
+            "create_user_name": "root",
+            "c_date": 1466671004,
+            "update": 1520815496,
+            "remark": "美元"
+        }
+    ]
+}
+
+28、在途资金列表接口
+http://192.168.0.10:20011/transit/getTransitList
+
+参数列表：
+status，在途状态(0-全部 1-在途中，2-已到账)
+user_id，操作用户编号
+condition，0-全部 1-今天，2-昨天，3-近7天，4-本月，5-上月
+out_account_alias_name，提现银行名称 支持模糊查询
+in_account_alias_name，到账银行名称  支持模糊查询
+
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 4,
+        "list": [
+            {
+                "id": 9,
+                "out_account_id": 1,
+                "in_account_id": 3,
+                "out_account_alias_name": "Paypal (pay@amzgame.com)",	//提现银行名称
+                "in_account_alias_name": "Paypal (yqs1980@gmail.com)",	//到账银行名称
+                "voucher_id": 801,
+                "status": 2,	//在途状态(1-在途中，2-已到账)
+                "sn": "TRA202203311510091150",	//在途资金编号
+                "create_time": 1648710609,
+                "update_time": 1648710727,
+                "creator": "王盼盼",
+                "operator": "王盼盼",
+                "department_name": "财务部",
+                "origin_amount": "2000.50",	//在途资金
+                "currency": "USD",	//币种
+                "cny_amount": "12703.77",	//在途资金人民币
+                "other_account": "4343443@qq.com",	//其它账号
+                "note": "在途资金提交测试",		//备注
+				"received_amount": "6500.00",	//到账金额
+                "received_currency": "HKD",		//到账币种
+                "voucher_ext_id": 15101,		//编号
+				"voucher_ext_count": 1,
+                "voucher_ext_last": {
+                    "voucher_ext_id": 15101,
+                    "voucher_id": 15037,
+                    "account_id": 1,
+                    "account_name": "Paypal (pay@amzgame.com)",
+                    "receiving_account": null,
+                    "transaction_number": null,
+                    "note": "1111",
+                    "create_time": 1659078463,
+                    "applicant": null,
+                    "application_time": null,
+                    "is_audit": 0,
+                    "application_reason": null
+                },
+                "attachment_list": [
+                    {
+                        "path": "http://bdfile.stzbtx.com/payment/202203/20220304112439_1.png"
+                    }
+                ]
+            }
+        ],
+        "pages": 1,
+        "limit": 10
+    }
+}
+
+29、上传在途资金凭证接口
+http://192.168.0.10:20011/transit/save
+
+参数列表：
+user_id，操作用户编号
+out_account_id，提现银行账号编号
+in_account_id，到账银行账号编号
+origin_amount，提现金额
+received_amount，到账金额
+received_currency，到账币种
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+note，备注信息 
+other_account，其它账号
+
+user_id: current_data.id,  # 操作用户编号
+out_account_id: current_data.get_account_id(self.comboBox_4.currentText()),  # 提现银行账号编号
+in_account_id: self.comboBox_6.current_data(),  # 到账银行账号编号
+origin_amount: self.lineEdit_3.text().replace(',', ''),  # 提现金额
+currency: self.label_20.text(),
+received_amount: self.lineEdit_4.text().replace(',', ''),
+received_currency: self.comboBox_5.currentText(),
+attachment_list: json.dumps(attachment_list, ensure_ascii=False),  # 凭证文件路径数组，支持多文件形式，例如["1.jpg", "2.jpg"]
+note: self.textEdit_2.toPlainText(),  # 备注信息
+commission: self.lineEdit_5.text().strip(),  # 手续费
+out_account_title_id: self.comboBox_7.current_data()
+
+返回结果：
+{
+    "code": 0,
+    "msg": "在途资金信息已提交!",
+    "response": []
+}
+
+
+30、申请修改在途资金记录接口
+http://192.168.0.10:20011/transit/modify
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+out_account_id，提现银行账号编号
+in_account_id，到账银行账号编号
+origin_amount，提现金额
+received_amount，到账金额
+received_currency，到账币种
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+note，备注信息 
+other_account，其它账号
+application_reason，修改原因
+
+返回结果：
+{
+    "code": 0,
+    "msg": "申请修改已提交!",
+    "response": []
+}
+
+
+31、取消修改在途资金记录接口
+http://192.168.0.10:20011/transit/cancel
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "修改申请已撤销!",
+    "response": []
+}
+
+
+32、审核修改在途资金记录接口
+http://192.168.0.10:20011/transit/audit
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "在途资金信息已修改!",
+    "response": []
+}
+
+
+33、删除在途资金记录接口
+http://192.168.0.10:20011/transit/delete
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "在途资金信息已删除!",
+    "response": []
+}
+
+
+34、补充在途资金凭证图片接口
+http://192.168.0.10:20011/transit/replenish
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+
+返回结果：
+{
+    "code": 0,
+    "msg": "在途资金凭证图片已补充上传!",
+    "response": []
+}
+
+
+35、在途资金到账功能接口
+http://192.168.0.10:20011/transit/arrival
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+origin_amount，支出金额
+received_amount，到账金额
+received_currency，到账币种
+
+返回结果：
+{
+    "code": 0,
+    "msg": "在途资金信息已删除!",
+    "response": []
+}
+
+
+36、在途资金获取详情信息接口
+http://192.168.0.10:20011/transit/getTransitDetail
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "id": 105,
+        "transit_number": "TRA202209141405006914",
+        "out_account_id": 1,
+        "out_account_alias_name": "Paypal (pay@amzgame.com)",
+        "in_account_id": 3,
+        "in_account_alias_name": "Paypal (yqs1980@gmail.com)",
+        "currency": "USD",			//体现默认币种
+        "origin_amount": "2000.50",	//提现支出金额(默认币种)
+        "cny_amount": "13493.57",	
+        "other_account": "4343443@qq.com",
+        "received_amount": "8000.00",	//到账金额
+        "received_currency": "CNY",		//到账币种
+        "department_id": 7,
+        "status": 1,
+        "creator": "王盼盼",		//创建人
+        "create_time": 1663135500,	//创建时间
+        "update_time": null,
+        "operator": null,
+        "is_delete": 0,
+        "voucher_id": 22189,
+        "note": "在途资金提交测试"
+    }
+}
+
+
+37、打款助手，打款信息列表接口
+http://192.168.0.10:20011/paymentCashier/getPaymentList
+
+参数列表：
+user_id，操作用户编号
+page：页码数，可为空
+limit：每页条数，默认500条，可为空
+type：打款类型，字符串，(pending - 待打款，processed - 已打款)
+payment_date：打款时间查询条件，可为空
+condition：申请人或者钉钉编号查询条件，可为空
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "list": [
+            {
+                "id": 7,				//主编号
+                "payment_id": 10711,    
+                "cashier": "王盼盼",	//打款员
+                "payment_status": 0,	
+                "approval_number": "202204271731000114568",		//钉钉编号
+                "creator": "汤量",		//申请人
+                "create_time": 1651108824,	//创建时间
+                "department_id": 5,		
+                "department_name": "海外业务部",	//部门名称
+                "origin_total_amount": "500.00",	//打款金额
+                "currency": "USD",					//打款币种
+                "loan_amount": "0.00",				//还款冲销金额
+                "payment_method": "银行",			//付款方式
+                "payment_date": "2022-04-27",		//支付日期
+                "payment_object": "Tech and Tips",	//支付对象
+                "opening_bank": "Bank Central Asia (BCA)",	//开户行
+                "bank_account": "1911829369",				//银行账户
+				"process_name": "汤量提交的外币银行支付"	//打款审批类型
+				"type": 2,
+                "items": [				//打款明细信息
+                    {
+                        "item_id": 7921,
+                        "account_title": "采购费",	
+                        "account_title_id": 109,
+                        "account_title_parent": "运营费",
+                        "account_title_parent_id": 11,
+                        "origin_amount": "18.45",
+                        "currency": "CNY",
+                        "cny_amount": "18.45",
+                        "note": "迈蒂（速卖通）2602346618786656918"		//备注信息
+                    }
+                ]
+            }
+        ],
+        "count": 1,
+        "pages": 1,
+        "limit": 500
+    }
+}
+
+38、打款助手，打款详情信息接口
+http://192.168.0.10:20011/paymentCashier/getPaymentDetail
+
+参数列表：
+user_id，操作用户编号
+id，主键编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "payment_cashier": {
+            "id": 1,
+            "payment_id": 10705,
+            "cashier": "test",		//打款员
+            "payment_status": 1,	//审核状态 1-成功，2-拒绝
+            "comment": "",				//评论信息
+            "update_time": 1651142278	//最后操作时间
+        },
+        "payment_detail": {
+            "detail": {
+                "id": 10705,
+                "approval_number": "202204271548000406157",	//钉钉编号
+                "process_name": "刘甦提交的报销",			//流程名称
+                "creator": "刘甦",							//申请人
+                "create_time": "2022/04/28 08:01",			//创建时间
+                "department_name": "总裁办",				//部门
+                "payment_type": 1,							//类型(1-报销审批，2-人民币款项支付，3-外币银行支付，4-外币PayPal支付，6-大额外币银行支付，7-计算收入)
+                "origin_total_amount": "18665.00",			//打款金额
+                "currency": "CNY",							//打款币种
+                "cny_total_amount": "18665.00",				//打款人民币金额
+                "currency_rate": "1.000000",				//汇率
+                "note": "",									//备注
+                "loan_amount": "0.00"						//还款冲销金额
+            },
+            "items": [
+                {
+                    "item_id": 7701,
+                    "account_title": "其它费用",			//科目子类
+                    "account_title_id": 45,
+                    "account_title_parent": "办公费",		//科目
+                    "account_title_parent_id": 1,
+                    "origin_amount": "9332.50",				//打款子项目金额
+                    "currency": "CNY",						//打款子项目币种
+                    "cny_amount": "9332.50",				//打款子项目人民币金额
+                    "note": "电子计算机-华为电脑matebook x pro；mate view和相关配件"		//备注
+                },
+                {
+                    "item_id": 7703,
+                    "account_title": "其它费用",
+                    "account_title_id": 45,
+                    "account_title_parent": "办公费",
+                    "account_title_parent_id": 1,
+                    "origin_amount": "9332.50",
+                    "currency": "CNY",
+                    "cny_amount": "9332.50",
+                    "note": ""
+                }
+            ]
+        }
+    }
+}
+
+39、打款助手，打款审核信息接口
+http://192.168.0.10:20011/paymentCashier/review
+
+参数列表：
+user_id，操作用户编号
+id，主键编号
+status，审核状态 1-成功，2-拒绝
+comment，评论内容
+
+返回结果：
+{"code":0,"msg":"success","response":[]}
+
+
+40、打款助手，打款批量审核信息接口
+http://192.168.0.10:20011/paymentCashier/batchReview
+
+参数列表：
+user_id，操作用户编号
+approval_number_item，钉钉编号集合 例如["202204291603000583740", "202204291605000099467"]
+status，审核状态 1-成功，2-拒绝
+comment，评论内容
+
+返回结果：
+{"code":0,"msg":"success","response":[]}
+
+
+41、获取银行账户或paypal账户余额权限显示状态(可用余额、滚动金、冻结、押金、可下撤资金)
+http://192.168.0.10:20011/account/getUnavailableShowStatus
+
+参数列表：
+account_id，银行账号，可以为空
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+		"available":false,				//可用余额
+        "gold_rolling_balance": true,	//滚动金
+        "freeze_balance": false,		//冻结
+        "deposit_balance": false,		//押金
+        "withdrawable_balance": true	//可下撤资金
+    }
+}
+
+
+42、获取科目类别信息，只保留基本的科目信息
+http://192.168.0.10:20011/accountTitle/getClientSubject
+http://192.168.0.10:20011/accountTitle/getListLevelOne
+
+参数列表：
+无
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": [
+        {
+            "id": 23,
+            "name": "办公费 - 系统运维费"
+        },
+        {
+            "id": 25,
+            "name": "办公费 - 办公软件"
+        }
+	]
+}
+
+
+43、打款助手，内部银行转账列表信息接口
+http://192.168.0.10:20011/transferAccounts/getList
+
+参数列表：
+user_id：操作用户编号
+page：页码数，可为空
+limit：每页条数，默认10条，可为空
+transfer_number：转账编号
+account_name：银行名称，(转出银行账户名称和转入银行账户名称 同步搜索)
+condition：1-今天，2-昨天，3-近7天，4-本月，5-上月
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 4,
+        "list": [
+            {
+                "id": 1,
+                "transfer_number": "TRF202205241857205739",	//转账编号
+                "out_account_id": 1,
+                "in_account_id": 23,
+                "currency": "USD",				//币种
+                "origin_amount": "555.00",		//原始金额
+                "cny_amount": "3700.12",		//人民币金额
+				"received_amount": "100",		//实际到账金额
+				"received_currency": "GBP",		//实际到账币种
+                "department_id": 7,
+                "creator": "王盼盼",			//转账操作人
+                "create_time": 1653389840,		//创建时间
+                "update_time": 1653393269,		//修改时间
+                "operator": "王盼盼",			//修改操作人
+                "is_delete": 0,
+                "voucher_id": 7583,
+                "payout_payment_id": 14029,
+                "income_payment_id": 14031,
+                "note": "test",					//备注
+                "out_account_name": "Paypal (pay@amzgame.com)",		//转出银行账户名称
+                "in_account_name": "工行 (开发区支行)",				//转入银行账户名称
+                "department_name": "财务部",						//转账操作人所属的部门
+                "voucher_ext_id": 15187,							//凭证扩展表主编号
+				"voucher_ext_count": 1,
+                "voucher_ext_last": {
+                    "voucher_ext_id": 15187,
+                    "voucher_id": 15121,
+                    "account_id": 23,
+                    "account_name": "工行 (开发区支行)",
+                    "receiving_account": null,
+                    "transaction_number": null,
+                    "note": "gggggg",
+                    "create_time": 1661841385,
+                    "applicant": null,
+                    "application_time": null,
+                    "is_audit": 0,
+                    "application_reason": null
+                },
+                "attachment_list": [								//附件列表
+                    {	
+                        "path": "http://bdfile.stzbtx.com/4444.jpg"
+                    },
+                    {
+                        "path": "http://bdfile.stzbtx.com/5555.jpg"
+                    }
+                ]
+            }
+		]
+}
+
+
+44、打款助手，新增内部银行转账信息接口
+http://192.168.0.10:20011/transferAccounts/save
+
+参数列表：
+user_id，操作用户编号
+out_account_id，转出银行账户编号
+in_account_id，转入银行账户编号
+origin_amount，金额
+currency，币种
+received_amount，实际到账金额
+received_currency，实际到账币种
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+note，备注信息 
+
+返回结果：
+{
+    "code": 0,
+    "msg": "内部银行转账信息已提交!",
+    "response": []
+}
+
+
+45、打款助手，内部银行转账 补充凭证图片接口
+http://192.168.0.10:20011/transferAccounts/replenish
+
+参数列表：
+user_id，操作用户编号
+voucher_ext_id，凭证扩展表主编号
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+
+返回结果：
+{
+    "code": 0,
+    "msg": "银行转账凭证图片已补充上传!",
+    "response": []
+}
+
+
+46、打款助手，申请修改内部银行转账信息接口
+http://192.168.0.10:20011/transferAccounts/modify
+
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+id，主编号
+out_account_id，转出银行账户编号
+in_account_id，转入银行账户编号
+origin_amount，金额
+currency，币种
+received_amount，实际到账金额
+received_currency，实际到账币种
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+application_reason，修改原因
+
+返回结果：
+{
+    "code": 0,
+    "msg": "申请修改已提交!",
+    "response": []
+}
+
+
+47、打款助手，取消修改内部银行转账信息接口
+http://192.168.0.10:20011/transferAccounts/cancel
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "修改申请已撤销!",
+    "response": []
+}
+
+
+48、打款助手，审核修改内部银行转账信息接口
+http://192.168.0.10:20011/transferAccounts/audit
+参数列表：
+voucher_ext_id，凭证子编号id
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "银行转账信息已修改!",
+    "response": []
+}
+
+
+49、打款助手，删除内部银行转账信息接口
+http://192.168.0.10:20011/transferAccounts/delete
+
+参数列表：
+user_id，操作用户编号
+id，主编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "银行转账信息已删除!",
+    "response": []
+}
+
+
+50、打款助手，获取内部银行转账详情信息接口
+http://192.168.0.10:20011/transferAccounts/getDetail
+
+参数列表：
+user_id，操作用户编号
+id，主编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "id": 11,
+        "transfer_number": "TRF202205251502339890",	//编号
+        "out_account_id": 3,				//转出银行账户编号
+        "in_account_id": 25,				//转入银行账户编号
+        "currency": "USD",					//币种
+        "origin_amount": "555.00",			//金额
+        "cny_amount": "3702.30",
+        "department_id": 11,				//部门编号
+        "creator": "test",					//创建人
+        "create_time": 1653462153,			//创建时间
+        "update_time": null,				//更新时间
+        "operator": null,					//最后操作人
+        "is_delete": 0,
+        "voucher_id": 7601,
+        "payout_payment_id": 14057,
+        "income_payment_id": 14059,
+        "note": "",							//备注信息
+        "attachment_list": [				//附件信息
+            {
+                "path": "http://bdfile.stzbtx.com/66666.jpg"
+            },
+            {
+                "path": "http://bdfile.stzbtx.com/777777.jpg"
+            }
+        ]
+    }
+}
+
+
+51、打款助手，手动支出列表信息接口
+http://192.168.0.10:20011/payout/getPayoutList
+
+参数列表：
+user_id：操作用户编号
+page：页码数，可为空
+limit：每页条数，默认10条，可为空
+inventory_number：支出编号
+condition：1-今天，2-昨天，3-近7天，4-本月，5-上月
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 2,
+        "list": [
+            {
+                "voucher_id": 11841,
+                "payment_id": 21141,
+                "payment_type": 12,
+                "type": 6,
+                "status": 1,
+                "sn": "PAY202207141748398098",
+                "create_time": 1657792119,
+                "update_time": 1657792250,
+                "creator": "王盼盼",
+                "department_name": "财务部",
+                "origin_total_amount": "27.00",
+                "currency": "USD",
+                "payment_creator": "王盼盼",
+                "payment_department_name": "财务部",
+				"voucher_ext_last": {
+                    "voucher_ext_id": 15179,
+                    "voucher_id": 15113,
+                    "account_id": 183,
+                    "account_name": "建设银行（深圳舟游)",
+                    "receiving_account": null,
+                    "transaction_number": null,
+                    "note": "11111",
+                    "create_time": 1661818495,
+                    "applicant": null,
+                    "application_time": null,
+                    "is_audit": 0,
+                    "application_reason": null
+                },
+                "voucher_ext_id": 11883,
+                "attachment_list": [
+                    {
+                        "path": "http://bdfile.stzbtx.com/66666.jpg"
+                    },
+                    {
+                        "path": "http://bdfile.stzbtx.com/777777.jpg"
+                    },
+                    {
+                        "path": "http://bdfile.stzbtx.com/111111.jpg"
+                    },
+                    {
+                        "path": "http://bdfile.stzbtx.com/222222.jpg"
+                    }
+                ]
+            }
+        ],
+        "pages": 1,
+        "limit": 10
+    }
+}
+
+
+52、打款助手，手动支出信息详情接口
+http://192.168.0.10:20011/payout/getPayoutDetail
+
+参数列表：
+user_id，操作用户编号
+voucher_ext_id，凭证扩展表主编号
+
+返回结果：
+{
+    "id": 11883,
+    "voucher_id": 11841,
+    "account_id": 3,
+    "receiving_account": null,
+    "transaction_number": null,
+    "create_time": 1657792119,
+    "creator": "王盼盼",
+    "update_time": 1657855825,
+    "operator": "王盼盼",
+    "is_delete": 0,
+    "note": "test测试111111111",
+	"inventory_number": "PAY202207141748398098",
+    "payment_detail": {
+        "item_id": 12135,
+        "payment_id": 21141,
+        "account_title_parent_id": 1,
+        "account_title_parent": "办公费",
+        "account_title_id": 25,
+        "account_title": "办公软件",
+        "origin_amount": "66666.00",
+        "currency": "EUR",
+        "cny_amount": "470141.97",
+        "note": "test测试111111111"
+    },
+    "attachment_list": [
+        {
+            "path": "http://bdfile.stzbtx.com/66666.jpg"
+        },
+        {
+            "path": "http://bdfile.stzbtx.com/777777.jpg"
+        }
+    ]
+}
+
+
+53、打款助手，手动支出信息添加接口
+http://192.168.0.10:20011/payout/addPayout
+
+参数列表：
+user_id，操作用户编号
+account_id，支出银行账户编号
+account_title_id，科目编号
+origin_amount，支出金额
+currency，币种
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+note，备注信息 
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": []
+}
+
+
+54、打款助手，手动支出信息申请修改接口
+http://192.168.0.10:20011/payout/editPayout
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+user_id，操作用户编号
+account_id，支出银行账户编号
+account_title_id，科目编号
+origin_amount，支出金额
+currency，币种
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+note，备注信息 
+application_reason，修改原因
+
+返回结果：
+{
+    "code": 0,
+    "msg": "申请修改已提交!",
+    "response": []
+}
+
+
+55、打款助手，手动支出信息撤销申请修改接口
+http://192.168.0.10:20011/payout/cancelEditPayout
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "修改申请已撤销!",
+    "response": []
+}
+
+
+56、打款助手，手动支出信息审核修改接口
+http://192.168.0.10:20011/payout/auditEditPayout
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": []
+}
+
+
+57、打款助手，手动支出信息删除接口
+http://192.168.0.10:20011/payout/deletePayout
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": []
+}
+
+
+58、打款助手，手动支出补充凭证接口
+http://192.168.0.10:20011/payout/replenish
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+user_id，操作用户编号
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+
+返回结果：
+{
+    "code": 0,
+    "msg": "支出凭证图片已补充上传!",
+    "response": []
+}
+
+
+59、打款助手，汇率列表接口
+http://192.168.0.10:20011/financeRate/getList
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": [
+        {
+            "code": "CNY",
+            "currency_rate": "1.000000",
+            "update_time": 1654593488,
+            "operator": "root"
+        },
+        {
+            "code": "EUR",
+            "currency_rate": "6.838900",
+            "update_time": 1658279414,
+            "operator": "system"
+        },
+        {
+            "code": "USD",
+            "currency_rate": "6.745100",
+            "update_time": 1658279414,
+            "operator": "system"
+        }
+    ]
+}
+
+
+60、打款助手，银行账户详情信息接口(包括余额信息)
+http://192.168.0.10:20011/account/getAccountDetail
+
+参数列表：
+account_id，银行账户编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "id": 1,
+        "account_name": "Paypal (pay@amzgame.com)",	//银行账户名称
+        "currency": "USD",	//默认币种
+        "company_id": 12,
+        "available_balance": "0.00",
+        "unavailable_balance": "21000.00",
+        "gold_rolling_balance": "0.00",
+        "freeze_balance": "0.00",
+        "deposit_balance": "0.00",
+        "withdrawable_balance": "21000.00",
+        "ending_balance": "13714.65",		//实时余额信息
+        "create_time": 1644896114,
+        "creator": "root",
+        "update_time": 1663136176,
+        "operator": "王盼盼",
+        "check_accounts_time": 1662076854,
+        "account_type": 9,
+        "is_available": 1,
+        "is_delete": 0,
+        "is_check_accounts": 1,
+        "check_accounts_config": "{\"freeze\": false, \"deposit\": false, \"available\": false, \"gold_rolling\": false, \"withdrawable\": true}",
+        "note": ""
+    }
+}
+
+
+61、打款助手，银行账户历史记录信息接口
+http://192.168.0.10:20011/account/getAccountRecordHistoryList
+
+参数列表：
+account_id，银行账户编号
+start_time，查询开始时间 格式2022-09-01 08:00
+end_time，查询结束时间  格式2022-09-30 23:00
+content，查询钉钉编号或者收支编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 29,
+        "list": [
+            {
+                "id": 25131,
+                "voucher_id": 22193,
+                "payment_id": 37779,
+                "payment_type": 12,
+                "type": 4,
+                "sn": "TRA202209141548317926",
+                "create_time": 1663141711,
+                "creator": "王盼盼",
+                "update_time": null,
+                "operator": null,
+                "current_amount": "2000.50",
+                "base_currency": "USD",
+                "beginning_balance": "5214.65",
+                "ending_balance": "3214.15",
+                "department_name": "财务部",
+                "origin_amount": "2000.50",
+                "origin_currency": "USD",
+                "account_record_note": "[在途资金转出]，在途资金提交测试",
+                "account_voucher_ext_note": "在途资金提交测试",
+                "payment_note": "在途资金提交测试",
+                "attachment_list": [
+                    {
+                        "path": "http://bdfile.baizhoucn.com/1.jpg"
+                    },
+                    {
+                        "path": "http://bdfile.baizhoucn.com/2.jpg"
+                    }
+                ],
+                "payment_items": []
+            },
+            {
+                "id": 25121,
+                "voucher_id": 22187,
+                "payment_id": 37769,
+                "payment_type": 12,
+                "type": 6,
+                "sn": "PAY202209140750133266",
+                "create_time": 1663113013,
+                "creator": "王盼盼",
+                "update_time": null,
+                "operator": null,
+                "current_amount": "50.00",
+                "base_currency": "USD",
+                "beginning_balance": "13764.65",
+                "ending_balance": "13714.65",
+                "department_name": "财务部",
+                "origin_amount": "50.00",
+                "origin_currency": "USD",
+                "account_record_note": "GGGGG",
+                "account_voucher_ext_note": "GGGGG",
+                "payment_note": "GGGGG",
+                "attachment_list": [],
+                "payment_items": [
+                    {
+                        "item_id": 19577,
+                        "account_title_parent": "办公费",
+                        "account_title": "租赁使用费",
+                        "origin_amount": "50.00",
+                        "currency": "USD",
+                        "cny_amount": "337.26",
+                        "note": "GGGGG"
+                    }
+                ]
+            }
+		],
+        "pages": 2,
+        "limit": 20
+    }
+}
+
+62、打款助手，银行账户历史记录导出接口
+http://192.168.0.10:20011/account/exportAccountRecordHistoryList
+
+参数列表：
+account_id，银行账户编号
+start_time，查询开始时间 格式2022-09-01 08:00
+end_time，查询结束时间  格式2022-09-30 23:00
+content，查询钉钉编号或者收支编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 29,
+        "list": [
+            {
+                "id": 25131,
+                "voucher_id": 22193,
+                "payment_id": 37779,
+                "payment_type": 12,
+                "type": 4,
+                "sn": "TRA202209141548317926",
+                "create_time": 1663141711,
+                "creator": "王盼盼",
+                "update_time": null,
+                "operator": null,
+                "current_amount": "2000.50",
+                "base_currency": "USD",
+                "beginning_balance": "5214.65",
+                "ending_balance": "3214.15",
+                "department_name": "财务部",
+                "origin_amount": "2000.50",
+                "origin_currency": "USD",
+                "account_record_note": "[在途资金转出]，在途资金提交测试",
+                "account_voucher_ext_note": "在途资金提交测试",
+                "payment_note": "在途资金提交测试",
+                "type_name": "支出(录入)"
+            },
+		]
+    }
+}
+
+
+
+
+63、打款助手，银行账户历史记录信息接口
+http://192.168.0.10:20011/account/getAccountRecordHistoryAllList
+
+参数列表：
+account_id，银行账户编号(可为空)
+start_time，查询开始时间 格式2022-09-01 08:00 (可为空)
+end_time，查询结束时间  格式2022-09-30 23:00 (可为空)
+content，查询钉钉编号或者收支编号 (可为空)
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 29,
+        "list": [
+            {
+                "id": 25131,
+				"account_id": 1,
+				"account_name": "Paypal (pay@amzgame.com)",
+                "voucher_id": 22193,
+                "payment_id": 37779,
+                "payment_type": 12,
+                "type": 4,
+                "sn": "TRA202209141548317926",
+                "create_time": 1663141711,
+                "creator": "王盼盼",
+                "update_time": null,
+                "operator": null,
+                "current_amount": "2000.50",
+                "base_currency": "USD",
+                "beginning_balance": "5214.65",
+                "ending_balance": "3214.15",
+                "department_name": "财务部",
+                "origin_amount": "2000.50",
+                "origin_currency": "USD",
+                "account_record_note": "[在途资金转出]，在途资金提交测试",
+                "account_voucher_ext_note": "在途资金提交测试",
+                "payment_note": "在途资金提交测试",
+                "attachment_list": [
+                    {
+                        "path": "http://bdfile.baizhoucn.com/1.jpg"
+                    },
+                    {
+                        "path": "http://bdfile.baizhoucn.com/2.jpg"
+                    }
+                ],
+                "payment_items": []
+            },
+            {
+                "id": 25121,
+                "voucher_id": 22187,
+                "payment_id": 37769,
+                "payment_type": 12,
+                "type": 6,
+                "sn": "PAY202209140750133266",
+                "create_time": 1663113013,
+                "creator": "王盼盼",
+                "update_time": null,
+                "operator": null,
+                "current_amount": "50.00",
+                "base_currency": "USD",
+                "beginning_balance": "13764.65",
+                "ending_balance": "13714.65",
+                "department_name": "财务部",
+                "origin_amount": "50.00",
+                "origin_currency": "USD",
+                "account_record_note": "GGGGG",
+                "account_voucher_ext_note": "GGGGG",
+                "payment_note": "GGGGG",
+                "attachment_list": [],
+                "payment_items": [
+                    {
+                        "item_id": 19577,
+                        "account_title_parent": "办公费",
+                        "account_title": "租赁使用费",
+                        "origin_amount": "50.00",
+                        "currency": "USD",
+                        "cny_amount": "337.26",
+                        "note": "GGGGG"
+                    }
+                ]
+            }
+		],
+        "pages": 2,
+        "limit": 20
+    }
+}
+
+64、打款助手，银行账户历史记录导出接口
+http://192.168.0.10:20011/account/exportAccountRecordHistoryAllList 
+
+参数列表：
+account_id，银行账户编号 (可为空)
+start_time，查询开始时间 格式2022-09-01 08:00 (可为空)
+end_time，查询结束时间  格式2022-09-30 23:00 (可为空)
+content，查询钉钉编号或者收支编号 (可为空)
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "count": 29,
+        "list": [
+            {
+                "id": 25131,
+				"account_id": 1,
+				"account_name": "Paypal (pay@amzgame.com)",
+                "voucher_id": 22193,
+                "payment_id": 37779,
+                "payment_type": 12,
+                "type": 4,
+                "sn": "TRA202209141548317926",
+                "create_time": 1663141711,
+                "creator": "王盼盼",
+                "update_time": null,
+                "operator": null,
+                "current_amount": "2000.50",
+                "base_currency": "USD",
+                "beginning_balance": "5214.65",
+                "ending_balance": "3214.15",
+                "department_name": "财务部",
+                "origin_amount": "2000.50",
+                "origin_currency": "USD",
+                "account_record_note": "[在途资金转出]，在途资金提交测试",
+                "account_voucher_ext_note": "在途资金提交测试",
+                "payment_note": "在途资金提交测试",
+                "type_name": "支出(录入)"
+            },
+		]
+    }
+}
+
+
+65、打款助手，提交打款信息提醒接口(判断是否已完成打款的提示)
+http://192.168.0.10:20011/paymentCashier/checkReview
+
+参数列表：
+id或者approval_number_item，两个参数至少要有一项，id优先处理，approval_number_item是数组格式，如["202209201057000478575","202209161400000442863"]
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 1002,
+    "msg": "钉钉编号 202209201057000478575,202209161400000442863 未找到打款记录信息！确定要通过吗？"
+}
+
+
+【钉钉合并打款相关接口】
+
+66、打款助手，提交钉钉合并打款
+http://192.168.0.10:20011/voucher/saveMergePayment
+
+参数列表：
+approval_number_list，钉钉编号数组，approval_number_list是数组格式，如["202209261027000302344","202209261147000348288"]
+user_id，操作用户编号
+account_id，银行账号编号
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+note，备注信息(可为空)
+transaction_number，交易流水号，可以为空
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": []
+}
+
+67、打款助手，申请修改钉钉合并打款
+http://192.168.0.10:20011/voucher/modifyMergePayment
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+approval_number_list，钉钉编号数组，approval_number_list是数组格式，如["202209261027000302344","202209261147000348288"]
+user_id，操作用户编号
+account_id，银行账号编号
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+application_reason，修改原因
+note，备注信息(可为空)
+transaction_number，交易流水号，可以为空
+
+返回结果：
+{
+    "code": 0,
+    "msg": "申请修改已提交!",
+    "response": []
+}
+
+68、打款助手，取消申请修改钉钉合并打款
+http://192.168.0.10:20011/voucher/cancelMergePayment
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "修改申请已撤销!",
+    "response": []
+}
+
+69、打款助手，审核修改钉钉合并打款
+http://192.168.0.10:20011/voucher/auditMergePayment
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": []
+}
+
+70、打款助手，删除钉钉合并打款
+http://192.168.0.10:20011/voucher/deleteMergePayment
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "打款信息已删除!",
+    "response": []
+}
+
+71、打款助手，钉钉合并打款补充凭证图片
+http://192.168.0.10:20011/voucher/replenishMergePayment
+
+参数列表：
+voucher_ext_id，凭证扩展表主编号
+attachment_list，凭证文件路径数组，支持多文件形式，例如["1.jpg","2.jpg"]
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "打款信息已删除!",
+    "response": []
+}
+
+72、打款助手，钉钉合并打款验证接口
+http://192.168.0.10:20011/voucher/checkMergePayment
+参数列表：
+approval_number_list，钉钉编号数组，approval_number_list是数组格式，如["202209261027000302344","202209261147000348288"]
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "currency": "USD",
+        "origin_total_amount": 192485,
+        "bank_account": "078-487642-838"
+    }
+}
+
+73、打款助手，获取打款信息接口，用于合并付款钉钉详情显示
+http://192.168.0.10:20011//voucher/getPaymentDetail
+参数列表：
+payment_id，打款表主编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "detail": {
+            "id": 40741,
+            "approval_number": "202209261027000302344",
+            "process_name": "张龙婷提交的外币PayPal支付",
+            "creator": "张龙婷",
+            "create_time": "2022/09/26 03:16",
+            "department_name": "海外业务部",
+            "payment_type": 4,
+            "origin_total_amount": "350.00",
+            "currency": "USD",
+            "cny_total_amount": "2447.20",
+            "currency_rate": "6.992000",
+            "note": "",
+            "loan_amount": "0.00",
+            "payment_type_name": "外币PayPal支付"
+        },
+        "items": [
+            {
+                "item_id": 21265,
+                "account_title": "广告费/业务宣传费",
+                "account_title_id": 101,
+                "account_title_parent": "销售费",
+                "account_title_parent_id": 9,
+                "origin_amount": "350.00",
+                "currency": "USD",
+                "cny_amount": "2447.20",
+                "note": "BOSS 2.0打款申请，采购单号：CG202209261027074116，1.站点：scdkey, 产品：软件类产品\n2.投放市场:美国， 语言：英语\n3.投放渠道名称：nitro_tech0（新） 模式：350usd=three TikTok videos+one month Bio Link.\n4.营销费用：350usd。 广告时间：2022.9月26/27/28\n5.订阅量：237k 观看量：4k 渠道类型：3c类\n附件1：https://upload-view.baizhoucn.com/approval_file/3c1bb45626c4c6c36470026bc49888f4.pdf\n"
+            }
+        ]
+    }
+}
+
+
+74、打款助手，自动点单接口(能实现B2，gvgmall，vgolds和mediamz系统打款单自动完结)
+http://192.168.0.10:20011/paymentCashier/autoCompletePuchasement
+参数列表：
+approval_number_item，钉钉编号数组，approval_number_item是数组格式，如["202302061051000345688","202209261147000348288"]
+account_id，银行账号编号
+user_id，操作用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+		
+	}
+}
+
+
+
+
+75、采购退单提醒数据接口(POST传值)
+http://192.168.0.10:20011/purchaseRefund/getList
+
+参数列表
+system_code: 系统编号(B2, GVGMall, Mediamz, Mediamz联盟)
+start_time: 开始时间(时间戳)
+end_time:  结束时间(时间戳) 
+
+提交成功，返回结果：
+{"code":0,"msg":"success","response":[{
+            "id": 3,
+            "request_id": "fcc84769-25d2-46ad-b17c-8dfaf404f192",
+            "transaction_id": "ftx_9JpNGFA6PJSexO4_2N5rug",
+            "approval_id": "6YL8hNLzTZSIUFZWJ1mD0g02801714980551",
+            "approval_number": "202405061529000118612",
+            "account_id": 239,
+            "system_code": "Mediamz",
+            "purchase_number": "DCG202405061527278306",
+            "amount": "2500.00",
+            "fee": "0.00",
+            "currency": "USD",
+            "initiation_date": "2024-05-13 12:04:54",
+            "create_time": 1721037906,
+            "account_name": "Airwallex(香港迈蒂)"
+}]}
+
+
+76、Airwallex支付选择接口(POST传值)
+http://192.168.0.10:20011/airwallex/getList
+
+参数列表
+account_id： 银行账号编号  97-Airwallex(香港舟游)   239-Airwallex(香港迈蒂）
+user_id: 用户编号
+start_date：开始时间，格式： 2024-07-18，可为空
+end_date：结束时间，格式：2024-07-19，可为空
+status：["Pending","Settled"]，可以为空，默认Pending和Settled，处理中，已完成
+
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": [
+        {
+            "account_id": "97",
+            "account_name": "Airwallex",
+            "transaction_number_airwallex": "0df0bd7b-e763-40f9-9eb5-c744ef3bcde1",     //airwallex交易流水号
+            "initiation_date": "2024-07-18 06:04:30",     //成交时间
+            "amount": "80.00",     //打款金额   
+            "amount_currency": "USD",    //打款币种   
+            "fee": "0.00",		//打款手续费
+            "fee_currency": "USD",               //手续费币种
+            "note": "419970428133 - BMLM7V",     //备注信息
+            "airwallex_status": "Settled",
+            "payer_full_name": "PAYPAL *WEBDEVELOPI, 4029357733, HKG",
+            "custom_field": ""
+        }]
+}
+
+
+77、Airwallex支付参数接口(POST传值)
+http://192.168.0.10:20011/airwallex/getConfig
+
+参数列表
+user_id: 用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "airwallex_accounts": {
+            "97": "Airwallex (香港舟游)",
+            "239": "Airwallex (香港迈蒂)"
+        },
+        "airwallex_binding": [
+            97
+        ]
+    }
+}
+
+
+
+transaction_number_airwallex_refund
+airwallex_refund_status
+
+
+
+
+
+78、设置一次打款异常记录(POST传值)
+http://192.168.0.10:20011/paymentCashier/updatePaymentAbnormal
+
+参数列表
+user_id: 用户编号
+purchase_number: 采购单编号
+payment_error_msg: 异常原因信息
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": []
+}
+
+
+79、获取信用卡账号信息
+http://192.168.0.10:20011/creditCard/getAccounts
+
+参数列表
+user_id: 用户编号
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "list": [
+            {
+                "account_name": "丁总信用卡5211",
+                "account_id": 269
+            },
+            {
+                "account_name": "shiner信用卡",
+                "account_id": 271
+            }
+        ]
+    }
+}
+
+
+80、获取信用卡核销账单信息
+http://192.168.0.10:20011/creditCard/getList
+参数列表
+user_id: 用户编号，必填项
+year_month：年月时间，只能按月查询，必填项
+account_id：信用卡账号id，必填项
+content：查询内容：钉钉编号，采购编号，支持模糊查询，可为空
+is_review：是否已核销，0-待核销，1-已核销
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "list": [
+            {
+                "create_time": 1724317155,
+                "creator": "胡瑾慧",   //创建人
+                "is_review": 0,	//是否核销，0-待核销，1-已核销
+                "id": 1,
+                "payment_id": 3566677,
+                "approval_number": "202408221417000008736",    //钉钉编号
+                "purchase_number": "ACG24082214095612",      //采购单号
+                "origin_total_amount": "1400.00",        //原付费金额
+                "currency": "USD",			//原付费币种
+                "cny_total_amount": "9998.10",         //人民币总金额
+                "department_id": 5,
+                "company_id": 1,
+                "company_name": "百舟互娱",	           //创建人所属公司
+                "department_name": "海外业务部",   //创建人所属部门
+                "account_name": "丁总信用卡5211",   //账号名称
+                "cny_total_amount_sec": "0.00",        //人民币总金额 2
+                "note": null                                        //备注信息
+            },
+            {
+                "create_time": 1724322288,
+                "creator": "丁静",
+                "is_review": 0,
+                "id": 9,
+                "payment_id": 3566685,
+                "approval_number": "202408211357000486139",
+                "purchase_number": "ACG24082113564598",
+                "origin_total_amount": "200000.00",
+                "currency": "KRW",
+                "cny_total_amount": "1048.40",
+                "department_id": 5,
+                "company_id": 1,
+                "company_name": "百舟互娱",
+                "department_name": "海外业务部",
+                "account_name": "丁总信用卡5211",
+                "cny_total_amount_sec": "1068.60",
+                "note": null
+            }
+        ],
+        "count": 2,
+        "statistics_pending": "34376.38",  //待核销总金额
+        "statistics_settled": "0.00",  //已核销总金额
+        "statistics_currency": "CNY",   //核销币种
+        "limit": 50,
+        "pages": 1
+    }
+}
+
+
+80、核销信用卡账单操作
+http://192.168.0.10:20011/creditCard/review
+
+参数列表
+user_id: 用户编号，必填项
+item_list: 核销账号相关信息，必填项，示例 [{"payment_id":"3566677","cny_amount":"710.00","note":"备注信息"}]
+
+返回结果：
+{
+    "code": 0,
+    "msg": "success",
+    "response": {
+        "status": true
+    }
+}
+
+
+

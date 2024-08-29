@@ -1,0 +1,6 @@
+{
+    "path-intellisense.mappings": {
+        "@/":"${workspaceFolder}/src/renderer/src"
+    },
+    "path-intellisense.autoTriggerNextSuggestion": true
+}
