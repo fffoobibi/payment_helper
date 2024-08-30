@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 // 用户信息
@@ -8,7 +8,29 @@ const useUserStore = defineStore('user', () => {
     user.value = data
     localStorage.setItem('user', JSON.stringify(data))
   }
-  return { user, setUser }
+
+  // 审核权限
+  const canAudit = computed(() => {
+    return user.value.auth_list.includes('/payment_assistant_apply_modify')
+  })
+  // 修改权限
+  const canModify = computed(() => {
+    return user.value.auth_list.includes('/payment_assistant_apply_modify')
+  })
+  // 撤销权限
+  const canCancel = computed(() => {
+    return user.value.auth_list.includes('/payment_assistant_cancel_modify')
+  })
+  // 删除权限
+  const canDelete = computed(() => {
+    return user.value.auth_list.includes('/payment_assistant_delete')
+  })
+  // 修改备注权限
+  const canModifyNote = computed(() => {
+    return user.value.auth_list.includes('/payment_assistant_note_modify')
+  })
+
+  return { user, setUser, canAudit, canModify, canCancel, canDelete, canModifyNote }
 })
 
 // 银行账户下拉列表

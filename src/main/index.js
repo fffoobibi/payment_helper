@@ -1,11 +1,13 @@
-import { app, shell, BrowserWindow, Tray, Menu } from 'electron'
+import { app, shell, BrowserWindow, Tray, Menu, ipcMain  } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/favicon.ico?asset'
+import Store from 'electron-store'
 import { onLogin, onWindow } from './ipc'
-import db from './db'
 
+// 配置文件
+const store = new Store();
 const NODE_ENV = process.env.NODE_ENV
 
 const loginWidth = 320
@@ -27,8 +29,8 @@ function createWindow() {
     transparent: true,
     closable: true,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: false,
+      contextIsolation: true,
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false
     }
   })
@@ -104,6 +106,15 @@ function createWindow() {
       }
     }
   })
+
+  ipcMain.handle('set-config', (event, key, value) => {
+    store.set(key, value);
+  });
+
+  ipcMain.handle('get-config', (event, key) => {
+    return store.get(key);
+  });
+
 }
 
 // This method will be called when Electron has finished

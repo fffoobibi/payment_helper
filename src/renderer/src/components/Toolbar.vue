@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import api from '../api';
 
 const isMax = ref(false)
 const isPin = ref(false)
@@ -36,7 +37,7 @@ const onClose = () => {
 }
 
 const onWindow = (action, data) => {
-  window.ipcRenderer.send('window', {action, data})
+  electron.window({action, data})
 }
 </script>
 

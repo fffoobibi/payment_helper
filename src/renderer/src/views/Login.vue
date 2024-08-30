@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router';
 import Toolbar from '@/components/Toolbar.vue';
 import api from "@/api"
 import { useUserStore, useAccountStore } from '@/stores'
-
 const router = useRouter();
 const userStore = useUserStore()
 const accountStore = useAccountStore()
@@ -37,9 +36,11 @@ const onSubmit = () => {
       userStore.setUser(res)
       localStorage.setItem('token', res.token)
       nextTick(() => formRef.value.resetFields())
-      window.ipcRenderer.send('login', toRaw(formData))
+      console.log('aa ', electron);
+      electron.login(toRaw(formData))
+      // window.ipcRenderer.send('login', toRaw(formData))
       router.replace({ name: 'home' })
-
+      console.log('user ', res)
       api.getAccountList({ user_id: res.id, limit: 500 }).then(resp => {
         accountStore.setAccounts(resp.list)
       })

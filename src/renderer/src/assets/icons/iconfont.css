@@ -1,8 +1,8 @@
 @font-face {
   font-family: "iconfont"; /* Project id 4661782 */
-  src: url('iconfont.woff2?t=1724745363268') format('woff2'),
-       url('iconfont.woff?t=1724745363268') format('woff'),
-       url('iconfont.ttf?t=1724745363268') format('truetype');
+  src: url('iconfont.woff2?t=1724980692529') format('woff2'),
+       url('iconfont.woff?t=1724980692529') format('woff'),
+       url('iconfont.ttf?t=1724980692529') format('truetype');
 }
 
 .iconfont {
@@ -11,6 +11,70 @@
   font-style: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-shenpizhong:before {
+  content: "\e729";
+}
+
+.icon-note:before {
+  content: "\e737";
+}
+
+.icon-copy:before {
+  content: "\e739";
+}
+
+.icon-approve-author:before {
+  content: "\e782";
+}
+
+.icon-number:before {
+  content: "\e717";
+}
+
+.icon-category:before {
+  content: "\e72b";
+}
+
+.icon-department:before {
+  content: "\e725";
+}
+
+.icon-system-info:before {
+  content: "\e75b";
+}
+
+.icon-amount:before {
+  content: "\e76e";
+}
+
+.icon-amount-cny:before {
+  content: "\e771";
+}
+
+.icon-undertaker:before {
+  content: "\e784";
+}
+
+.icon-approver:before {
+  content: "\e785";
+}
+
+.icon-currency-rate:before {
+  content: "\e7a2";
+}
+
+.icon-approve:before {
+  content: "\e7a6";
+}
+
+.icon-time:before {
+  content: "\e7be";
+}
+
+.icon-country:before {
+  content: "\e7e4";
 }
 
 .icon-tianjia:before {
