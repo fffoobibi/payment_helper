@@ -1,13 +1,13 @@
-import { app, shell, BrowserWindow, Tray, Menu, ipcMain  } from 'electron'
+import { app, shell, BrowserWindow, Tray, Menu, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/favicon.ico?asset'
 import Store from 'electron-store'
 import { onLogin, onWindow } from './ipc'
-
 // 配置文件
-const store = new Store();
+const store = new Store()
+console.log('store ', store)
 const NODE_ENV = process.env.NODE_ENV
 
 const loginWidth = 320
@@ -58,9 +58,7 @@ function createWindow() {
 
   // ================ 托盘操作 ================
   const tray = new Tray(trayIcon)
-  const contextMenu = [
-    { label: '退出', click: () => app.quit() },
-  ]
+  const contextMenu = [{ label: '退出', click: () => app.quit() }]
   const menu = Menu.buildFromTemplate(contextMenu)
   tray.setContextMenu(menu)
   tray.setToolTip('百舟打款助手')
@@ -81,20 +79,28 @@ function createWindow() {
     mainWindow.setSize(mainWidth, mainHeight)
     mainWindow.center() // 窗口居中
     mainWindow.setMaximizable(true) // 窗口可放大
-    mainWindow.setMinimumSize(mainWidth, mainHeight)  // 窗口最小尺寸为默认尺寸
+    mainWindow.setMinimumSize(mainWidth, mainHeight) // 窗口最小尺寸为默认尺寸
 
     // TODO: 添加托盘操作
-    contextMenu.unshift({ label: data.username, click: () => { } })
+    contextMenu.unshift({ label: data.username, click: () => {} })
   })
 
   onWindow((e, { action, data }) => {
     const webContents = e.sender
     const win = BrowserWindow.fromWebContents(webContents)
     switch (action) {
-      case 'minimize': win.minimize(); break;
-      case 'maximize': win.maximize(); break;
-      case 'unmaximize': win.unmaximize(); break;
-      case 'pin': win.setAlwaysOnTop(data.isPin); break;
+      case 'minimize':
+        win.minimize()
+        break
+      case 'maximize':
+        win.maximize()
+        break
+      case 'unmaximize':
+        win.unmaximize()
+        break
+      case 'pin':
+        win.setAlwaysOnTop(data.isPin)
+        break
       case 'close': {
         if (data.closeType == 0) {
           win.close()
@@ -108,13 +114,38 @@ function createWindow() {
   })
 
   ipcMain.handle('set-config', (event, key, value) => {
-    store.set(key, value);
-  });
+    console.log('set ', key, value)
+    if (value !== undefined) {
+      store.set(key, value)
+    }
+  })
 
-  ipcMain.handle('get-config', (event, key) => {
-    return store.get(key);
-  });
+  ipcMain.handle('get-config', (event, key, defaultValue) => {
+    const rs = store.get(key, defaultValue)
+    console.log('get ', key, defaultValue, rs)
+    return rs
+  })
 
+  ipcMain.handle('get-default', (event, key) => {
+    const v = store.get('currentUserId', null)
+    if (v === null || v === undefined) {
+      return null
+    }
+    const field = `${v}.${key}`
+    const rs = store.get(field)
+    console.log('get default ===> ', key, v, rs)
+    return rs
+  })
+
+  ipcMain.handle('set-default', (event, key, value) => {
+    const v = store.get('currentUserId', null)
+    if (v === null || v === undefined) {
+      return null
+    }
+    const field = `${v}.${key}`
+    store.set(field, value)
+    console.log('set default ===> ', key, v)
+  })
 }
 
 // This method will be called when Electron has finished

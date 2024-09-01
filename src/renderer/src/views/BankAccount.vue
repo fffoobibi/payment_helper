@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { reactive, ref, watch, onMounted } from 'vue'
 import { useAccountStore, useUserStore } from "@/stores"
 import { timestampToFormattedString, numberFmt } from "@/utils/format"
 import { useClient } from "@/utils/client"
@@ -22,6 +22,7 @@ const queryForm = reactive({
     limit: 10,
   },
   tableData: [],
+  hasSearch: false
 })
 
 const onSearch = async (page = null, pageSize = null) => {
@@ -43,7 +44,12 @@ const onSearch = async (page = null, pageSize = null) => {
   queryForm.page.totalCount = data.count
   queryForm.page.pageSize = data.limit
 }
-
+onMounted(() => {
+  if (!queryForm.hasSearch) {
+    onSearch(1, null)
+    queryForm.hasSearch = true
+  }
+})
 watch(() => queryForm.page.currentPage, async () => {
   await onSearch()
 })

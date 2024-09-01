@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { reactive, ref, watch, onMounted } from 'vue'
 import { useAccountStore, useUserStore } from "@/stores"
 import { timestampToFormattedString, numberFmt } from "@/utils/format"
 import { useClient } from "@/utils/client"
@@ -22,6 +22,7 @@ const queryForm = reactive({
     page: 1,
     limit: 10,
   },
+  hasSearch: false,
   tableData: [],
 })
 
@@ -42,6 +43,13 @@ const onSearch = async (page = null, pageSize = null) => {
   queryForm.page.totalCount = data.count
   queryForm.page.pageSize = data.limit
 }
+
+onMounted(() => {
+  if (!queryForm.hasSearch) {
+    onSearch(1, null)
+    queryForm.hasSearch = true
+  }
+})
 
 watch(() => queryForm.page.currentPage, async () => {
   await onSearch()
@@ -452,7 +460,7 @@ const submitAuditTransfer = async () => {
                     </template>
                   </el-input-number>
                   <p>
-                    <span :class="formState.available_color">可用余额 {{ computedAvailableBalance }}</span>
+                    <span :class="formState.available_color">可用余额</span>
                     <span :class="formState.available_color">{{ " " + formState.available_balance }}</span>
                     <span :class="formState.available_color == 'transparent' ? 'transparent' : 'red'">{{ " " +
           formState.out_account_id_currency }}</span>

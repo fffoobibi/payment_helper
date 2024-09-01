@@ -1,9 +1,14 @@
 <script setup>
-import { ref } from 'vue'
-import api from '../api';
+import { ref, onMounted } from 'vue'
+import { storeToRefs } from "pinia"
+import { useLocalConfig } from "@/stores/config"
+import { useUserStore } from "@/stores"
+const configStore = useLocalConfig()
+const store = useUserStore()
+const { isPin } = storeToRefs(configStore)
 
 const isMax = ref(false)
-const isPin = ref(false)
+// const isPin = computed(()=> pinned)
 const emit = defineEmits(['close'])
 const props = defineProps({
   title: {
@@ -20,10 +25,23 @@ const props = defineProps({
   }
 })
 
+onMounted(async () => {
+  if (store.user?.id) {
+    if (isPin.value) {
+      onWindow('pin', { isPin: true })
+      configStore.setPin(true)
+    } else {
+      onWindow('pin', { isPin: false })
+      configStore.setPin(false)
+    }
+  }
+})
+
 const onPin = () => {
-  isPin.value = !isPin.value
-  onWindow('pin', {isPin: isPin.value})
+  onWindow('pin', { isPin: !isPin.value })
+  configStore.setPin(!isPin.value)
 }
+
 const onMinimize = () => {
   onWindow('minimize')
 }
@@ -32,19 +50,19 @@ const onMaximize = () => {
   onWindow(isMax.value ? 'maximize' : 'unmaximize')
 }
 const onClose = () => {
-  onWindow('close', {closeType: props.closeType})
+  onWindow('close', { closeType: props.closeType })
   emit('close')
 }
 
 const onWindow = (action, data) => {
-  electron.window({action, data})
+  electron.window({ action, data })
 }
 </script>
 
 
 <template>
-  <div class="toolbar" :class="{'only-close': onlyClose}">
-    <div class="drag" :class="{'title': onlyClose}">{{ title }}</div>
+  <div class="toolbar" :class="{ 'only-close': onlyClose }">
+    <div class="drag" :class="{ 'title': onlyClose }">{{ title }}</div>
     <div class="win-options">
       <el-button v-if="!onlyClose" class="win-option win-pin" @click="onPin" :title="isPin ? '取消固定' : '固定'" text>
         <el-icon class="iconfont" :class="[isPin ? 'icon-pin' : 'icon-unpin']"></el-icon>
@@ -70,21 +88,26 @@ const onWindow = (action, data) => {
   height: 30px;
   background-color: #fff;
 }
+
 .toolbar.only-close {
   background: none;
 }
+
 .title {
   padding: 2px 0 0 40px;
   font-size: 0.9em;
   color: #678eb7;
   text-align: center;
 }
+
 .drag {
   flex: 1;
 }
+
 .win-options {
   display: flex;
 }
+
 .win-option {
   width: 45px;
   height: 30px;
@@ -92,19 +115,24 @@ const onWindow = (action, data) => {
   border-radius: 0;
   outline: none !important;
 }
+
 :deep(.el-button:not(.danger):hover) {
   background: #e5e5e5;
 }
+
 .win-option.danger:hover {
   background-color: #e81123;
 }
+
 :deep(.iconfont::before) {
   color: #000;
   font-size: 1em;
 }
+
 .win-pin :deep(.iconfont::before) {
   font-size: 1.2em;
 }
+
 :deep(.danger:hover .iconfont::before) {
   color: #fff;
 }
