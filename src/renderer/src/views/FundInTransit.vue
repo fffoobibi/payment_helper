@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref, watch, computed, onMounted } from 'vue'
 import { timestampToFormattedString, numberFmt } from "@/utils/format"
+import { useClient } from "@/utils/client"
 import { useUserStore, useAccountStore } from "@/stores"
 import api from "@/api"
 import Message from "@/utils/message"
@@ -8,7 +9,9 @@ import Message from "@/utils/message"
 const store = useUserStore()
 const bank = useAccountStore()
 const tableData = ref([])
+const { height, width } = useClient()
 
+const queryFormRef = ref(null)
 const queryForm = reactive({
   out_account_alias_name: '',
   condition: '0',
@@ -60,51 +63,21 @@ const onSearch = async (page = null, pageSize = null) => {
 }
 
 
+const tableHeight = computed(() => {
+  const h = queryFormRef.value?.clientHeight || 0
+  width.value + 1
+  let th
+  if (h > 60) {
+    th = 234
+  } else {
+    th = 184
+  }
+  if (queryForm.page.totalCount == 0) {
+    return height.value - th
+  }
+  return height.value - th
+})
 
-// const formState = reactive({
-//   getDisabledState: name => {
-
-//   },
-//   out_account_id_disabled: computed(() => {
-//     if (form.mode === "arival") {
-//       return true
-//     } return false
-//   }),
-//   in_account_id_disabled: computed(() => {
-//     if (form.mode === "arival") {
-//       return true
-//     } return false
-//   }),
-//   out_account_title_disabled: computed(() => {
-//     if (form.mode === "arival") {
-//       return true
-//     } return false
-//   }),
-//   confirmButtonState: computed(() => {
-//     if (form.mode !== "view") {
-//       return true
-//     } return false
-//   }),
-//   uploadDisabled: computed(() => {
-//     if (["view"].includes(form.mode)) {
-//       return true
-//     } return false
-//   }),
-//   formTitle: computed(() => {
-//     if (form.mode == "add") {
-//       return "在途资金-添加"
-//     }
-//     else if (form.mode == "edit") {
-//       return "在途资金-编辑"
-//     }
-//     else if (form.mode == 'view') {
-//       return "在途资金-查看"
-//     }
-//     else if (form.mode == 'arival') {
-//       return "在途资金-到账"
-//     }
-//   })
-// })
 
 const formRef = ref(null)
 const form = reactive({
@@ -159,6 +132,9 @@ const resetForm = () => {
 }
 
 const formState = reactive({
+  currentPreviewImageIndex: 0,
+  currentPreviewSrc: '',
+  previewImageShow: false,
   in_account_id_loading: false,
   out_account_id_loading: false,
   in_account_id_color: 'transparent',
@@ -175,6 +151,12 @@ const formState = reactive({
     if (form.post.origin_amount) {
       return "black"
     } return "transparent"
+  }),
+  previewList: computed(() => {
+    return form.post.attachment_list.map(v => v.url)
+  }),
+  currentPreviewIndex: computed(() => {
+
   }),
   getDisabledState: name => {
     if (form.mode === "view") {
@@ -346,6 +328,18 @@ const handleClose = () => {
   resetForm()
 }
 
+electron.onCapture(async (src) => {
+  // const url = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
+  form.post.attachment_list.push({
+    url: src
+  })
+})
+
+const crop = () => {
+  electron.capture().then(res => {
+    console.log('rs ===> ', res)
+  })
+}
 
 </script>
 
@@ -365,34 +359,37 @@ const handleClose = () => {
       </Header>
 
       <div class="pannel">
-        <el-form :inline="true" :model="queryForm" class="demo-form-inline">
-          <el-form-item label="提现银行">
-            <el-input v-model="queryForm.out_account_alias_name" placeholder="支持模糊查找" clearable />
-          </el-form-item>
-          <el-form-item label="日期">
-            <el-select v-model="queryForm.condition" placeholder="">
-              <el-option label="全部" value="0" />
-              <el-option label="今天" value="1" />
-              <el-option label="昨天" value="2" />
-              <el-option label="近7天" value="3" />
-              <el-option label="本月" value="4" />
-              <el-option label="上月" value="5" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="在途状态">
-            <el-select v-model="queryForm.status" placeholder="">
-              <el-option label="全部" value="0" />
-              <el-option label="在途中" value="1" />
-              <el-option label="已到账" value="2" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
-            <el-button type="primary" @click="addTransit">添加</el-button>
-          </el-form-item>
-        </el-form>
+        <div ref="queryFormRef">
+          <el-form :inline="true" :model="queryForm" class="demo-form-inline">
+            <el-form-item label="提现银行">
+              <el-input v-model="queryForm.out_account_alias_name" placeholder="支持模糊查找" clearable />
+            </el-form-item>
+            <el-form-item label="日期">
+              <el-select v-model="queryForm.condition" placeholder="">
+                <el-option label="全部" value="0" />
+                <el-option label="今天" value="1" />
+                <el-option label="昨天" value="2" />
+                <el-option label="近7天" value="3" />
+                <el-option label="本月" value="4" />
+                <el-option label="上月" value="5" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="在途状态">
+              <el-select v-model="queryForm.status" placeholder="">
+                <el-option label="全部" value="0" />
+                <el-option label="在途中" value="1" />
+                <el-option label="已到账" value="2" />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
+              <el-button type="primary" @click="addTransit">添加</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
 
-        <el-table :data="tableData" style="height: calc(100vh - 210px)" stripe>
+        <!-- style="height: calc(100vh - 210px)" -->
+        <el-table :data="tableData" :height="tableHeight" stripe>
           <template #empty>
             <el-empty :image-size="200" />
           </template>
@@ -481,10 +478,6 @@ const handleClose = () => {
                     <span :class="formState.available_color == 'transparent' ? 'transparent' : 'red'">{{ " " +
             formState.out_account_id_currency }}</span>
                   </p>
-
-
-
-
                 </div>
 
               </el-form-item>
@@ -541,23 +534,14 @@ const handleClose = () => {
 
               <el-form-item label="图片上传" prop="post.attachment_list">
                 <Upload action="upload" ref="uploadRef" v-model="form.post.attachment_list" :limit="10" dir="transit"
-                  :disabled="formState.getDisabledState('attachment_list')" @done="r => {
+                  :handlePreview="(file, index) => {
+            formState.currentPreviewImageIndex = index
+            formState.currentPreviewSrc = file.url
+            formState.previewImageShow = true
+            console.log('file ==> ', form.post.attachment_list)
+          }" :disabled="formState.getDisabledState('attachment_list')" @done="r => {
             console.log('rs', r)
           }"></Upload>
-
-                <!-- <el-upload ref="uploadRef" action="http://bduploadtest.baizhoucn.com" list-type="picture-card"
-                  accept="image/*" :data="{
-            dir: 'transit',
-            file_name: '11.png',
-            token: 'b7M89zeAFj8ts493d1Ujz2HrjC'
-          }" :auto-upload="false" :show-file-list="true" :http-request="uploadImage" multiple
-                  v-model:file-list="form.post.attachment_list" :on-preview="handlePictureCardPreview"
-                  :on-error="(rsp, f, fs) => { console.log('error upload', rsp) }"
-                  :on-success="(rsp, f, fs) => { console.log('ssss ==> ', rsp) }">
-                  <el-icon>
-                    <Plus />
-                  </el-icon>
-                </el-upload> -->
 
               </el-form-item>
 
@@ -565,6 +549,11 @@ const handleClose = () => {
           </template>
           <template #footer>
             <div style="flex: auto">
+              <el-button v-show="!formState.getDisabledState('crop')" link type="danger" @click="crop">截图
+                <el-icon>
+                  <PictureFilled />
+                </el-icon>
+              </el-button>
               <el-button @click="cancelClick">取消</el-button>
               <el-button v-show="!formState.getDisabledState('button')" type="primary"
                 @click="confirmClick">确认</el-button>
@@ -584,14 +573,20 @@ const handleClose = () => {
           </template>
         </el-dialog>
 
-        <!-- <el-drawer v-model="details.previewImageShow" size="100%">
-          <el-image 
-            :src="details.previewImageUrl" 
-            :zoom-rate="1.2" :max-scale="7"
-            :min-scale="0.2" fit="cover" :initial-index="0"
-            :preview-src-list="['http://bdfiletest.baizhoucn.com/transit/202408/222111.png']"
-            />
-        </el-drawer> -->
+        <el-drawer v-model="formState.previewImageShow" size="100%">
+          <div style="display: flex; justify-content: center;align-items: center">
+            <el-image :zoom-rate="1.2" :max-scale="7" :min-scale="0.2" fit="cover"
+              :initial-index="formState.currentPreviewImageIndex" :src="formState.currentPreviewSrc"
+              :preview-src-list="formState.previewList">
+              <template #error>
+                <div class="image-slot">
+                  <el-empty description="404" />
+                </div>
+              </template>
+            </el-image>
+          </div>
+
+        </el-drawer>
 
       </div>
     </template>

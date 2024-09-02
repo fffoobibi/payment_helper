@@ -8,7 +8,6 @@ const store = useUserStore()
 const { isPin } = storeToRefs(configStore)
 
 const isMax = ref(false)
-// const isPin = computed(()=> pinned)
 const emit = defineEmits(['close'])
 const props = defineProps({
   title: {
@@ -38,6 +37,7 @@ onMounted(async () => {
 })
 
 const onPin = () => {
+  console.log('aaaaa');
   onWindow('pin', { isPin: !isPin.value })
   configStore.setPin(!isPin.value)
 }
@@ -55,7 +55,7 @@ const onClose = () => {
 }
 
 const onWindow = (action, data) => {
-  electron.window({ action, data })
+  electron.window(action, data)
 }
 </script>
 

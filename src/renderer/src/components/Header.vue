@@ -20,7 +20,7 @@
 </template>
 
 
-<style>
+<style scoped>
 header {
   display: flex;
   width: 100%;
@@ -28,24 +28,5 @@ header {
   padding: 0 0 0 10px;
   background-color: #fff;
   border-bottom: 1px solid #eee;
-}
-
-.header-title {
-  flex: 1;
-}
-
-.header-title h4 {
-  line-height: 30px;
-  color: #353535;
-  font-size: 15px;
-}
-
-.option-btn {
-  width: 45px;
-  height: 30px;
-  margin: 0 !important;
-}
-.option-btn i {
-  font-size: 1.75em;
 }
 </style>

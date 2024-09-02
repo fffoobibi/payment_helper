@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { ElLoading } from 'element-plus'
 import Message from '@/utils/message'
+import logger from '@/utils/logger'
 
 const env = import.meta.env
 const contentTypeForm = 'application/x-www-form-urlencoded;charset=UTF-8'
@@ -31,6 +32,7 @@ instance.interceptors.request.use(
     if (error.config.showLoading && loading) {
       loading.close()
     }
+    logger.error('请求发送失败', error)
     Message.error('请求发送失败')
     return Promise.reject(error)
   }
@@ -96,6 +98,7 @@ const http = config => {
     'token': token
   }
   if (method === "post") {
+    logger.info(`[post] ${url}, headers-token: ${headers.token}, form-data: `, formData)
     return instance.post(url, formData, {
       headers,
       showLoading,
@@ -105,6 +108,7 @@ const http = config => {
       errorCallback: config.errorCallback
     })
   } else {
+    logger.info(`[get] ${url}, headers-token: ${headers.token}`)
     return instance.get(url, {
       headers,
       showLoading,

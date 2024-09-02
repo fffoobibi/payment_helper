@@ -4,8 +4,15 @@ import { Search } from '@element-plus/icons-vue'
 import { dateTimeFmt, numberFmt } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
 
-const router = useRouter()
 const route = useRoute()
+const router = useRouter()
+
+const props = defineProps({
+  approves: {
+    type: Array,
+    default: []
+  }
+})
 
 const status = ref('unpayment')
 
@@ -34,15 +41,6 @@ const formData = reactive({
 
 const currencyList = ref(['USD', 'CNY', 'EUR', 'GBP', 'CAD', 'JPY', 'AUD', 'HKD', 'SGD', 'CHF', 'KRW', 'INR', 'RUB', 'MXN', 'BRL', 'ZAR', 'TRY', 'THB', 'IDR', 'MYR', 'PHP', 'VND', 'CZK', 'DKK','HUF', 'NOK', 'PLN', 'SEK'])
 
-const list = reactive([
-  {id: 7, title: '沈子文提交的报销 - 百舟', create_time: '2024-08-23 11:34:00', number: '202408191403000178650', amount: '1027.00', currency: 'CNY', status: 0, isChecked: true},
-  {id: 6, title: '季亚梅提交的外币银行转账款项支付', create_time: '2024-08-23 10:27:00', number: '202408191403000178649', amount: '25027.00', currency: 'KRW', status: 0, isChecked: true},
-  {id: 5, title: '沈子文提交的报销 - 百舟', create_time: '2024-08-20 10:22:00', number: '202408191403000178648', amount: '1027.00', currency: 'CNY', status: 0, isChecked: false},
-  {id: 4, title: '季亚梅提交的外币银行转账款项支付', create_time: '2024-08-15 18:56:00', number: '202408121503000283241', amount: '35684.48', currency: 'CNY', status: 0, isChecked: false},
-  {id: 3, title: '季亚梅提交的外币银行转账款项支付', create_time: '2024-08-15 18:56:00', number: '202408121503000283241', amount: '35684.48', currency: 'CNY', status: 0, isChecked: true},
-  {id: 2, title: '季亚梅提交的外币银行转账款项支付', create_time: '2024-08-15 18:56:00', number: '202408121503000283241', amount: '35684.48', currency: 'CNY', status: 0, isChecked: false},
-  {id: 1, title: '季亚梅提交的外币银行转账款项支付', create_time: '2024-08-15 18:56:00', number: '202408121503000283241', amount: '35684.48', currency: 'CNY', status: 0, isChecked: true},
-])
 
 const onAllCheck = () => {
   //
@@ -88,10 +86,10 @@ const onDetail = id => {
 
   <div class="list">
     <div class="list-header">
-      <el-checkbox class="list-title" @change="onAllCheck()">全选 ({{ list.length }})</el-checkbox>
+      <el-checkbox class="list-title" @change="onAllCheck()">全选 ({{ approves.length }})</el-checkbox>
     </div>
     <el-scrollbar class="rows">
-      <div class="row" :class="{ active: route.path == '/payment/' + item.id, checked: item.isChecked }" v-for="item in list" :key="item.id">
+      <div class="row" :class="{ active: route.path == '/payment/' + item.id, checked: item.isChecked }" v-for="item in approves" :key="item.id">
         <el-checkbox :value="item.id" :checked="item.isChecked" @change="onCheck(item)"></el-checkbox>
         <div class="row-content" @click="onDetail(item.id)">
           <div class="row-top">

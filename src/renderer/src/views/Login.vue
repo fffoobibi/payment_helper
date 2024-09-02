@@ -6,6 +6,7 @@ import Toolbar from '@/components/Toolbar.vue';
 import api from "@/api"
 import { useUserStore, useAccountStore } from '@/stores'
 import { Keys, useLocalConfig } from "@/stores/config"
+
 const router = useRouter();
 const userStore = useUserStore()
 const accountStore = useAccountStore()
@@ -40,7 +41,6 @@ const onSubmit = async () => {
       const res = await api.login(formData)
       userStore.setUser(res)
       localStorage.setItem('token', res.token)
-      // electron.login(toRaw(formData))
       electron.login({ username: formData.username, password: formData.password, remember: formData.remember })
       router.replace({ name: 'home' })
 
@@ -81,7 +81,7 @@ const onSubmit = async () => {
 
 <template>
   <div class="login-panel">
-    <Toolbar title="百舟打款助手" closeType="0" onlyClose />
+    <Toolbar title="百舟打款助手" :closeType="0" onlyClose />
 
     <el-form :model="formData" :rules="formRules" ref="formRef" style="width: 240px;">
       <el-form-item prop="username">

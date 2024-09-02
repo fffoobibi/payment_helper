@@ -73,3 +73,33 @@ body {
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
+.header-title h4 {
+  line-height: 30px;
+  color: #353535;
+  font-size: 15px;
+}
+
+.header-title {
+  flex: 1;
+}
+
+.option-btn {
+  width: 45px;
+  height: 30px;
+  margin: 0 !important;
+}
+.option-btn i {
+  font-size: 1.75em;
+}
+
+.el-overlay {
+  border-radius: 8px;
+}
+.el-drawer.rtl {
+  border: 1px solid #e0e0e0;
+}
+
+.el-table .cell {
+  font-size: 0.9em;
+}

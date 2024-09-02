@@ -1,5 +1,6 @@
 <script setup>
 import axios from 'axios';
+import { computed } from 'vue';
 const fileList = defineModel()
 
 const emit = defineEmits(['done'])
@@ -8,6 +9,7 @@ const props = defineProps({
         type: String,
         required: true
     },
+    handlePreview: Function,
     dir: {
         type: String,
         required: true
@@ -21,6 +23,21 @@ const props = defineProps({
         default: false
     }
 })
+const _fileList = computed(() => {
+    return fileList.value.map(v => v.url)
+})
+const index = (url) => {
+    return _fileList.value.indexOf(url)
+}
+
+const handlePreview = (uploadFile) => {
+    if (props.handlePreview) {  
+        const fileIndex = index(uploadFile.url)
+        props.handlePreview(uploadFile, fileIndex)
+    } else {
+
+    }
+}
 
 const upload = async (file, r) => {
     const f = new FormData()
@@ -66,14 +83,9 @@ defineExpose({
 
 
 <template>
-    <el-upload 
-        list-type="picture-card" accept="image/*" v-model:file-list="fileList"
-        :action="props.action" 
-        :auto-upload="false"
-        :http-request="uploadImage" 
-        :limit="props.limit" 
-        :disabled="props.disabled"
-        :on-error="(rsp, f, fs) => { console.log('error upload', rsp) }"
+    <el-upload list-type="picture-card" accept="image/*" v-model:file-list="fileList" :action="props.action"
+        :auto-upload="false" :http-request="uploadImage" :limit="props.limit" :disabled="props.disabled"
+        :on-preview="handlePreview" :on-error="(rsp, f, fs) => { console.log('error upload', rsp) }"
         :on-success="(rsp, f, fs) => { console.log('ssss ==> ', rsp) }">
         <el-icon>
             <Plus />

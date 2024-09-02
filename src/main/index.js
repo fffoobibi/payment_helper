@@ -1,13 +1,33 @@
-import { app, shell, BrowserWindow, Tray, Menu, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, clipboard } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import Screenshots from 'electron-screenshots'
+import Store from 'electron-store'
 import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/favicon.ico?asset'
-import Store from 'electron-store'
-import { onLogin, onWindow } from './ipc'
+import log from "electron-log"
+import fs from "fs"
+
+// 日志配置
+log.transports.file.maxSize = 10 * 1024 * 1024 // 日志大小
+log.transports.file.level = 'debug' // level
+log.transports.console.level = false
+log.transports.file.resolvePathFn = () => {
+  const directoryPath = join(app.getPath('home'), ".payment_helper/logs")
+  try {
+    if (!fs.existsSync(directoryPath)) {
+      fs.mkdirSync(directoryPath, { recursive: true });
+    }
+  } catch (error) {
+    console.error(`Error creating directory: ${error.message}`);
+  }
+  return join(directoryPath, 'main.log')
+}
+
 // 配置文件
 const store = new Store()
 console.log('store ', store)
+
 const NODE_ENV = process.env.NODE_ENV
 
 const loginWidth = 320
@@ -29,6 +49,7 @@ function createWindow() {
     transparent: true,
     closable: true,
     webPreferences: {
+      nodeIntegration: true,
       contextIsolation: true,
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false
@@ -74,18 +95,20 @@ function createWindow() {
 
   // ================ ipc 监听事件列表 ================
   // 登录
-  onLogin((data) => {
+  ipcMain.handle('login', (e, data) => {
     mainWindow.setResizable(true)
     mainWindow.setSize(mainWidth, mainHeight)
     mainWindow.center() // 窗口居中
     mainWindow.setMaximizable(true) // 窗口可放大
     mainWindow.setMinimumSize(mainWidth, mainHeight) // 窗口最小尺寸为默认尺寸
+    mainWindow.setResizable(false)
 
     // TODO: 添加托盘操作
-    contextMenu.unshift({ label: data.username, click: () => {} })
+    contextMenu.unshift({ label: data.username, click: () => { } })
   })
 
-  onWindow((e, { action, data }) => {
+  // 窗口控制
+  ipcMain.handle('win-action', (e, { action, data }) => {
     const webContents = e.sender
     const win = BrowserWindow.fromWebContents(webContents)
     switch (action) {
@@ -110,6 +133,38 @@ function createWindow() {
         }
         break
       }
+    }
+  })
+
+  // 截图事件
+  const screenshots = new Screenshots()
+  ipcMain.handle('btn-capture', e => {
+    screenshots.startCapture()
+  })
+
+  // 绑定全局快捷键
+  globalShortcut.register("ctrl+q", () => {
+    screenshots.startCapture()
+  })
+  // 点击确定按钮回调事件
+  screenshots.on("ok", (e, buffer, bounds) => {
+    clipboard.writeText('aaaaaaaa')
+    // const src = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    const src = 'data:image/png;base64,' + btoa(new Uint8Array(buffer).reduce((data, btye) => data + String.fromCharCode(btye), ''))
+    mainWindow.webContents.send('key-capture', src)
+  })
+  // 点击取消按钮回调事件
+  screenshots.on("cancel", () => {
+    screenshots.endCapture()
+  })
+  // 点击保存按钮回调事件
+  screenshots.on("save", (e, buffer, bounds) => {
+    // console.log("capture", buffer, bounds)
+  })
+  // esc取消
+  globalShortcut.register("esc", () => {
+    if (screenshots.$win?.isFocused()) {
+      screenshots.endCapture()
     }
   })
 
@@ -145,6 +200,25 @@ function createWindow() {
     const field = `${v}.${key}`
     store.set(field, value)
     console.log('set default ===> ', key, v)
+  })
+
+  ipcMain.on("log-event", (event, level, ...args) => {
+    switch (level) {
+      case "info":
+        log.info(...args)
+        break;
+      case "debug":
+        log.debug(...args)
+        break;
+      case "warn":
+        log.warn(...args)
+        break;
+      case "error":
+        log.error(...args)
+        break;
+      default:
+        break;
+    }
   })
 }
 

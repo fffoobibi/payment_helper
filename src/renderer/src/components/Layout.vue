@@ -48,6 +48,9 @@ const onSubmit = () => {
 .layout-main {
   flex: 1;
   height: 100%;
-  overflow: auto;
+  background-image: url('../assets/images/wavy-lines.svg');
+  background-size: cover;
+  border-radius: 0 8px 8px 0;
+  overflow: hidden;
 }
 </style>
