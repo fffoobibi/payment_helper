@@ -132,9 +132,9 @@ const resetForm = () => {
 }
 
 const formState = reactive({
-  currentPreviewImageIndex: 0,
-  currentPreviewSrc: '',
-  previewImageShow: false,
+  // currentPreviewImageIndex: 0,
+  // currentPreviewSrc: '',
+  // previewImageShow: false,
   in_account_id_loading: false,
   out_account_id_loading: false,
   in_account_id_color: 'transparent',
@@ -152,15 +152,15 @@ const formState = reactive({
       return "black"
     } return "transparent"
   }),
-  previewList: computed(() => {
-    return form.post.attachment_list.map(v => v.url)
-  }),
-  currentPreviewIndex: computed(() => {
+  // previewList: computed(() => {
+  //   return form.post.attachment_list.map(v => v.url)
+  // }),
+  // currentPreviewIndex: computed(() => {
 
-  }),
+  // }),
   getDisabledState: name => {
     if (form.mode === "view") {
-      return true
+      return false
     }
     else if (form.mode == 'add') {
       if (["in_account_title_id", "out_account_title_id"].includes(name)) {
@@ -316,9 +316,10 @@ const formRules = reactive({
 const uploadRef = ref(null)
 const drawRef = ref(null)
 
-const confirmClick = () => {
+const confirmClick = async () => {
   // uploadRef.value.submit()
-  uploadRef.value.uploadImage()
+  const rs = await uploadRef.value.uploadImage()
+  console.log('rsp ==> ', rs)
   console.log("data ==> ", form.post)
 }
 const cancelClick = () => {
@@ -330,6 +331,7 @@ const handleClose = () => {
 
 electron.onCapture(async (src) => {
   // const url = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
+  console.log('src ==> ', src)
   form.post.attachment_list.push({
     url: src
   })
@@ -533,13 +535,8 @@ const crop = () => {
               </el-form-item>
 
               <el-form-item label="图片上传" prop="post.attachment_list">
-                <Upload action="upload" ref="uploadRef" v-model="form.post.attachment_list" :limit="10" dir="transit"
-                  :handlePreview="(file, index) => {
-            formState.currentPreviewImageIndex = index
-            formState.currentPreviewSrc = file.url
-            formState.previewImageShow = true
-            console.log('file ==> ', form.post.attachment_list)
-          }" :disabled="formState.getDisabledState('attachment_list')" @done="r => {
+                <Upload action="upload" ref="uploadRef" v-model="form.post.attachment_list" :limit="10" dir="transit" :size="66"
+                  :disabled="formState.getDisabledState('attachment_list')" @done="r => {
             console.log('rs', r)
           }"></Upload>
 
@@ -573,7 +570,7 @@ const crop = () => {
           </template>
         </el-dialog>
 
-        <el-drawer v-model="formState.previewImageShow" size="100%">
+        <!-- <el-drawer v-model="formState.previewImageShow" size="100%">
           <div style="display: flex; justify-content: center;align-items: center">
             <el-image :zoom-rate="1.2" :max-scale="7" :min-scale="0.2" fit="cover"
               :initial-index="formState.currentPreviewImageIndex" :src="formState.currentPreviewSrc"
@@ -586,7 +583,7 @@ const crop = () => {
             </el-image>
           </div>
 
-        </el-drawer>
+        </el-drawer> -->
 
       </div>
     </template>

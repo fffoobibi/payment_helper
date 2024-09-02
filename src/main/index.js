@@ -137,7 +137,9 @@ function createWindow() {
   })
 
   // 截图事件
-  const screenshots = new Screenshots()
+  const screenshots = new Screenshots({
+    singleWindow: true,
+  })
   ipcMain.handle('btn-capture', e => {
     screenshots.startCapture()
   })
@@ -148,7 +150,6 @@ function createWindow() {
   })
   // 点击确定按钮回调事件
   screenshots.on("ok", (e, buffer, bounds) => {
-    clipboard.writeText('aaaaaaaa')
     // const src = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
     const src = 'data:image/png;base64,' + btoa(new Uint8Array(buffer).reduce((data, btye) => data + String.fromCharCode(btye), ''))
     mainWindow.webContents.send('key-capture', src)
