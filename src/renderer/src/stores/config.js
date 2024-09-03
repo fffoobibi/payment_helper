@@ -1,7 +1,7 @@
 import { useUserStore } from '@/stores/index'
 import { computedAsync } from '@vueuse/core'
 import { defineStore } from 'pinia'
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch, toRaw } from 'vue'
 const store = useUserStore()
 // import Store from 'electron-store'
 // const _store = new Store()
@@ -12,7 +12,9 @@ const Keys = {
   username: 'username',
   password: 'password',
   shortcut: 'shortcut',
-  currentUserId: 'currentUserId'
+  currentUserId: 'currentUserId',
+  accountIndexs: 'accountIndexs',
+  accountMenus: 'accountMenus'
 }
 
 const useLocalConfig = defineStore('localConfig', () => {
@@ -69,7 +71,7 @@ const useLocalConfig = defineStore('localConfig', () => {
 
   // isPin
   const isPin = computedAsync(async () => {
-    const rs =  await electron.config.getDefault(Keys.pinned)
+    const rs = await electron.config.getDefault(Keys.pinned)
     return _parsedResult(rs, null)
   }, false)
 
@@ -78,10 +80,59 @@ const useLocalConfig = defineStore('localConfig', () => {
     setConfig(Keys.pinned, value)
   }
 
+  // accountIndexs
+  const accountIndexs = ref([])
+  const fetchAccountIndexs = computedAsync(async () => {
+    const rs = await electron.config.getDefault(Keys.accountIndexs)
+    return _parsedResult(rs, [])
+  }, [])
+
+  watch(
+    fetchAccountIndexs,
+    (newData) => {
+      console.log('fetch local indexs ...')
+      newData.forEach((v) => {
+        accountIndexs.value.push(v)
+      })
+    },
+    { immediate: false }
+  )
+
+  const setAccountIndexs = (value) => {
+    accountIndexs.value.push(value)
+    setConfig(Keys.accountIndexs, [...accountIndexs.value])
+  }
+
+  // accountMenus
+  const accountMenus = ref([])
+  const fetchAccountMenus = computedAsync(async () => {
+    const rs = await electron.config.getDefault(Keys.accountMenus)
+    return _parsedResult(rs, [])
+  }, [])
+
+  watch(
+    fetchAccountMenus,
+    (newData) => {
+      console.log('fetch local menus ...')
+      newData.forEach((v) => {
+        accountMenus.value.push(v)
+      })
+    },
+    { immediate: false }
+  )
+
+  const setAccountMenus = (value) => {
+    accountMenus.value.push(value)
+    setConfig(Keys.accountMenus, [...accountMenus.value])
+  }
+
   return {
-    // refs,
     isPin,
     setPin,
+    accountIndexs,
+    setAccountIndexs,
+    accountMenus,
+    setAccountMenus,
     currentUserName,
     currentUserPasswd,
     currentUserRemeber,

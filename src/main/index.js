@@ -101,7 +101,7 @@ function createWindow() {
     mainWindow.center() // 窗口居中
     mainWindow.setMaximizable(true) // 窗口可放大
     mainWindow.setMinimumSize(mainWidth, mainHeight) // 窗口最小尺寸为默认尺寸
-    mainWindow.setResizable(false)
+    mainWindow.setResizable(true)
 
     // TODO: 添加托盘操作
     contextMenu.unshift({ label: data.username, click: () => { } })

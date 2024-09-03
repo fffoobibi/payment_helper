@@ -1,21 +1,23 @@
 <template>
-  <div ref="menuRef" v-if="showMenu" :style="{ left: x + 'px', top: y + 'px' }" class="right-click-menu">
+  <div v-if="showMenu" :style="{ left: x + 'px', top: y + 'px' }" class="right-click-menu">
     <ul>
       <li v-for="(item, index) in menuItems" :key="index" @click="handleMenuItemClick(item)">
         <div style="display: flex; justify-content: space-between;">
-
-          <span>{{ item.label }} </span>
+          <v-slot name="label" :item="item">
+            <span>{{ item.label }} </span>
+          </v-slot>
           <span v-if="item.children">
-            <el-icon color="gray" size="small">
-              <ArrowRight />
-            </el-icon>
+            <v-slot name="tag">
+              <el-icon color="gray" size="small">
+                <ArrowRight />
+              </el-icon>
+            </v-slot>
           </span>
         </div>
-
         <template v-if="item.children && item.children.length > 0">
-          <ul class="sub-menu" :style="{ left: `${x.value + 150}px`, top: `${y.value}px` }">
+          <ul class="sub-menu" :style="{ top: `${30 * index}px` }">
             <li v-for="(subItem, subIndex) in item.children" :key="'sub-' + subIndex"
-              @click="handleMenuItemClick(subItem)">
+              @click.stop="handleMenuItemClick(subItem)">
               {{ subItem.label }}
             </li>
           </ul>
@@ -26,56 +28,101 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 const props = defineProps({
+  targetElement: {
+    type: Object,
+    required: true
+  },
+  judgeShow: Function,
   show: {
     type: Boolean,
     default: false
   },
   menuItems: Array
-
 })
-// 状态管理
+const emit = defineEmits(["item-click", "judge-show"])
 const showMenu = ref(props.show);
 const x = ref(0);
 const y = ref(0);
-const menuRef = ref(null);
 const menuItems = ref(props.menuItems)
 
 
-// 监听右键点击事件
-function handleContextMenu(event) {
-  event.preventDefault();
-  x.value = event.clientX;
-  y.value = event.clientY;
-  showMenu.value = true;
+const trigger = () => {
+  showMenu.value = true
+}
+
+const data = ref([])
+
+const handleContextMenu = (event) => {
+  if (isTargetElementOrChild(event.target, props.targetElement.$el)) {
+    event.preventDefault();
+    x.value = event.clientX;
+    y.value = event.clientY;
+    const targetRect = props.targetElement.$el.getBoundingClientRect();
+    const relativeX = x.value - targetRect.left;
+    const relativeY = y.value - targetRect.top;
+    emit('judge-show', x.value, y.value, relativeX, relativeY, trigger)
+  }
+}
+
+const pop = (...args) => {
+  data.value = args
+  showMenu.value = true
+}
+
+const isTargetElementOrChild = (target, element) => {
+  if (target === element) {
+    return true;
+  }
+  let parent = target.parentNode;
+  while (parent) {
+    if (parent === element) {
+      return true;
+    }
+    parent = parent.parentNode;
+  }
+  return false;
 }
 
 // 隐藏菜单
-function hideMenu() {
+const hideMenu = () => {
   showMenu.value = false;
 }
 
 // 处理菜单项点击
-function handleMenuItemClick(item) {
-  console.log(`Clicked item: ${item.label}`);
-  hideMenu();
+const handleMenuItemClick = (item, event) => {
+  console.log('event ', event);
+  emit("item-click", item, ...data.value)
+  hideMenu()
+  data.value = []
 }
 
 // 添加和移除事件监听器
 onMounted(() => {
   document.addEventListener('contextmenu', handleContextMenu);
   document.addEventListener('click', hideMenu);
-});
+})
 
 onUnmounted(() => {
   document.removeEventListener('contextmenu', handleContextMenu);
   document.removeEventListener('click', hideMenu);
-});
+})
+
+defineExpose({
+  pop
+})
+
+// 监听 props.menuItems 的变化
+watch(() => props.menuItems, (newMenuItems) => {
+  menuItems.value = newMenuItems;
+}, { deep: true });
+
 </script>
 
 <style scoped>
 .right-click-menu {
+  min-width: 120px;
   padding: 0px;
   margin: 0px;
   position: fixed;
@@ -85,7 +132,12 @@ onUnmounted(() => {
   list-style: none;
   padding: 0px;
   z-index: 1000;
-  color: black
+  color: black;
+  font-size: 10pt;
+}
+
+li {
+  height: 30px;
 }
 
 .right-click-menu ul {

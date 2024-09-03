@@ -1,11 +1,15 @@
 <script setup>
 import { reactive, ref, watch, onMounted } from 'vue'
+import { storeToRefs } from "pinia"
 import { useAccountStore, useUserStore } from "@/stores"
 import { timestampToFormattedString, numberFmt } from "@/utils/format"
 import { useClient } from "@/utils/client"
+import { useLocalConfig } from "@/stores/config"
 import api from "@/api"
 import { computed } from 'vue'
 import message from '@/utils/message'
+const configStore = useLocalConfig()
+const { accountIndexs, accountMenus } = storeToRefs(configStore)
 const store = useUserStore()
 const bank = useAccountStore()
 const { height } = useClient()
@@ -25,9 +29,70 @@ const queryForm = reactive({
   hasSearch: false
 })
 
+const menuItemClick = (item, row) => {
+  if (item.label === '置顶') {
+    // accountIndexs.push(row.id)
+    // const a = accountIndexs
+    // console.log('set vaa===>', a);
+    configStore.setAccountIndexs(row.id)
+  } else if (item.label === '隐藏到...') {
+    form.menuDir = ''
+    form.menuShow = true
+  }
+  console.log('item ', item)
+
+}
+watch(() => configStore.accountMenus, () => {
+  console.log('change config ',);
+}, { deep: true })
+watch(accountMenus, () => {
+  console.log('change ', accountMenus.value);
+}, { deep: true })
+
+const menuItems = computed(() => {
+  const others = accountMenus.value.map(v => {
+    return { label: "隐藏到" + v }
+  })
+  return [
+    {
+      label: '置顶'
+    },
+    {
+      label: '隐藏',
+      children: [
+        { label: '隐藏到默认' },
+        ...others,
+        { label: '隐藏到...' }
+      ]
+    },
+  ]
+})
+
+const addMenu = () => {
+  if (form.menuDir) {
+    configStore.setAccountMenus(form.menuDir)
+    console.log('after ', accountMenus.value)
+    form.menuShow = false
+  }
+}
+
+const sortedBank = async (resp) => {
+  const returned = []
+  const pinned = []
+  resp.list.forEach(v => {
+    if (accountIndexs.value.includes(v.id)) {
+      v.__pinned = true
+      pinned.push(v)
+    } else {
+      v.__pinned = false
+      returned.push(v)
+    }
+  })
+  resp.list = pinned.concat(returned)
+  return resp
+}
+
 const onSearch = async (page = null, pageSize = null) => {
-  console.log('use store')
-  console.log(await electron.config.get('foo'))
   if (page != null) {
     queryForm.search.page = page
     queryForm.page.currentPage = page
@@ -39,7 +104,7 @@ const onSearch = async (page = null, pageSize = null) => {
   } else {
     queryForm.search.limit = queryForm.page.pageSize
   }
-  const data = await api.bank_account.getList(queryForm.search)
+  const data = await api.bank_account.getList(queryForm.search, sortedBank)
   queryForm.tableData = data.list
   queryForm.page.totalCount = data.count
   queryForm.page.pageSize = data.limit
@@ -81,6 +146,9 @@ const tableHeight = computed(() => {
                 'in_account_title_id': self.widget.comboBox_3.current_data(),
                 'out_account_title_id': self.widget.comboBox_2.current_data(),
 */
+
+const menuRef = ref(null)
+const tableRef = ref(null)
 const formRef = ref(null)
 const form = reactive({
   available_balance: "",
@@ -120,8 +188,7 @@ const form = reactive({
     voucher_ext_id: null
   },
   menuShow: false,
-  menuLeft: 0,
-  menuTop: 0
+  menuDir: ''
 })
 
 const formState = reactive({
@@ -379,54 +446,16 @@ const submitAuditTransfer = async () => {
           </el-form-item>
         </el-form>
 
-        <!-- <Teleport to='body'> -->
-        <!-- <el-menu :default-active="activeIndex" class="el-menu-demo" mode="horizontal" :ellipsis="false" popper-effect="dark"
-          v-show="form.menuShow" @select="handleSelect"
-          :style="{ left: form.menuLeft, top: form.menuTop, position: 'fixed', 'z-index': 100 }">
-          <el-menu-item index="1">Processing Center</el-menu-item>
-          <el-sub-menu index="2">
-            <template #title>Workspace</template>
-            <el-menu-item index="2-1">item one</el-menu-item>
-            <el-menu-item index="2-2">item two</el-menu-item>
-            <el-menu-item index="2-3">item three</el-menu-item>
-            <el-sub-menu index="2-4">
-              <template #title>item four</template>
-              <el-menu-item index="2-4-1">item one</el-menu-item>
-              <el-menu-item index="2-4-2">item two</el-menu-item>
-              <el-menu-item index="2-4-3">item three</el-menu-item>
-            </el-sub-menu>
-          </el-sub-menu>
-        </el-menu> -->
-        <!-- </Teleport> -->
 
-        <ContextMenu :menu-items="[
-          {
-            label: 'Item 3 666666'
-          },
-          {
-            label: 'Item 1',
-            children: [
-              { label: 'Sub Item 1.1' },
-              { label: 'Sub Item 1.2' },
-              { label: 'Sub Item 1.3' }
-            ]
-          },
-          {
-            label: 'Item 2',
-            children: [
-              { label: 'Sub Item 2.1' },
-              { label: 'Sub Item 2.2' }
-            ]
-          },
-
-        ]">
+        <ContextMenu ref="menuRef" :target-element="tableRef" @item-click="menuItemClick" :menu-items="menuItems">
         </ContextMenu>
 
-        <el-table :data="queryForm.tableData" stripe :height="tableHeight" highlight-current-row @row-contextmenu="(row, col, e) => {
-          console.log('row ', e);
-          form.menuLeft = (e.clientX + 1).toString() + 'px'
-          form.menuTop = (e.clientY + 1).toString() + 'px'
-          form.menuShow = true
+        <el-table ref="tableRef" :data="queryForm.tableData" :height="tableHeight" highlight-current-row
+          :row-class-name="({ row }) => {
+          const name = row.__pinned ? 'account-pined' : ''
+          return name
+        }" @row-contextmenu="(row, col, e) => {
+          menuRef.pop(row)
         }">
           <template #empty>
             <el-empty :image-size="200" />
@@ -444,8 +473,8 @@ const submitAuditTransfer = async () => {
           </el-table-column>
           <el-table-column label="账户余额">
             <template #default="scope">
-              <div>{{ scope.row.ending_balance + " " + scope.row.currency }}</div>
-
+              <div><span style="font-weight: bold;">{{ numberFmt(scope.row.ending_balance) }}</span> {{ " " +
+          scope.row.currency }}</div>
             </template>
           </el-table-column>
           <el-table-column label="今日盘账">
@@ -632,6 +661,20 @@ const submitAuditTransfer = async () => {
           </template>
         </el-dialog>
 
+        <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500">
+          <template #footer>
+            <el-form-item label="目录名称">
+              <el-input v-model.trim="form.menuDir" clearable></el-input>
+            </el-form-item>
+            <div class="dialog-footer">
+              <el-button @click="form.menuShow = false">关闭</el-button>
+              <el-button type="primary" @click="addMenu">
+                确认
+              </el-button>
+            </div>
+          </template>
+        </el-dialog>
+
       </div>
 
     </template>
@@ -687,6 +730,13 @@ h4 {
   background-repeat: no-repeat;
   background-position: 80% 50%;
   background-size: 50px 50px;
+}
+
+:deep(.account-pined td:first-child) {
+  background-image: url('../assets/images/triangle.svg') !important;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 10px 10px;
 }
 
 :deep(.el-input-number .el-input__inner) {

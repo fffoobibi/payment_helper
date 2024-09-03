@@ -14,21 +14,20 @@ const instance = axios.create({
 
 let loading = null
 
-
 // 添加请求拦截器
 instance.interceptors.request.use(
-  config => {
+  (config) => {
     if (config.showLoading) {
       loading = ElLoading.service({
         lock: true,
         text: config.loadingText || '加载中...',
-        background: 'rgba(0, 0, 0, 0.7)',
+        background: 'rgba(0, 0, 0, 0.7)'
       })
     }
 
     return config
   },
-  error => {
+  (error) => {
     if (error.config.showLoading && loading) {
       loading.close()
     }
@@ -38,11 +37,16 @@ instance.interceptors.request.use(
   }
 )
 
-
 // 添加响应拦截器
 instance.interceptors.response.use(
-  response => {
-    const { showLoading, errorCallback, showError = true, responseType } = response.config
+  async (response) => {
+    const {
+      showLoading,
+      errorCallback,
+      showError = true,
+      responseType,
+      onSuccess
+    } = response.config
     if (showLoading && loading) {
       setTimeout(() => {
         loading.close()
@@ -56,32 +60,60 @@ instance.interceptors.response.use(
 
     if (res.code === 0) {
       if (env.DEV) {
-        console.log(`[DEBUG] [${response.config?.method?.toUpperCase()}] ` + response.config.url + " ===>", res.response)
+        console.log(
+          `[DEBUG] [${response.config?.method?.toUpperCase()}] ` + response.config.url + ' ===>',
+          res.response
+        )
       }
-      return Promise.resolve(res.response || true)
+      let returned
+      if (onSuccess) {
+        returned = onSuccess(res.response)
+        if ((returned && typeof returned.then === 'function') || returned instanceof Promise) {
+          returned = await returned
+        }
+      } else {
+        returned = res.response
+      }
+      return Promise.resolve(returned || true)
     } else {
       if (res.code == 1007) {
         // 未登录，返回登录页
         location.href = '/login'
       } else {
         errorCallback && errorCallback(res)
-        logger.error(`[${response.config?.method?.toUpperCase()}] ${response.config.url} fail, error info is `, res)
+        logger.error(
+          `[${response.config?.method?.toUpperCase()}] ${response.config.url} fail, error info is `,
+          res
+        )
         Message.error(res.msg)
       }
       return Promise.reject({ showError, msg: res.msg })
     }
   },
-  error => {
+  (error) => {
     if (error.config.showLoading && loading) {
       loading.close()
     }
-    logger.error(`[${response.config?.method?.toUpperCase()}] ${response.config.url} fail, error is `, error)
+    logger.error(
+      `[${response.config?.method?.toUpperCase()}] ${response.config.url} fail, error is `,
+      error
+    )
     return Promise.reject({ showError: true, msg: '网络异常' })
   }
 )
 
-const http = config => {
-  const { url, params = {}, loadingText = "加载中...", dataType, showLoading = true, showError = true, responseType = 'json', method = "post" } = config
+const http = (config) => {
+  const {
+    url,
+    params = {},
+    loadingText = '加载中...',
+    dataType,
+    showLoading = true,
+    showError = true,
+    responseType = 'json',
+    method = 'post',
+    onSuccess
+  } = config
 
   const formData = new FormData()
   for (const key in params) {
@@ -97,9 +129,9 @@ const http = config => {
   const headers = {
     'Content-Type': contentType,
     'X-Requested-With': 'XMLHttpRequest',
-    'token': token
+    token: token
   }
-  if (method === "post") {
+  if (method === 'post') {
     logger.info(`[post] ${url}, headers-token: ${headers.token}, form-data: `, formData)
     return instance.post(url, formData, {
       headers,
@@ -107,6 +139,7 @@ const http = config => {
       loadingText,
       showError,
       responseType,
+      onSuccess,
       errorCallback: config.errorCallback
     })
   } else {
@@ -117,10 +150,10 @@ const http = config => {
       loadingText,
       showError,
       responseType,
+      onSuccess,
       errorCallback: config.errorCallback
     })
   }
-
 }
 
 export default http
