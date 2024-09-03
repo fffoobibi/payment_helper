@@ -13,6 +13,7 @@ import router from './router'
 // import Layout from './components/Layout.vue'
 import Header from './components/Header.vue'
 import Upload from './components/Upload.vue'
+import ContextMenu from './components/ContextMenu.vue'
 
 const pinia = createPinia()
 const app = createApp(App)
@@ -25,5 +26,6 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 app.component('Layout', defineAsyncComponent(()=> import('./components/Layout.vue')))
 app.component('Header', Header)
 app.component('Upload', Upload)
+app.component('ContextMenu', ContextMenu)
 
 app.mount('#app')

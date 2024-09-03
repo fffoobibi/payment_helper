@@ -3,44 +3,33 @@ import { reactive, ref } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { dateTimeFmt, numberFmt } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
+import api from '@/api'
+import { useUserStore } from "@/stores"
 
 const route = useRoute()
 const router = useRouter()
-
-const props = defineProps({
-  approves: {
-    type: Array,
-    default: []
-  }
-})
+const store = useUserStore()
 
 const status = ref('unpayment')
 
-const options = [
-  {
-    label: '待打款',
-    value: 'unpayment',
-    count: 10
-  },
-  {
-    label: '预打款',
-    value: 'prepayment',
-    count: 0
-  },
-  {
-    label: '已打款',
-    value: 'payment',
-    count: 8
-  }
+const types = [
+  { label: '待打款', value: 'pending', count: 10 },
+  { label: '预打款', value: 'prepayment', count: 0 },
+  { label: '已打款', value: 'processed', count: 8 }
 ]
 
 const formData = reactive({
-  search: '',
-  currency: ''
+  user_id: store.user.id,
+  type: 'pending',
+  condition: '',
+  currency: '',
+  page: 1,
+  limit: 15
 })
 
 const currencyList = ref(['USD', 'CNY', 'EUR', 'GBP', 'CAD', 'JPY', 'AUD', 'HKD', 'SGD', 'CHF', 'KRW', 'INR', 'RUB', 'MXN', 'BRL', 'ZAR', 'TRY', 'THB', 'IDR', 'MYR', 'PHP', 'VND', 'CZK', 'DKK','HUF', 'NOK', 'PLN', 'SEK'])
 
+const approves = ref([])
 
 const onAllCheck = () => {
   //
@@ -50,8 +39,17 @@ const onCheck = (item) => {
   item.isChecked = !item.isChecked
 }
 
-const onSubmit = () => {
-  console.log(formData.search);
+const onSubmit = async () => {
+  try {
+    const data = await api.getPaymentList(formData)
+    if (formData.page == 1) {
+      approves.value = data.list
+    } else {
+      approves.value = approves.value.concat(data.list)
+    }
+  } catch (error) {
+    console.log(error)
+  }
 }
 
 const onDetail = id => {
@@ -61,7 +59,7 @@ const onDetail = id => {
 
 
 <template>
-  <el-segmented class="segments" v-model="status" :options="options" block>
+  <el-segmented class="segments" v-model="status" :options="types" block>
     <template #default="{ item }">
       <div class="segment-item">
         <span>{{ item.label }}</span>
@@ -73,7 +71,7 @@ const onDetail = id => {
   <div class="filter">
     <el-form :inline="true" :model="formData" @submit.prevent>
       <el-form-item>
-        <el-input v-model="formData.search" :suffix-icon="Search" placeholder="请输入关键字" @keyup.enter="onSubmit" clearable />
+        <el-input v-model="formData.condition" :suffix-icon="Search" placeholder="请输入关键字" @keyup.enter="onSubmit" clearable />
       </el-form-item>
       <el-form-item>
         <el-select v-model="formData.currency" placeholder="币种">
@@ -93,12 +91,12 @@ const onDetail = id => {
         <el-checkbox :value="item.id" :checked="item.isChecked" @change="onCheck(item)"></el-checkbox>
         <div class="row-content" @click="onDetail(item.id)">
           <div class="row-top">
-            <div class="row-title">{{ item.title }}</div>
+            <div class="row-title">{{ item.process_name }}</div>
             <div class="row-time">{{ dateTimeFmt(item.create_time) }}</div>
           </div>
           <div class="row-bottom">
-            <div class="row-subtitle">{{ item.number }}</div>
-            <div class="row-other">{{ numberFmt(item.amount)}} <span>{{ item.currency }}</span></div>
+            <div class="row-subtitle">{{ item.approval_number }}</div>
+            <div class="row-other">{{ numberFmt(item.origin_total_amount)}} <span>{{ item.currency }}</span></div>
           </div>
         </div>
       </div>

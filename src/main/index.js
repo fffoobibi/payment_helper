@@ -137,9 +137,7 @@ function createWindow() {
   })
 
   // 截图事件
-  const screenshots = new Screenshots({
-    singleWindow: true,
-  })
+  const screenshots = new Screenshots()
   ipcMain.handle('btn-capture', e => {
     screenshots.startCapture()
   })

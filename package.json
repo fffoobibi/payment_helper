@@ -25,6 +25,7 @@
     "@element-plus/icons-vue": "^2.3.1",
     "@vueuse/core": "^11.0.3",
     "axios": "^1.7.4",
+    "decimal.js": "^10.4.3",
     "electron-log": "^5.1.7",
     "electron-screenshots": "^0.5.27",
     "electron-store": "^10.0.0",

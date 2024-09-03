@@ -118,7 +118,10 @@ const form = reactive({
     application_time: null,
     user_id: store.user.id,
     voucher_ext_id: null
-  }
+  },
+  menuShow: false,
+  menuLeft: 0,
+  menuTop: 0
 })
 
 const formState = reactive({
@@ -376,7 +379,55 @@ const submitAuditTransfer = async () => {
           </el-form-item>
         </el-form>
 
-        <el-table :data="queryForm.tableData" stripe :height="tableHeight" highlight-current-row>
+        <!-- <Teleport to='body'> -->
+        <!-- <el-menu :default-active="activeIndex" class="el-menu-demo" mode="horizontal" :ellipsis="false" popper-effect="dark"
+          v-show="form.menuShow" @select="handleSelect"
+          :style="{ left: form.menuLeft, top: form.menuTop, position: 'fixed', 'z-index': 100 }">
+          <el-menu-item index="1">Processing Center</el-menu-item>
+          <el-sub-menu index="2">
+            <template #title>Workspace</template>
+            <el-menu-item index="2-1">item one</el-menu-item>
+            <el-menu-item index="2-2">item two</el-menu-item>
+            <el-menu-item index="2-3">item three</el-menu-item>
+            <el-sub-menu index="2-4">
+              <template #title>item four</template>
+              <el-menu-item index="2-4-1">item one</el-menu-item>
+              <el-menu-item index="2-4-2">item two</el-menu-item>
+              <el-menu-item index="2-4-3">item three</el-menu-item>
+            </el-sub-menu>
+          </el-sub-menu>
+        </el-menu> -->
+        <!-- </Teleport> -->
+
+        <ContextMenu :menu-items="[
+          {
+            label: 'Item 3 666666'
+          },
+          {
+            label: 'Item 1',
+            children: [
+              { label: 'Sub Item 1.1' },
+              { label: 'Sub Item 1.2' },
+              { label: 'Sub Item 1.3' }
+            ]
+          },
+          {
+            label: 'Item 2',
+            children: [
+              { label: 'Sub Item 2.1' },
+              { label: 'Sub Item 2.2' }
+            ]
+          },
+
+        ]">
+        </ContextMenu>
+
+        <el-table :data="queryForm.tableData" stripe :height="tableHeight" highlight-current-row @row-contextmenu="(row, col, e) => {
+          console.log('row ', e);
+          form.menuLeft = (e.clientX + 1).toString() + 'px'
+          form.menuTop = (e.clientY + 1).toString() + 'px'
+          form.menuShow = true
+        }">
           <template #empty>
             <el-empty :image-size="200" />
           </template>

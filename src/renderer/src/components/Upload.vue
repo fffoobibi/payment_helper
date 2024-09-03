@@ -1,10 +1,15 @@
 <script setup>
-import axios from 'axios';
-import { computed, ref } from 'vue';
+import axios from 'axios'
+import { computed, ref } from 'vue'
+import logger from "@/utils/logger"
 const fileList = defineModel()
 
 const emit = defineEmits(['done'])
 const props = defineProps({
+    validateMinCount: {
+        type: Number,
+        default: 1
+    },
     size: {
         type: [Number],
         default: 66
@@ -50,7 +55,6 @@ const currentPreviewImageIndex = ref(0)
 
 const currentPreviewSrc = ref('')
 
-
 const upload = async (file, r) => {
     const f = new FormData()
     f.append('file', file)
@@ -67,9 +71,9 @@ const upload = async (file, r) => {
             r.response = response.data
             return response.data
         }
-        console.log('err --> ', resp);
+        logger.error('err --> ', resp)
     } catch (err) {
-        console.log('err --> ', err);
+        logger.error('err --> ', err)
     }
 }
 
@@ -100,19 +104,19 @@ const uploadImage = async () => {
 
 
 const base64toFile = (dataUrl = '', filename = 'file') => {
-    let arr = dataUrl.split(',');
-    let mime = arr[0].match(/:(.*?);/)[1];
+    let arr = dataUrl.split(',')
+    let mime = arr[0].match(/:(.*?);/)[1]
     // suffix是该文件的后缀
-    let suffix = mime.replaceAll("image/", "");
+    let suffix = mime.replaceAll("image/", "")
     // atob 对经过 base-64 编码的字符串进行解码
-    let bstr = atob(arr[1]);
+    let bstr = atob(arr[1])
     // n 是解码后的长度
-    let n = bstr.length;
+    let n = bstr.length
     // Uint8Array 数组类型表示一个 8 位无符号整型数组 初始值都是 数子0
-    let u8arr = new Uint8Array(n);
+    let u8arr = new Uint8Array(n)
     // charCodeAt() 方法可返回指定位置的字符的 Unicode 编码。这个返回值是 0 - 65535 之间的整数
     while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
+        u8arr[n] = bstr.charCodeAt(n)
     }
     // new File返回File对象 第一个参数是 ArraryBuffer 或 Bolb 或Arrary 第二个参数是文件名
     // 第三个参数是 要放到文件中的内容的 MIME 类型
@@ -121,9 +125,25 @@ const base64toFile = (dataUrl = '', filename = 'file') => {
     })
 }
 
+const validate = (rule, value, callback) => {
+    let count = 0
+    value.forEach((v, index) => {
+        if (v.raw) {
+            count++
+        } else if (v.url?.startsWith('data:image')) {
+            count++
+        }
+    })
+    if (count < props.validateMinCount) {
+        callback(new Error("请上传图片!"))
+    } else {
+        callback()
+    }
+}
 
 defineExpose({
-    uploadImage
+    uploadImage,
+    validate
 })
 
 </script>
@@ -131,28 +151,23 @@ defineExpose({
 
 <template>
     <div>
-        <el-popover placement="top-start" title="" trigger="hover" :content="'最多上传' + props.limit.toString() + '张图片'">
-            <template #reference>
-                <el-upload list-type="picture-card" accept="image/*" v-model:file-list="fileList" :action="props.action"
-                    :auto-upload="false" :http-request="uploadImage" :limit="props.limit" :disabled="props.disabled"
-                    :on-preview="handlePreview" :on-error="(rsp, f, fs) => { console.log('error upload', rsp) }"
-                    :on-success="(rsp, f, fs) => {  }">
+        <el-tooltip effect="dark" :content="'最多上传' + props.limit.toString() + '张图片'" placement="top">
+            <el-upload list-type="picture-card" accept="image/*" v-model:file-list="fileList" :action="props.action"
+                :auto-upload="false" :http-request="uploadImage" :limit="props.limit" :disabled="props.disabled"
+                :on-preview="handlePreview" :on-error="(rsp, f, fs) => { console.log('error upload', rsp) }"
+                :on-success="(rsp, f, fs) => { }">
+                <slot>
                     <el-icon>
                         <Plus />
                     </el-icon>
-                </el-upload>
-            </template>
-        </el-popover>
+                </slot>
+            </el-upload>
+        </el-tooltip>
 
         <el-drawer v-model="previewImageShow" size="100%">
             <div style="display: flex; justify-content: center;align-items: center">
                 <el-image :zoom-rate="1.2" :max-scale="7" :min-scale="0.2" fit="cover"
                     :initial-index="currentPreviewImageIndex" :src="currentPreviewSrc" :preview-src-list="previewList">
-                    <template #tip>
-                        <div class="el-upload__tip">
-                            jpg/png files with a size less than 500kb
-                        </div>
-                    </template>
                     <template #error>
                         <div>
                             <el-empty description="404" />

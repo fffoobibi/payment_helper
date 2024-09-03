@@ -65,6 +65,7 @@ instance.interceptors.response.use(
         location.href = '/login'
       } else {
         errorCallback && errorCallback(res)
+        logger.error(`[${response.config?.method?.toUpperCase()}] ${response.config.url} fail, error info is `, res)
         Message.error(res.msg)
       }
       return Promise.reject({ showError, msg: res.msg })
@@ -74,6 +75,7 @@ instance.interceptors.response.use(
     if (error.config.showLoading && loading) {
       loading.close()
     }
+    logger.error(`[${response.config?.method?.toUpperCase()}] ${response.config.url} fail, error is `, error)
     return Promise.reject({ showError: true, msg: '网络异常' })
   }
 )

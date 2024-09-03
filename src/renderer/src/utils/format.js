@@ -1,9 +1,16 @@
+import Decimal from "decimal.js"
 const dateTimeFmt = date => {
     //  auto 0
     const autoZero = (n) => (String(n).length === 1 ? '0' : '') + n
     // string to timestamp
     const strToTimestamp = (str) => Date.parse(str.replace(/-/gi, '/'))
-    let oriSecond = strToTimestamp(date) / 1000
+    let oriSecond = date
+    if (typeof date === 'String') {
+        oriSecond = strToTimestamp(date)
+    }
+    if (oriSecond > 9999999999) {
+        oriSecond /= 1000
+    }
     let curSecond = parseInt(new Date().getTime() / 1000)
     let diffSecond = curSecond - oriSecond
 
@@ -50,9 +57,9 @@ const numberFmt = n => {
 }
 
 /**
- * 
- * @param {number} timestamp 
- * @returns 
+ *
+ * @param {number} timestamp
+ * @returns
  */
 const timestampToFormattedString = (timestamp) => {
     // 确保时间戳是以秒为单位
@@ -70,10 +77,23 @@ const timestampToFormattedString = (timestamp) => {
     return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
 }
 
+/**
+ *
+ * @param {number|string|null} v1
+ * @param {number|string|null} v2
+ * @returns string
+ */
+const subNumbers = (v1, v2, digit = 2) => {
+    const a = Decimal((v1 || '0').toString().replaceAll(',', ''))
+    const b = Decimal((v2 || '0').toString().replaceAll(',', ''))
+    const rs = a.sub(b).toFixed(digit)
+    return rs
+}
 
 
 export {
     dateTimeFmt,
     numberFmt,
-    timestampToFormattedString
+    timestampToFormattedString,
+    subNumbers
 }

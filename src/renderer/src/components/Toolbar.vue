@@ -37,7 +37,6 @@ onMounted(async () => {
 })
 
 const onPin = () => {
-  console.log('aaaaa');
   onWindow('pin', { isPin: !isPin.value })
   configStore.setPin(!isPin.value)
 }
