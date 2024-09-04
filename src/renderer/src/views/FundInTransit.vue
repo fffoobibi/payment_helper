@@ -536,7 +536,7 @@ const crop = () => {
         </div>
 
         <!-- style="height: calc(100vh - 210px)" -->
-        <el-table :data="tableData" :height="tableHeight" stripe >
+        <el-table :data="tableData" :height="tableHeight" highlight-current-row>
           <template #empty>
             <el-empty :image-size="200" />
           </template>

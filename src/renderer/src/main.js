@@ -14,6 +14,7 @@ import router from './router'
 import Header from './components/Header.vue'
 import Upload from './components/Upload.vue'
 import ContextMenu from './components/ContextMenu.vue'
+import LoadingList from './components/LoadingList.vue'
 
 const pinia = createPinia()
 const app = createApp(App)
@@ -27,5 +28,6 @@ app.component('Layout', defineAsyncComponent(() => import('./components/Layout.v
 app.component('Header', Header)
 app.component('Upload', Upload)
 app.component('ContextMenu', ContextMenu)
+app.component('LoadingList', LoadingList)
 
 app.mount('#app')

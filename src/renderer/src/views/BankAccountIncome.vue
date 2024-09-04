@@ -4,7 +4,7 @@ import api from "@/api"
 import { useUserStore } from "@/stores/index"
 import { timestampToFormattedString, numberFmt } from "@/utils/format"
 import { useClient } from "@/utils/client"
-const { height, width } = useClient()
+const { height } = useClient()
 const store = useUserStore()
 
 const props = defineProps({
@@ -15,80 +15,39 @@ const props = defineProps({
 })
 
 const search = reactive({
-    condition: 5,
-    page: 1,
-    limit: 10,
+    condition: 1,
     totalPage: null,
-    resp: [],
 })
 
+const listRef = ref(null)
 
-const hasDown = computed(() => {
-    console.log('had down');
-    if (search.totalPage === null) {
-        return false
-    }
-    if (search.totalPage === 0) {
-        return true
-    }
-    return search.page >= search.totalPage
-})
-
-const reset = () => {
-    search.totalPage = null
-    search.page = 1
-    search.limit = 10
-    disabled.value = false
-    search.resp = []
-}
-
-const onSearch = async () => {
+const onSearch = async (page, limit) => {
     const resp = await api.incomeRecord.getIncomeRecords({
-        page: search.page,
-        limit: search.limit,
+        page: page,
+        limit: limit,
         user_id: store.user.id,
         condition: search.condition,
         account_id: props.accountId
     })
-
-    search.totalPage = resp.pages
-    search.limit = resp.limit
-    search.page++
-    search.resp = resp.list
-}
-const renderValues = computed(() => {
-    props.accountId
-    return search.resp
-})
-
-const disabled = ref(false);
-const load = async () => {
-    if (disabled.value) {
-        console.log('Loading is disabled.');
-        return;
-    }
-    console.log('loading data ', disabled.value);
-    const resp = await api.incomeRecord.getIncomeRecords({
-        page: search.page,
-        limit: search.limit,
-        user_id: store.user.id,
-        condition: search.condition,
-        account_id: props.accountId
-    });
-    search.totalPage = resp.pages;
-    search.limit = resp.limit;
-    search.page++;
-    search.resp = [...search.resp, ...resp.list]; // 确保数据是追加的，而不是替换
-    if (hasDown.value) {
-        disabled.value = true;
-        console.log('stop load ', search, disabled.value);
-    }
+    return resp
 }
 
-watch(() => props.accountId, () => {
-    reset()
-    console.log('reset', props.accountId, disabled.value);
-    onSearch()
+const onFetchDone = ({ total }) => {
+    search.totalPage = total
+}
+
+const stopLoad = (resp, current) => {
+    if (resp.pages === null) {
+        return false
+    }
+    if (resp.pages === 0) {
+        return true
+    }
+    return current >= resp.pages
+}
+
+watch([() => props.accountId, () => search.condition], () => {
+    listRef.value.reload()
 })
 
 </script>
@@ -98,7 +57,7 @@ watch(() => props.accountId, () => {
         <div class="left">
             <div
                 style=" display: flex; justify-content: space-between;align-items: center; padding-right: 0px;margin-bottom: 10px;">
-                <div>收入历史列表</div>
+                <div>收入历史 <span class="display-result">({{ search.totalPage }}条记录)</span></div>
                 <el-select style="width: 120px" v-model="search.condition">
                     <el-option label="今天" :value="1"></el-option>
                     <el-option label="昨天" :value="2"></el-option>
@@ -107,19 +66,23 @@ watch(() => props.accountId, () => {
                     <el-option label="上月" :value="5"></el-option>
                 </el-select>
             </div>
-                <ul class="records" v-infinite-scroll="load" :infinite-scroll-disabled="disabled" style="overflow: auto">
-                    <li v-for="info in renderValues" :key="info.id" class="record-item">
-                        <div> 收入编号： <span>{{ info.sn }}</span></div>
+            <LoadingList :fetch="onSearch" :stop-load="stopLoad" :height="height - 100" ref="listRef" @on-fetch-done="onFetchDone">
+                <template #default="{ info }">
+                    <div class="record-item">
+                        <div> 收入编号： <span>{{ info.sn }} </span></div>
                         <div> 创建人： <span>{{ info.creator }}</span> 创建时间：{{ timestampToFormattedString(info.create_time)
                             }}
                         </div>
-                        <div> 银行账号： <span>{{ info.voucher_ext_last.account_name }}</span> </div>
+                        <div> 银行账号： <span>{{ info.voucher_ext_last?.account_name }}</span> </div>
                         <div>收入科目：<span>{{ info.account_title }}</span></div>
-                        <div>金额：<span>{{ numberFmt(info.payment_items[0]?.cny_amount) }}</span> {{
-                    info.payment_items[0]?.currency }}</div>
-                        <div>备注：<span>{{ info.payment_items[0]?.note }}</span></div>
-                    </li>
-                </ul>
+                        <div>金额：<span>{{ numberFmt(info?.payment_items[0]?.cny_amount) }}</span> {{
+                    info?.payment_items[0]?.currency }}</div>
+                        <div>备注：<span>{{ info?.payment_items[0]?.note }}</span></div>
+                    </div>
+
+                </template>
+
+            </LoadingList>
 
         </div>
         <div class="right">
@@ -138,15 +101,12 @@ watch(() => props.accountId, () => {
 .right {
     padding-left: 10px;
     height: 100%;
-    /* background-color: red; */
     flex: 1;
 }
 
-.records {
-    height: v-bind("height-100");
-  padding: 0;
-  margin: 0;
-  list-style: none;
+.display-result{
+    font-size:10pt;
+    color: gray;
 }
 
 .record-item {
@@ -156,14 +116,16 @@ watch(() => props.accountId, () => {
     border-radius: 10px;
 }
 
-p,
-span,
-.records div {
+.record-item * {
+    font-size: 9pt;
+}
+
+p, span {
     color: black;
     font-size: 10pt
 }
-
-div {
+div{
     color: black
 }
+
 </style>

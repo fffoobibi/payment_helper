@@ -15,6 +15,7 @@ const store = useUserStore()
 const bank = useAccountStore()
 const { height, width } = useClient()
 
+const queryFormRef = ref(null)
 const queryForm = reactive({
   page: {
     currentPage: 1,
@@ -82,7 +83,6 @@ const addMenu = () => {
     form.menuShow = false
   }
 }
-
 
 const menuItems = computed(() => {
 
@@ -152,12 +152,14 @@ const onSearch = async (page = null, pageSize = null) => {
   queryForm.page.totalCount = data.count
   queryForm.page.pageSize = data.limit
 }
+
 onMounted(() => {
   if (!queryForm.hasSearch) {
     onSearch(1, null)
     queryForm.hasSearch = true
   }
 })
+
 watch(() => queryForm.page.currentPage, async () => {
   await onSearch()
 })
@@ -168,27 +170,19 @@ watch(() => queryForm.page.pageSize, async () => {
 })
 
 const tableHeight = computed(() => {
+  const h = queryFormRef.value?.clientHeight || 0
+  width.value + 1
+  let th
+  if (h > 60) {
+    th = 234
+  } else {
+    th = 184
+  }
   if (queryForm.page.totalCount == 0) {
-    return height.value - 160
-  } return height.value - 210
+    return height.value - th
+  }
+  return height.value - th
 })
-
-//增删改查
-/**
- * 
- * 
- * 
- *                 'user_id': current_data.id,
-                'out_account_id': current_data.get_account_id(self.widget.comboBox_8.currentText()),
-                'in_account_id': current_data.get_account_id(self.widget.comboBox_9.currentText()),
-                'origin_amount': self.widget.lineEdit_11.text().strip().replace(',', ''),
-                'currency': self.widget.comboBox.currentText(),
-                'note': self.widget.textEdit_2.toPlainText(),
-                'received_amount': self.widget.lineEdit.text().replace(',', ''),
-                'received_currency': self.widget.comboBox_10.currentText(),
-                'in_account_title_id': self.widget.comboBox_3.current_data(),
-                'out_account_title_id': self.widget.comboBox_2.current_data(),
-*/
 
 const menuRef = ref(null)
 const tableRef = ref(null)
@@ -500,7 +494,7 @@ const submitAuditTransfer = async () => {
       </Header>
 
       <div class="pannel">
-        <el-form :inline="true" :model="queryForm.search" class="demo-form-inline">
+        <el-form :inline="true" :model="queryForm.search" class="demo-form-inline" ref="queryFormRef">
           <el-form-item label="银行名称">
             <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable />
           </el-form-item>
@@ -589,165 +583,14 @@ const submitAuditTransfer = async () => {
 
         </el-table>
 
-        <el-pagination size="default" style="padding-top: 5px; position: fixed;bottom: 20px" :default-page-size="100"
+        <el-pagination size="default" style="padding-top: 5px; position: fixed;bottom: 20px" :default-page-size="300"
           v-show="queryForm.page.totalCount > 0" v-model:current-page="queryForm.page.currentPage"
-          v-model:page-size="queryForm.page.pageSize" background="true" :page-sizes="[10, 20, 50, 100]"
+          v-model:page-size="queryForm.page.pageSize" background="true" :page-sizes="[10, 50, 100, 300]"
           layout="total, sizes, prev, pager, next, jumper" :total="queryForm.page.totalCount" />
 
-        <!-- <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" @closed="handleClose"
-          ref="drawRef">
-          <template #default>
-            <el-form :model="form" label-width="auto" style="width:100%" ref="formRef" :rules="formRules">
-
-              <el-form-item label="转出账户" prop="post.out_account_id" required>
-                <div style=" display: flex;flex-direction: column;width: 100%;"
-                  v-loading="formState.out_account_id_loading">
-                  <el-select v-model="form.post.out_account_id" filterable @change="handleBankChange"
-                    :disabled="formState.getDisabledState('out_account_id')">
-                    <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
-                      :value="item.id" />
-                  </el-select>
-
-                  <div style="display: flex;justify-content: flex-start;align-items: center">
-                    <p><span :class="formState.out_account_id_color">实时余额 </span>
-                      <span style="color:black">{{ formState.out_account_id_balance }}</span>
-                      <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
-                    </p>
-                  </div>
-                </div>
-              </el-form-item>
-
-              <el-form-item label="转账支出科目" prop="post.out_account_title_id" required>
-                <el-select v-model="form.post.out_account_title_id" filterable
-                  :disabled="formState.getDisabledState('out_account_title_id')">
-                  <el-option v-for="item in bank.payouts" :key="item.id" :label="item.name" :value="item.id" />
-                </el-select>
-              </el-form-item>
-
-              <el-form-item label="转出金额" prop="post.origin_amount" required>
-                <div style=" display: flex;flex-direction: column;width: 100%;">
-                  <el-input-number v-model="form.post.origin_amount"
-                    :disabled="formState.getDisabledState('origin_amount')" :precision="2" :controls="false">
-                    <template #suffix>
-                      <p>{{ form.currency }}</p>
-                    </template>
-                  </el-input-number>
-                  <p>
-                    <span :class="formState.available_color">可用余额 {{ computedAvailableBalance }}</span>
-                    <span :class="formState.available_color">{{ " " + formState.available_balance }}</span>
-                    <span :class="formState.available_color == 'transparent' ? 'transparent' : 'red'">{{ " " +
-          formState.out_account_id_currency }}</span>
-                  </p>
-                </div>
-
-              </el-form-item>
-
-              <el-form-item label="转入账户" prop="post.in_account_id" required>
-                <div style=" display: flex;flex-direction: column;width: 100%;"
-                  v-loading="formState.in_account_id_loading">
-                  <el-select v-model="form.post.in_account_id" filterable @change="handleBankChange"
-                    :disabled="formState.getDisabledState('in_account_id')">
-                    <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
-                      :value="item.id" />
-                  </el-select>
-
-                  <div style="display: flex;justify-content: flex-start;align-items: center">
-                    <p><span :class="formState.in_account_id_color">实时余额 </span>
-                      <span style="color:black">{{ formState.in_account_id_balance }}</span>
-                      <span style="color:red">{{ " " + formState.in_account_id_currency }}</span>
-                    </p>
-                  </div>
-                </div>
-              </el-form-item>
-
-              <el-form-item label="到账收入科目" prop="post.in_account_title_id" required>
-                <el-select v-model="form.post.in_account_title_id" filterable
-                  :disabled="formState.getDisabledState('in_account_title_id')">
-                  <el-option v-for="item in bank.incomes" :key="item.id" :label="item.name" :value="item.id" />
-                </el-select>
-              </el-form-item>
-
-              <el-form-item label="到账金额" prop="post.received_amount" required>
-                <div style=" display: flex;flex-direction: column;width: 100%;">
-                  <el-input-number v-model="form.post.received_amount"
-                    :disabled="formState.getDisabledState('received_amount')" :precision="2" :controls="false"
-                    style="width: 100%">
-                    <template #suffix>
-                      <p>{{ form.currency }}</p>
-                    </template>
-                  </el-input-number>
-
-                </div>
-
-              </el-form-item>
-
-              <el-form-item label="备注" prop="post.note">
-                <el-input v-model="form.post.note" type="textarea" :rows="3" show-word-limit
-                  :disabled="formState.getDisabledState('note')"></el-input>
-              </el-form-item>
-
-              <el-form-item label="图片上传" prop="post.attachment_list">
-                <Upload action="upload" ref="uploadRef" v-model="form.post.attachment_list" :limit="10" dir="transfer"
-                  :disabled="formState.getDisabledState('attachment_list')" @done="r => {
-          console.log('rs', r)
-        }"></Upload>
-
-              </el-form-item>
-
-            </el-form>
-          </template>
-          <template #footer>
-            <div style="flex: auto">
-              <el-button @click="handleCancel">取消</el-button>
-              <el-button v-show="!formState.getDisabledState('button')" type="primary"
-                @click="confirmClick">确认</el-button>
-            </div>
-          </template>
-        </el-drawer> -->
-
-        <el-drawer v-model="form.incomeShow" :size="width - 50" class="income-drawer">
+        <el-drawer v-model="form.incomeShow" :size="width - 50" class="income-drawer" destroy-on-close>
           <BankAccountIncome :account-id="form.incomes.accountId" />
         </el-drawer>
-
-        <el-dialog v-model="form.noteShow" title="备注修改" width="500" :before-close="handleClose">
-          <el-input type="textarea" v-model="form.notePost.note"></el-input>
-          <template #footer>
-            <div class="dialog-footer">
-              <el-button @click="form.noteShow = false">关闭</el-button>
-              <el-button type="primary" @click="submitNoteTransit">
-                确认
-              </el-button>
-            </div>
-          </template>
-        </el-dialog>
-
-        <el-dialog v-model="form.cancelShow" title="撤销" width="500" :before-close="handleClose">
-          <span>撤销修改审核么</span>
-          <template #footer>
-            <div class="dialog-footer">
-              <el-button @click="form.cancelShow = false">关闭</el-button>
-              <el-button type="primary" @click="submitCancelTransfer">
-                确认
-              </el-button>
-            </div>
-          </template>
-        </el-dialog>
-
-        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose">
-          <p>修改人: {{ form.auditPost.applicant }}</p>
-          <p>提交时间: {{ timestampToFormattedString(form.auditPost.application_time) }}</p>
-          <el-form-item label="修改原因: ">
-            <el-input type="textarea" readonly v-model="form.auditPost.application_reason" :rows="3"></el-input>
-          </el-form-item>
-          <template #footer>
-            <div class="dialog-footer">
-              <el-button @click="form.auditShow = false">关闭</el-button>
-              <el-button type="primary" @click="submitAuditTransfer">
-                确认
-              </el-button>
-            </div>
-          </template>
-        </el-dialog>
 
         <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500" @opened="menuInputRef.focus()">
           <template #footer>
@@ -844,6 +687,16 @@ h4 {
 }
 
 :deep(.income-drawer header) {
+  margin-bottom: 0px;
+  padding-top: 10px !important
+}
+
+:deep(.payout-drawer .el-drawer__body) {
+  padding: 10px !important;
+  background-color: #F5F6F7
+}
+
+:deep(.payout-drawer header) {
   margin-bottom: 0px;
   padding-top: 10px !important
 }

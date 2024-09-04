@@ -353,7 +353,7 @@ const submitAuditTransfer = async () => {
           </el-form-item>
         </el-form>
 
-        <el-table :data="queryForm.tableData" stripe :height="tableHeight" highlight-current-row>
+        <el-table :data="queryForm.tableData" :height="tableHeight" highlight-current-row>
           <template #empty>
             <el-empty :image-size="200" />
           </template>
