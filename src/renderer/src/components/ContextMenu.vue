@@ -28,7 +28,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, toRefs } from 'vue';
 const props = defineProps({
   targetElement: {
     type: Object,
@@ -45,7 +45,7 @@ const emit = defineEmits(["item-click", "judge-show"])
 const showMenu = ref(props.show);
 const x = ref(0);
 const y = ref(0);
-const menuItems = ref(props.menuItems)
+const { menuItems } = toRefs(props)
 
 
 const trigger = () => {
@@ -113,10 +113,6 @@ defineExpose({
   pop
 })
 
-// 监听 props.menuItems 的变化
-watch(() => props.menuItems, (newMenuItems) => {
-  menuItems.value = newMenuItems;
-}, { deep: true });
 
 </script>
 

@@ -53,6 +53,9 @@ const dateTimeFmt = date => {
  * @returns
  */
 const numberFmt = n => {
+    if(!n){
+        return ''
+    }
     return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
@@ -63,15 +66,18 @@ const numberFmt = n => {
  */
 const timestampToFormattedString = (timestamp) => {
     // 确保时间戳是以秒为单位
-    var date = new Date(timestamp * 1000);
+    if (!timestamp){
+        return ''
+    }
+    const date = new Date(timestamp * 1000);
 
     // 获取年月日时分秒
-    var year = date.getFullYear();
-    var month = ("0" + (date.getMonth() + 1)).slice(-2); // 加1是因为月份从0开始
-    var day = ("0" + date.getDate()).slice(-2);
-    var hours = ("0" + date.getHours()).slice(-2);
-    var minutes = ("0" + date.getMinutes()).slice(-2);
-    var seconds = ("0" + date.getSeconds()).slice(-2);
+    const year = date.getFullYear();
+    const month = ("0" + (date.getMonth() + 1)).slice(-2); // 加1是因为月份从0开始
+    const day = ("0" + date.getDate()).slice(-2);
+    const hours = ("0" + date.getHours()).slice(-2);
+    const minutes = ("0" + date.getMinutes()).slice(-2);
+    const seconds = ("0" + date.getSeconds()).slice(-2);
 
     // 拼接成指定格式的字符串
     return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;

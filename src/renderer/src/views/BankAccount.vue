@@ -1,4 +1,5 @@
 <script setup>
+import BankAccountIncome from "@/views/BankAccountIncome.vue"
 import { reactive, ref, watch, onMounted } from 'vue'
 import { storeToRefs } from "pinia"
 import { useAccountStore, useUserStore } from "@/stores"
@@ -12,7 +13,8 @@ const configStore = useLocalConfig()
 const { accountIndexs, accountMenus } = storeToRefs(configStore)
 const store = useUserStore()
 const bank = useAccountStore()
-const { height } = useClient()
+const { height, width } = useClient()
+
 const queryForm = reactive({
   page: {
     currentPage: 1,
@@ -29,29 +31,63 @@ const queryForm = reactive({
   hasSearch: false
 })
 
+const menuInputRef = ref(null)
 const menuItemClick = (item, row) => {
   if (item.label === '置顶') {
-    // accountIndexs.push(row.id)
-    // const a = accountIndexs
-    // console.log('set vaa===>', a);
     configStore.setAccountIndexs(row.id)
   } else if (item.label === '隐藏到...') {
-    form.menuDir = ''
+    form.menuData.menuDir = ''
+    form.menuData.menuBindId = row.id
+    form.menuData.menuBindName = row.account_name
     form.menuShow = true
+  } else if (item.label.startsWith('隐藏到') && item.label !== '隐藏到...') {
+    form.menuData.menuDir = item.label.replace('隐藏到', '')
+    form.menuData.menuBindId = row.id
+    form.menuData.menuBindName = row.account_name
+    addMenu()
   }
   console.log('item ', item)
-
 }
-watch(() => configStore.accountMenus, () => {
-  console.log('change config ',);
-}, { deep: true })
-watch(accountMenus, () => {
-  console.log('change ', accountMenus.value);
-}, { deep: true })
+
+const addMenu = () => {
+  if (form.menuData.menuDir) {
+    const index = accountMenus.value.findIndex((v) => v.label == form.menuData.menuDir)
+    if (index > -1) {
+      //存在
+      const updateItem = accountMenus.value[index]
+      console.log('aaa ', updateItem);
+      const item = updateItem.children.find(v => v.id == form.menuData.menuBindId)
+      if (!item) {
+        //不存在则添加
+        updateItem.children.push({ label: form.menuData.menuBindName, id: form.menuData.menuBindId })
+        accountMenus.value.splice(index, 1, updateItem)
+        configStore.updateAccountMenus()
+        // message.success('已收藏')
+      } else {
+        message.success('已收藏')
+        // updateItem.values.push({ label: form.menuData.menuDir })
+      }
+    } else {
+      // 不存在
+      const addData = {
+        label: form.menuData.menuDir,
+        children: [{ label: form.menuData.menuBindName, id: form.menuData.menuBindId }]
+      }
+      accountMenus.value.push(addData)
+      configStore.updateAccountMenus()
+    }
+    form.menuData.menuBindId = null
+    form.menuData.menuBindName = ''
+    form.menuData.menuDir = ''
+    form.menuShow = false
+  }
+}
+
 
 const menuItems = computed(() => {
+
   const others = accountMenus.value.map(v => {
-    return { label: "隐藏到" + v }
+    return { label: "隐藏到" + v.label }
   })
   return [
     {
@@ -60,7 +96,6 @@ const menuItems = computed(() => {
     {
       label: '隐藏',
       children: [
-        { label: '隐藏到默认' },
         ...others,
         { label: '隐藏到...' }
       ]
@@ -68,18 +103,26 @@ const menuItems = computed(() => {
   ]
 })
 
-const addMenu = () => {
-  if (form.menuDir) {
-    configStore.setAccountMenus(form.menuDir)
-    console.log('after ', accountMenus.value)
-    form.menuShow = false
-  }
-}
+const hiddenAccounts = computed(() => {
+  const rs = []
+  accountMenus.value.forEach(v => {
+    v.children?.forEach(d => {
+      rs.push(d.id)
+    })
+  })
+  return rs
+})
 
-const sortedBank = async (resp) => {
+const onResponsePinnedProcess = async (resp) => {
   const returned = []
   const pinned = []
   resp.list.forEach(v => {
+
+    if (hiddenAccounts.value.includes(v.id)) {
+      v.__hidden = true
+    } else {
+      v.__hidden = false
+    }
     if (accountIndexs.value.includes(v.id)) {
       v.__pinned = true
       pinned.push(v)
@@ -104,7 +147,7 @@ const onSearch = async (page = null, pageSize = null) => {
   } else {
     queryForm.search.limit = queryForm.page.pageSize
   }
-  const data = await api.bank_account.getList(queryForm.search, sortedBank)
+  const data = await api.bank_account.getList(queryForm.search, onResponsePinnedProcess)
   queryForm.tableData = data.list
   queryForm.page.totalCount = data.count
   queryForm.page.pageSize = data.limit
@@ -150,6 +193,18 @@ const tableHeight = computed(() => {
 const menuRef = ref(null)
 const tableRef = ref(null)
 const formRef = ref(null)
+
+const renderTableRowClass = ({ row }) => {
+  let name = ''
+  if (row.__pinned) {
+    name += 'account-pined'
+  }
+  if (row.__hidden) {
+    name += ' hidden-row'
+  }
+  return name
+}
+
 const form = reactive({
   available_balance: "",
   currency: "",
@@ -188,7 +243,16 @@ const form = reactive({
     voucher_ext_id: null
   },
   menuShow: false,
-  menuDir: ''
+  menuData: {
+    menuDir: '',
+    menuBindId: null,
+    menuBindName: ''
+  },
+
+  incomeShow: false,
+  incomes: {
+    accountId: ''
+  }
 })
 
 const formState = reactive({
@@ -297,22 +361,22 @@ const addTransfer = () => {
   form.mode = 'add'
   form.show = true
 }
-const viewTransfer = async (row) => {
-  const data = await api.transfer.getDetail({ user_id: store.user.id, id: row.id })
-  form.post = {
-    out_account_id: data.out_account_id,
-    in_account_id: data.in_account_id,
-    origin_amount: data.origin_amount,
-    currency: data.currency,
-    received_amount: data.received_amount,
-    received_currency: data.received_currency,
-    note: data.note,
-    in_account_title_id: data.in_account_title_id,
-    out_account_title_id: data.out_account_title_id,
-    attachment_list: data.attachment_list.map(v => { return { url: v.path } }),
-  }
-  form.mode = 'view'
-  form.show = true
+const viewIncomes = async (row) => {
+  // const data = await api.transfer.getDetail({ user_id: store.user.id, id: row.id })
+  // form.post = {
+  //   out_account_id: data.out_account_id,
+  //   in_account_id: data.in_account_id,
+  //   origin_amount: data.origin_amount,
+  //   currency: data.currency,
+  //   received_amount: data.received_amount,
+  //   received_currency: data.received_currency,
+  //   note: data.note,
+  //   in_account_title_id: data.in_account_title_id,
+  //   out_account_title_id: data.out_account_title_id,
+  //   attachment_list: data.attachment_list.map(v => { return { url: v.path } }),
+  // }
+  form.incomes.accountId = row.id
+  form.incomeShow = true
 }
 
 const editTransfer = async (row) => {
@@ -441,20 +505,40 @@ const submitAuditTransfer = async () => {
             <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
-            <el-button type="primary" @click="addTransfer">日志</el-button>
+            <el-space alignment="center">
+              <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
+              <el-button type="primary" @click="addTransfer">日志</el-button>
+              <el-popover placement="bottom" :width="380" trigger="click">
+                <template #reference>
+                  <el-button type="primary"> {{ `账号隐藏 (${hiddenAccounts.length})` }}
+                  </el-button>
+                </template>
+                <el-tree node-key="id" :default-checked-keys="hiddenAccounts" :data="accountMenus" show-checkbox
+                  check-on-click-node @node-click="(d, { checked }) => {
+          if (!d.children) {
+            const item = queryForm.tableData.find(v => v.id === d.id)
+            console.log('item ', item)
+            if (item) {
+              if (checked) {
+                item.__hidden = true
+              } else {
+                item.__hidden = false
+              }
+            }
+          }
+          console.log('click dd', d, checked);
+        }" default-expand-all />
+              </el-popover>
+            </el-space>
+
           </el-form-item>
         </el-form>
-
 
         <ContextMenu ref="menuRef" :target-element="tableRef" @item-click="menuItemClick" :menu-items="menuItems">
         </ContextMenu>
 
-        <el-table ref="tableRef" :data="queryForm.tableData" :height="tableHeight" highlight-current-row
-          :row-class-name="({ row }) => {
-          const name = row.__pinned ? 'account-pined' : ''
-          return name
-        }" @row-contextmenu="(row, col, e) => {
+        <el-table ref="tableRef" :data="queryForm.tableData" :height="tableHeight" highlight-current-row row-key="id"
+          :row-class-name="renderTableRowClass" @row-contextmenu="(row, col, e) => {
           menuRef.pop(row)
         }">
           <template #empty>
@@ -487,7 +571,7 @@ const submitAuditTransfer = async () => {
           <el-table-column label="操作" width="200">
             <template #default="scope">
               <el-space>
-                <el-button type="success" @click="viewTransfer(scope.row)" link>
+                <el-button type="success" @click="viewIncomes(scope.row)" link>
                   收入
                 </el-button>
                 <el-button type="warning" @click="editTransfer(scope.row)" link>
@@ -510,7 +594,7 @@ const submitAuditTransfer = async () => {
           v-model:page-size="queryForm.page.pageSize" background="true" :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper" :total="queryForm.page.totalCount" />
 
-        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" @closed="handleClose"
+        <!-- <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" @closed="handleClose"
           ref="drawRef">
           <template #default>
             <el-form :model="form" label-width="auto" style="width:100%" ref="formRef" :rules="formRules">
@@ -619,6 +703,10 @@ const submitAuditTransfer = async () => {
                 @click="confirmClick">确认</el-button>
             </div>
           </template>
+        </el-drawer> -->
+
+        <el-drawer v-model="form.incomeShow" :size="width - 50" class="income-drawer">
+          <BankAccountIncome :account-id="form.incomes.accountId" />
         </el-drawer>
 
         <el-dialog v-model="form.noteShow" title="备注修改" width="500" :before-close="handleClose">
@@ -661,13 +749,16 @@ const submitAuditTransfer = async () => {
           </template>
         </el-dialog>
 
-        <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500">
+        <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500" @opened="menuInputRef.focus()">
           <template #footer>
             <el-form-item label="目录名称">
-              <el-input v-model.trim="form.menuDir" clearable></el-input>
+              <el-input v-model.trim="form.menuData.menuDir" clearable ref="menuInputRef"></el-input>
             </el-form-item>
             <div class="dialog-footer">
-              <el-button @click="form.menuShow = false">关闭</el-button>
+              <el-button @click="() => {
+          form.menuData.menuDir = ''
+          form.menuShow = false
+        }">关闭</el-button>
               <el-button type="primary" @click="addMenu">
                 确认
               </el-button>
@@ -739,7 +830,21 @@ h4 {
   background-size: 10px 10px;
 }
 
+:deep(.el-table .hidden-row) {
+  display: none !important;
+}
+
 :deep(.el-input-number .el-input__inner) {
   text-align: left;
+}
+
+:deep(.income-drawer .el-drawer__body) {
+  padding: 10px !important;
+  background-color: #F5F6F7
+}
+
+:deep(.income-drawer header) {
+  margin-bottom: 0px;
+  padding-top: 10px !important
 }
 </style>
