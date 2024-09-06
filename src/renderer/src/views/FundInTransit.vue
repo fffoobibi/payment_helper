@@ -739,7 +739,7 @@ const crop = () => {
         </el-dialog>
 
 
-        <el-dialog v-model="form.cancelShow" title="撤销" width="500" :before-close="handleClose">
+        <el-dialog v-model="form.cancelShow" title="撤销" width="500" :before-close="handleClose" destroy-on-close>
           <span>撤销修改审核么</span>
           <template #footer>
             <div class="dialog-footer">
@@ -751,7 +751,7 @@ const crop = () => {
           </template>
         </el-dialog>
 
-        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose">
+        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose" destroy-on-close>
           <p>修改人: {{ form.auditPost.applicant }}</p>
           <p>提交时间: {{ timestampToFormattedString(form.auditPost.application_time) }}</p>
           <el-form-item label="修改原因: ">

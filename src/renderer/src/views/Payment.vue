@@ -1,5 +1,5 @@
 <script setup>
-import PaymentList from './PaymentList.vue';
+import PaymentList from './PaymentList.vue'
 </script>
 
 
@@ -13,7 +13,7 @@ import PaymentList from './PaymentList.vue';
       <RouterView v-slot="{ Component }">
         <transition name="fade">
           <keep-alive>
-            <component :is="Component" :id="$route.params.id"></component>
+            <component :is="Component" :detail-id="$route.params.id"></component>
           </keep-alive>
         </transition>
       </RouterView>

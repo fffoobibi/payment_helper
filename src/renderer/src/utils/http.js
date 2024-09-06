@@ -2,8 +2,10 @@ import axios from 'axios'
 import { ElLoading } from 'element-plus'
 import Message from '@/utils/message'
 import logger from '@/utils/logger'
+import { useUserStore } from '@/stores'
 
 const env = import.meta.env
+const store = useUserStore()
 const contentTypeForm = 'application/x-www-form-urlencoded;charset=UTF-8'
 const contentTypeJson = 'application/json'
 const instance = axios.create({
@@ -21,10 +23,14 @@ instance.interceptors.request.use(
       loading = ElLoading.service({
         lock: true,
         text: config.loadingText || '加载中...',
-        background: 'rgba(0, 0, 0, 0.7)'
+        background: 'rgba(0, 0, 0, 0.2)',
       })
     }
 
+    if (config.url != '/passport/login') {
+      const userId = store.user.id
+      config.data?.set('user_id', userId)
+    }
     return config
   },
   (error) => {
@@ -91,11 +97,11 @@ instance.interceptors.response.use(
     }
   },
   (error) => {
-    if (error.config.showLoading && loading) {
+    if (error.response.config.showLoading && loading) {
       loading.close()
     }
     logger.error(
-      `[${response.config?.method?.toUpperCase()}] ${response.config.url} fail, error is `,
+      `[${error.response.config?.method?.toUpperCase()}] ${response.config.url} fail, error is `,
       error
     )
     return Promise.reject({ showError: true, msg: '网络异常' })

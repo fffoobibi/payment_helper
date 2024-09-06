@@ -1,5 +1,6 @@
 <template>
-    <div class="infinite-scroll-container" @scroll="handleScroll" ref="scrollContainer" v-loading="loading">
+    <div class="infinite-scroll-container" ref="scrollContainer" v-loading="loading" @wheel="handleWheel"
+        element-loading-text="加载中" element-loading-background="transparent">
         <div v-if="empty" style="display: flex; justify-content: center; align-items: center; height: 100%;">
             <slot name="empty">
                 <el-empty :image-size="200" />
@@ -29,6 +30,10 @@ import _ from 'lodash'
 
 const props = defineProps({
     height: [Number, null],
+    limit: {
+        type: Number,
+        default: 10
+    },
     fetch: {
         type: Function,
         required: true
@@ -44,13 +49,12 @@ const props = defineProps({
         }
     }
 })
+const limit = ref(props.limit)
 
-console.log('props ', props);
-const emit = defineEmits(["on-fetch-done"])
+const emit = defineEmits(["on-fetch-done", "on-fetch-start"])
 const items = ref([])
 const loading = ref(false)
 const page = ref(1)
-const limit = ref(10)
 const error = ref(false)
 const errorMessage = ref('')
 const noMoreData = ref(false)
@@ -58,17 +62,24 @@ const scrollContainer = ref(null)
 const totalCount = ref(null)
 
 const fetchData = async () => {
-    if (loading.value || noMoreData.value) return;
-    loading.value = true;
-    error.value = false;
+    if (loading.value || noMoreData.value) {
+        console.log('无数据了')
+        return
+    }
+    loading.value = true
+    error.value = false
     try {
+        emit('on-fetch-start', { limit: limit.value, page: page.value })
         const response = await props.fetch(page.value, limit.value)
         if (props.stopLoad(response, page.value)) {
             const rs = response[props.maps.data]
             const total = response[props.maps.total]
             emit('on-fetch-done', { total, page: page.value })
             totalCount.value = total
-            items.value.push(...rs)
+            items.value.push(...rs.map((v, index) => {
+                v.NUMBER = (page.value - 1) * limit.value + index + 1
+                return v
+            }))
             page.value += 1;
             noMoreData.value = true
         } else {
@@ -76,7 +87,10 @@ const fetchData = async () => {
             const total = response[props.maps.total]
             emit('on-fetch-done', { total, page: page.value })
             totalCount.value = total
-            items.value.push(...rs)
+            items.value.push(...rs.map((v, index) => {
+                v.NUMBER = (page.value - 1) * limit.value + index + 1
+                return v
+            }))
             page.value += 1
         }
     } catch (error) {
@@ -96,77 +110,50 @@ const empty = computed(() => {
     }
 })
 
-const handleScroll = _.debounce(async (event) => {
-    const { clientHeight, scrollHeight, scrollTop } = event.target
-    console.log(clientHeight, scrollHeight)
-    if (scrollTop + clientHeight >= scrollHeight - 4) {
-        await fetchData()
-    } else {
-        console.log(scrollTop, clientHeight, scrollHeight, scrollTop + clientHeight)
-    }
 
+const handleWheel = _.debounce(async (event) => {
+    const container = scrollContainer.value
+    const { clientHeight, scrollHeight, scrollTop } = container
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 4
+    if (event.deltaY > 0 && isAtBottom) {
+        await fetchData()
+    }
 }, 200)
 
-function loadMoreItems() {
-    if (loading.value) {
-        return; // 如果已经在加载中，则不再触发加载
-    }
-    loading.value = true;
-    setTimeout(() => {
-        const currentLength = items.value.length;
-        const newItems = Array.from({ length: 2 }, (_, index) => ({
-            id: currentLength + index,
-            text: `Item ${currentLength + index + 1}`
-        }));
-        items.value = [...items.value, ...newItems];
-        loading.value = false;
 
-        // 检查是否需要继续加载
-        const container = scrollContainer.value;
-        if (container) {
-            const { clientHeight, scrollHeight } = container;
-            if (clientHeight >= scrollHeight) {
-                loadMoreItems(); // 如果容器未被填满，继续加载
-            }
-        }
-    }, 1000);
-}
-const flag = ref(false)
-
-watch(flag, () => {
-    fetchData()
-})
 const reload = () => {
-    console.log('reload ....');
     const itemLength = items.value.length
     items.value.splice(0, itemLength)
     loading.value = false
     page.value = 1
-    limit.value = 10
     error.value = false
     errorMessage.value = ''
     noMoreData.value = false
-    flag.value = !flag.value
+    fetchData()
 }
 
-// Fetch initial data when component is mounted
 onMounted(() => {
-    console.log('fetch ===> ');
     fetchData()
 })
 
+const update = (number, callback) => {
+    if (items.value.length && items.value[number - 1]) {
+        const d = items.value[number - 1]
+        callback(d)
+    }
+}
+
 defineExpose({
-    reload
+    reload,
+    update
 })
 
 </script>
 
 <style scoped>
 .infinite-scroll-container {
-    /* height: 500px; */
     overflow-y: auto;
     height: v-bind("props.height + 'px'");
-
 }
 
 ul {

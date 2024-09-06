@@ -1,5 +1,8 @@
 <script setup>
 import BankAccountIncome from "@/views/BankAccountIncome.vue"
+import BankAccountPayout from "@/views/BankAccountPayout.vue"
+import BankAccountHistory from "@/views/BankAccountHistory.vue"
+
 import { reactive, ref, watch, onMounted } from 'vue'
 import { storeToRefs } from "pinia"
 import { useAccountStore, useUserStore } from "@/stores"
@@ -198,8 +201,11 @@ const renderTableRowClass = ({ row }) => {
   }
   return name
 }
+const incomeDrawerRef = ref(null)
+const payoutDrawerRef = ref(null)
 
 const form = reactive({
+  currentTab: '银行账户',
   available_balance: "",
   currency: "",
   mode: '',
@@ -245,8 +251,21 @@ const form = reactive({
 
   incomeShow: false,
   incomes: {
-    accountId: ''
-  }
+    accountId: '',
+    currency: '',
+  },
+
+  payoutShow: false,
+  payout: {
+    accountId: '',
+    currency: '',
+  },
+
+  historyShow: false,
+  history: {
+    accountId: '',
+    currency: '',
+  },
 })
 
 const formState = reactive({
@@ -342,11 +361,6 @@ const resetForm = () => {
   }
   formRef.value?.resetFields()
 }
-const handleCancel = () => {
-  resetForm()
-  form.mode = 'view'
-  form.show = false
-}
 
 const addTransfer = () => {
   resetForm()
@@ -356,40 +370,23 @@ const addTransfer = () => {
   form.show = true
 }
 const viewIncomes = async (row) => {
-  // const data = await api.transfer.getDetail({ user_id: store.user.id, id: row.id })
-  // form.post = {
-  //   out_account_id: data.out_account_id,
-  //   in_account_id: data.in_account_id,
-  //   origin_amount: data.origin_amount,
-  //   currency: data.currency,
-  //   received_amount: data.received_amount,
-  //   received_currency: data.received_currency,
-  //   note: data.note,
-  //   in_account_title_id: data.in_account_title_id,
-  //   out_account_title_id: data.out_account_title_id,
-  //   attachment_list: data.attachment_list.map(v => { return { url: v.path } }),
-  // }
+  form.incomes.currency = row.currency
   form.incomes.accountId = row.id
   form.incomeShow = true
+  form.currentTab = '收入'
 }
 
-const editTransfer = async (row) => {
-  console.log('pay', bank.payouts, 'in', bank.incomes)
-  const data = await api.transfer.getDetail({ user_id: store.user.id, id: row.id })
-  form.post = {
-    out_account_id: data.out_account_id,
-    in_account_id: data.in_account_id,
-    origin_amount: data.origin_amount,
-    currency: data.currency,
-    received_amount: data.received_amount,
-    received_currency: data.received_currency,
-    note: data.note,
-    in_account_title_id: data.in_account_title_id,
-    out_account_title_id: data.out_account_title_id,
-    attachment_list: data.attachment_list.map(v => { return { url: v.path } }),
-  }
-  form.mode = 'edit'
-  form.show = true
+const viewPayouts = async (row) => {
+  form.history.currency = row.currency
+  form.history.accountId = row.id
+  form.payoutShow = true
+  form.currentTab = '支出'
+}
+
+const viewHistory = async (row) => {
+  form.historyShow = true
+  form.history.accountId = row.id
+  form.currentTab = '历史'
 }
 
 const noteTransfer = async (row) => {
@@ -398,39 +395,12 @@ const noteTransfer = async (row) => {
   form.notePost.voucher_ext_id = row.voucher_ext_id
   form.noteShow = true
 }
-const submitNoteTransit = async () => {
-  try {
-    const resp = await api.transfer.modifyNote({ user_id: store.user.id, note: form.notePost.note, voucher_ext_id: form.notePost.voucher_ext_id })
-    form.noteShow = false
-    message.success("备注已修改!")
-  } catch (error) {
-    message.warning(error)
-  }
-}
 
 const cancelTransfer = async (row) => {
   form.cancelShow = true
   form.cancelPost.voucher_ext_id = row.voucher_ext_id
 }
 
-const submitCancelTransfer = async () => {
-  try {
-    const resp = await api.transfer.cancelTransfer({ user_id: store.user.id, voucher_ext_id: form.cancelPost.voucher_ext_id })
-    form.cancelShow = false
-    message.success("修改已撤销!")
-    onSearch(1, null)
-  } catch (error) {
-    message.warning(error)
-  }
-}
-
-const auditTransfer = async (row) => {
-  form.auditShow = true
-  form.auditPost.applicant = row.voucher_ext_last.applicant
-  form.auditPost.application_reason = row.voucher_ext_last.application_reason
-  form.auditPost.application_time = row.voucher_ext_last.application_time
-  form.auditPost.voucher_ext_id = row.voucher_ext_id
-}
 
 const tableState = {
   isToday(timestamp) {
@@ -457,159 +427,171 @@ const tableState = {
       } else {
         return ['今日未盘', 'red']
       }
-      // t = datetime.fromtimestamp(self.check_accounts_time).strftime('%Y-%m-%d')
-      //       if t == datetime.now().strftime('%Y-%m-%d'):
-      //           return datetime.fromtimestamp(self.check_accounts_time).strftime('%Y/%m/%d %H:%M'), '#5F89DF'
-      //       return '今日未盘', 'red'
     }
   }
 }
 
-const submitAuditTransfer = async () => {
-  try {
-    const resp = await api.transfer.auditTransfer({ user_id: store.user.id, voucher_ext_id: form.auditPost.voucher_ext_id })
-    form.auditShow = false
-    message.success("修改审核已通过!")
-    onSearch(1, null)
-  } catch (error) {
-    message.warning(error)
-  }
-}
 
 </script>
 
 <template>
   <Layout>
     <template #layout-main-inner>
-      <Header>
-        <template #title>
-          <h4>银行账户</h4>
-        </template>
-
-        <template #option>
-          <el-button size="small" class="option-btn" link>
-            <i class="iconfont icon-setting"></i>
-          </el-button>
-        </template>
-      </Header>
-
-      <div class="pannel">
-        <el-form :inline="true" :model="queryForm.search" class="demo-form-inline" ref="queryFormRef">
-          <el-form-item label="银行名称">
-            <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable />
-          </el-form-item>
-          <el-form-item>
-            <el-space alignment="center">
-              <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
-              <el-button type="primary" @click="addTransfer">日志</el-button>
-              <el-popover placement="bottom" :width="380" trigger="click">
-                <template #reference>
-                  <el-button type="primary"> {{ `账号隐藏 (${hiddenAccounts.length})` }}
-                  </el-button>
-                </template>
-                <el-tree node-key="id" :default-checked-keys="hiddenAccounts" :data="accountMenus" show-checkbox
-                  check-on-click-node @node-click="(d, { checked }) => {
-          if (!d.children) {
-            const item = queryForm.tableData.find(v => v.id === d.id)
-            console.log('item ', item)
-            if (item) {
-              if (checked) {
-                item.__hidden = true
-              } else {
-                item.__hidden = false
-              }
+      <el-tabs v-model="form.currentTab" type="border-card" class="bank-tabs" closable @tab-remove="name => {
+        if (name == '收入') {
+          form.incomeShow = false
+        } else if (name == '支出') {
+          form.payoutShow = false
+        } else if (name == '历史') {
+          form.historyShow = false
+        }
+        form.currentTab = '银行账户'
+      }">
+        <el-tab-pane label="银行账户" :closable="false" name="银行账户">
+          <template #label>
+            <span class="h4">银行账户</span>
+          </template>
+          <div class="pannel">
+            <el-form :inline="true" :model="queryForm.search" class="demo-form-inline" ref="queryFormRef">
+              <el-form-item label="银行名称">
+                <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable />
+              </el-form-item>
+              <el-form-item>
+                <el-space alignment="center">
+                  <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
+                  <el-button type="primary" @click="addTransfer">日志</el-button>
+                  <el-popover placement="bottom" :width="380" trigger="click">
+                    <template #reference>
+                      <el-button type="primary"> {{ `账号隐藏 (${hiddenAccounts.length})` }}
+                      </el-button>
+                    </template>
+                    <el-tree node-key="id" :default-checked-keys="hiddenAccounts" :data="accountMenus" show-checkbox
+                      check-on-click-node @node-click="(d, { checked }) => {
+        if (!d.children) {
+          const item = queryForm.tableData.find(v => v.id === d.id)
+          console.log('item ', item)
+          if (item) {
+            if (checked) {
+              item.__hidden = true
+            } else {
+              item.__hidden = false
             }
           }
-          console.log('click dd', d, checked);
-        }" default-expand-all />
-              </el-popover>
-            </el-space>
+        }
+        console.log('click dd', d, checked);
+      }" default-expand-all />
+                  </el-popover>
+                </el-space>
 
-          </el-form-item>
-        </el-form>
+              </el-form-item>
+            </el-form>
 
-        <ContextMenu ref="menuRef" :target-element="tableRef" @item-click="menuItemClick" :menu-items="menuItems">
-        </ContextMenu>
+            <ContextMenu ref="menuRef" :target-element="tableRef" @item-click="menuItemClick" :menu-items="menuItems">
+            </ContextMenu>
 
-        <el-table ref="tableRef" :data="queryForm.tableData" :height="tableHeight" highlight-current-row row-key="id"
-          :row-class-name="renderTableRowClass" @row-contextmenu="(row, col, e) => {
-          menuRef.pop(row)
-        }">
-          <template #empty>
-            <el-empty :image-size="200" />
-          </template>
-          <el-table-column label="序号" width="60">
-            <template #default="scope">
-              <div>{{ scope.$index + 1 + (queryForm.page.currentPage - 1) * queryForm.page.pageSize }}</div>
-            </template>
-          </el-table-column>
-          <el-table-column label="摘要信息">
-            <template #default="scope">
-              <div>名称：{{ scope.row.account_name }}</div>
-              <div>类型：<span style="color:gray">{{ `${scope.row.type_name} (${scope.row.company_name})` }}</span></div>
-            </template>
-          </el-table-column>
-          <el-table-column label="账户余额">
-            <template #default="scope">
-              <div><span style="font-weight: bold;">{{ numberFmt(scope.row.ending_balance) }}</span> {{ " " +
-          scope.row.currency }}</div>
-            </template>
-          </el-table-column>
-          <el-table-column label="今日盘账">
-            <template #default="scope">
-              <div :class="tableState.getAccountState(scope.row)[1]">{{ tableState.getAccountState(scope.row)[0] }}
-              </div>
-            </template>
-          </el-table-column>
+            <el-table ref="tableRef" :data="queryForm.tableData" :height="tableHeight" highlight-current-row
+              row-key="id" :row-class-name="renderTableRowClass" @row-contextmenu="(row, col, e) => {
+        menuRef.pop(row)
+      }">
+              <template #empty>
+                <el-empty :image-size="200" />
+              </template>
+              <el-table-column label="序号" width="60">
+                <template #default="scope">
+                  <div>{{ scope.$index + 1 + (queryForm.page.currentPage - 1) * queryForm.page.pageSize }}</div>
+                </template>
+              </el-table-column>
+              <el-table-column label="摘要信息">
+                <template #default="scope">
+                  <div>名称：{{ scope.row.account_name }}</div>
+                  <div>类型：<span style="color:gray">{{ `${scope.row.type_name} (${scope.row.company_name})` }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="账户余额">
+                <template #default="scope">
+                  <div><span style="font-weight: bold;">{{ numberFmt(scope.row.ending_balance) }}</span> {{ " " +
+        scope.row.currency }}</div>
+                </template>
+              </el-table-column>
+              <el-table-column label="今日盘账">
+                <template #default="scope">
+                  <div :class="tableState.getAccountState(scope.row)[1]">{{ tableState.getAccountState(scope.row)[0]
+                    }}
+                  </div>
+                </template>
+              </el-table-column>
 
-          <el-table-column label="操作" width="200">
-            <template #default="scope">
-              <el-space>
-                <el-button type="success" @click="viewIncomes(scope.row)" link>
-                  收入
-                </el-button>
-                <el-button type="warning" @click="editTransfer(scope.row)" link>
-                  支出
-                </el-button>
-                <el-button type="danger" @click="noteTransfer(scope.row)" link>
-                  盘账
-                </el-button>
-                <el-button type="primary" @click="cancelTransfer(scope.row)" link>
-                  历史
-                </el-button>
-              </el-space>
-            </template>
-          </el-table-column>
+              <el-table-column label="操作" width="200">
+                <template #default="scope">
+                  <el-space>
+                    <el-button type="success" @click="viewIncomes(scope.row)" link>
+                      收入
+                    </el-button>
+                    <el-button type="warning" @click="viewPayouts(scope.row)" link>
+                      支出
+                    </el-button>
+                    <el-button type="danger" @click="noteTransfer(scope.row)" link>
+                      盘账
+                    </el-button>
+                    <el-button type="primary" @click="viewHistory(scope.row)" link>
+                      历史
+                    </el-button>
+                  </el-space>
+                </template>
+              </el-table-column>
 
-        </el-table>
+            </el-table>
 
-        <el-pagination size="default" style="padding-top: 5px; position: fixed;bottom: 20px" :default-page-size="300"
-          v-show="queryForm.page.totalCount > 0" v-model:current-page="queryForm.page.currentPage"
-          v-model:page-size="queryForm.page.pageSize" background="true" :page-sizes="[10, 50, 100, 300]"
-          layout="total, sizes, prev, pager, next, jumper" :total="queryForm.page.totalCount" />
+            <el-pagination size="default" style="padding-top: 5px; position: fixed;bottom: 20px"
+              :default-page-size="300" v-show="queryForm.page.totalCount > 0"
+              v-model:current-page="queryForm.page.currentPage" v-model:page-size="queryForm.page.pageSize"
+              background="true" :page-sizes="[10, 50, 100, 300]" layout="total, sizes, prev, pager, next, jumper"
+              :total="queryForm.page.totalCount" />
 
-        <el-drawer v-model="form.incomeShow" :size="width - 50" class="income-drawer" destroy-on-close>
-          <BankAccountIncome :account-id="form.incomes.accountId" />
-        </el-drawer>
+            <!-- <el-drawer v-model="form.incomeShow" :size="width - 50" class="income-drawer" destroy-on-close
+                ref="incomeDrawerRef">
+                <BankAccountIncome :account-id="form.incomes.accountId" :currency="form.incomes.currency"
+                  :drawer-ref="incomeDrawerRef" />
+              </el-drawer> -->
 
-        <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500" @opened="menuInputRef.focus()">
-          <template #footer>
-            <el-form-item label="目录名称">
-              <el-input v-model.trim="form.menuData.menuDir" clearable ref="menuInputRef"></el-input>
-            </el-form-item>
-            <div class="dialog-footer">
-              <el-button @click="() => {
-          form.menuData.menuDir = ''
-          form.menuShow = false
-        }">关闭</el-button>
-              <el-button type="primary" @click="addMenu">
-                确认
-              </el-button>
-            </div>
-          </template>
-        </el-dialog>
+            <!-- <el-drawer v-model="form.payoutShow" :size="width - 50" class="payout-drawer" destroy-on-close
+                ref="payoutDrawerRef">
+                <BankAccountPayout :account-id="form.payout.accountId" :currency="form.payout.currency"
+                  :drawer-ref="payoutDrawerRef" />
+              </el-drawer> -->
 
-      </div>
+            <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500" @opened="menuInputRef.focus()">
+              <template #footer>
+                <el-form-item label="目录名称">
+                  <el-input v-model.trim="form.menuData.menuDir" clearable ref="menuInputRef"></el-input>
+                </el-form-item>
+                <div class="dialog-footer">
+                  <el-button @click="() => {
+        form.menuData.menuDir = ''
+        form.menuShow = false
+      }">关闭</el-button>
+                  <el-button type="primary" @click="addMenu">
+                    确认
+                  </el-button>
+                </div>
+              </template>
+            </el-dialog>
+
+          </div>
+        </el-tab-pane>
+        <el-tab-pane v-if="form.incomeShow" label="收入" name="收入">
+          <BankAccountIncome :account-id="form.incomes.accountId" :currency="form.incomes.currency"
+            :drawer-ref="incomeDrawerRef" />
+        </el-tab-pane>
+        <el-tab-pane v-if="form.payoutShow" label="支出" name="支出">
+          <BankAccountPayout :account-id="form.payout.accountId" :currency="form.payout.currency"
+            :drawer-ref="payoutDrawerRef" />
+        </el-tab-pane>
+        <el-tab-pane v-if="form.historyShow" label="历史" name="历史">
+          <BankAccountHistory :account-id="form.history.accountId" :currency="form.payout.currency"/>
+        </el-tab-pane>
+      </el-tabs>
 
     </template>
   </Layout>
@@ -617,7 +599,7 @@ const submitAuditTransfer = async () => {
 
 
 <style scoped>
-h4 {
+.h4 {
   padding: 0 10px;
   color: #333;
   font-weight: bold;
@@ -681,23 +663,39 @@ h4 {
   text-align: left;
 }
 
-:deep(.income-drawer .el-drawer__body) {
-  padding: 10px !important;
-  background-color: #F5F6F7
+:deep(.el-tabs__nav-scroll) {
+  height: 36px;
+  background-color: white !important;
+  border: none !important;
+  border-bottom: 1px solid #eee !important;
 }
 
-:deep(.income-drawer header) {
-  margin-bottom: 0px;
-  padding-top: 10px !important
+:deep(.el-tabs__header),
+:deep(.el-tabs__nav),
+:deep(.el-tabs__item) {
+  height: 36px;
+  border: none !important
 }
 
-:deep(.payout-drawer .el-drawer__body) {
-  padding: 10px !important;
-  background-color: #F5F6F7
+:deep(.el-tabs__nav .el-tabs__item:first-child .el-icon.is-icon-close) {
+  display: none;
 }
 
-:deep(.payout-drawer header) {
-  margin-bottom: 0px;
-  padding-top: 10px !important
+:deep(.el-tabs__nav .el-tabs__item:first-child) {
+  padding: 0px 12px;
+  font-size: 15px;
+}
+
+:deep(.el-tabs__item),
+:deep(.el-tabs__nav) {
+  border: none !important;
+}
+
+:deep(.el-tabs__content),
+:deep(.el-tabs) {
+  border: none !important;
+  padding: 0px !important;
+  margin: 0px !important;
+  background-color: transparent !important;
 }
 </style>

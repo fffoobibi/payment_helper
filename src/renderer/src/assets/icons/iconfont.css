@@ -1,8 +1,8 @@
 @font-face {
   font-family: "iconfont"; /* Project id 4661782 */
-  src: url('iconfont.woff2?t=1725260297766') format('woff2'),
-       url('iconfont.woff?t=1725260297766') format('woff'),
-       url('iconfont.ttf?t=1725260297766') format('truetype');
+  src: url('iconfont.woff2?t=1725524375186') format('woff2'),
+       url('iconfont.woff?t=1725524375186') format('woff'),
+       url('iconfont.ttf?t=1725524375186') format('truetype');
 }
 
 .iconfont {
@@ -11,6 +11,30 @@
   font-style: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-chehuisekuai:before {
+  content: "\e602";
+}
+
+.icon-chehui:before {
+  content: "\e643";
+}
+
+.icon-pass:before {
+  content: "\e72a";
+}
+
+.icon-combine:before {
+  content: "\e73a";
+}
+
+.icon-unpass:before {
+  content: "\e76c";
+}
+
+.icon-remove:before {
+  content: "\e797";
 }
 
 .icon-shenpizhong:before {
@@ -103,14 +127,6 @@
 
 .icon-max:before {
   content: "\e869";
-}
-
-.icon-payment-record:before {
-  content: "\e7a8";
-}
-
-.icon-payment-add:before {
-  content: "\e7c0";
 }
 
 .icon-import:before {

@@ -157,7 +157,7 @@ defineExpose({
             </el-upload>
         </el-tooltip>
 
-        <el-drawer v-model="previewImageShow" size="100%">
+        <el-drawer v-model="previewImageShow" size="100%" destroy-on-close	append-to-body>
             <div style="display: flex; justify-content: center;align-items: center">
                 <el-image :zoom-rate="1.2" :max-scale="7" :min-scale="0.2" fit="cover"
                     :initial-index="currentPreviewImageIndex" :src="currentPreviewSrc" :preview-src-list="previewList">

@@ -3,7 +3,7 @@ import { ref, watch, computed, reactive, onMounted } from "vue"
 import api from "@/api"
 import message from "@/utils/message"
 import { useUserStore, useAccountStore } from "@/stores/index"
-import { timestampToFormattedString, numberFmt } from "@/utils/format"
+import { timestampToFormattedString, numberFmt, dateTimeFmt, subNumbers } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import logger from "../utils/logger"
 const { height } = useClient()
@@ -28,7 +28,7 @@ const loading = ref(false)
 const listRef = ref(null)
 
 const onSearch = async (page, limit) => {
-    const resp = await api.incomeRecord.getIncomeRecords({
+    const resp = await api.payouts.getPayoutList({
         page: page,
         limit: limit,
         user_id: store.user.id,
@@ -67,14 +67,15 @@ const editFormRef = ref(null)
 const editUploadRef = ref(null)
 
 const form = reactive({
-    mode: 'add', // add, edit
+    mode: 'add', // add, edit 
+
     post: {
         account_id: props.accountId,
         origin_amount: null,
         currency: props.currency,
         attachment_list: [],
         note: '',
-        in_account_title_id: null,
+        account_title_id: null,
     },
 
     noteShow: false,
@@ -88,7 +89,7 @@ const form = reactive({
     editNumber: null,
     editPost: {
         voucher_ext_id: null,
-        in_account_title_id: null,
+        account_title_id: null,
         account_id: props.accountId,
         origin_amount: '',
         currency: '',
@@ -123,8 +124,11 @@ const formState = reactive({
     in_account_id_currency: '',
     out_account_id_currency: '',
     available_balance: computed(() => {
-        const rs = parseFloat(formState.out_account_id_balance || '0') - parseFloat(form.post.origin_amount || '0')
+        const rs = subNumbers(formState.out_account_id_balance, form.post.origin_amount)
         return numberFmt(rs)
+    }),
+    max_origin_amount: computed(() => {
+        return formState.out_account_id_balance
     }),
     available_color: computed(() => {
         if (form.post.origin_amount) {
@@ -161,28 +165,28 @@ const formRules = reactive({
 })
 
 // 撤回
-const cancelIncome = row => {
+const cancelPayout = row => {
     form.cancelNumber = row.NUMBER
     form.cancelPost.voucher_ext_id = row.voucher_ext_last.voucher_ext_id
     form.cancelShow = true
     console.log(form.cancelPost, row);
 }
-const submitCancelIncome = async () => {
+const submitCancelPayout = async () => {
     try {
-        const resp = await api.incomeRecord.cancelIncome({ voucher_ext_id: form.cancelPost.voucher_ext_id })
+        const resp = await api.payouts.cancelPayout({ voucher_ext_id: form.cancelPost.voucher_ext_id })
         form.cancelShow = false
         message.success("修改已撤销!")
         listRef.value.update(form.cancelNumber, (d) => {
             d.voucher_ext_last.is_audit = 0
         })
     } catch (error) {
-        logger.error('收入历史撤回失败,', error)
+        logger.error('支出历史撤回失败,', error)
     }
 }
 
 
 // 审核
-const auditIncome = row => {
+const auditPayout = row => {
     form.auditPost.applicant = row.voucher_ext_last.applicant
     form.auditPost.application_reason = row.voucher_ext_last.application_reason
     form.auditPost.application_time = row.voucher_ext_last.application_time
@@ -191,9 +195,9 @@ const auditIncome = row => {
     form.auditShow = true
 
 }
-const submitAuditIncome = async () => {
+const submitAuditPayout = async () => {
     try {
-        await api.incomeRecord.auditIncome({ voucher_ext_id: form.auditPost.voucher_ext_id })
+        await api.payouts.auditPayout({ voucher_ext_id: form.auditPost.voucher_ext_id })
         form.auditShow = false
         message.success("修改审核已通过!")
         listRef.value.reload()
@@ -213,7 +217,7 @@ const modifyNote = (row) => {
 const submitModifyNote = async () => {
     try {
         const data = { ...form.notePost }
-        const resp = await api.incomeRecord.modifyNote(data)
+        await api.payouts.modifyNote(data)
         listRef.value.update(form.noteNumber, (d) => {
             d.voucher_ext_last.note = data.note
         })
@@ -223,6 +227,7 @@ const submitModifyNote = async () => {
         logger.error("收入备注修改失败", error)
     }
 }
+
 // 编辑
 const editNote = info => {
     console.log(store.user);
@@ -233,11 +238,11 @@ const editNote = info => {
     form.editPost.note = info.voucher_ext_last.note
     form.editPost.voucher_ext_id = info.voucher_ext_last.voucher_ext_id
     form.editPost.origin_amount = info.origin_total_amount
-    form.editPost.in_account_title_id = info.account_title_id
+    form.editPost.account_title_id = info.payment_info.account_title_id
     form.editShow = true
 }
 
-const submitEditIncome = async () => {
+const submitEditPayout = async () => {
     editFormRef.value.validate().then(async valid => {
         try {
             if (valid) {
@@ -249,7 +254,7 @@ const submitEditIncome = async () => {
                 } else {
                     data.attachment_list = JSON.stringify([])
                 }
-                await api.incomeRecord.editIncome(data)
+                await api.payouts.editPayout(data)
                 form.editShow = false
                 listRef.value.update(form.editNumber, (d) => {
                     d.voucher_ext_last.is_audit = 1
@@ -274,12 +279,12 @@ const onSubmit = () => {
             const data = { ...form.post }
             data.attachment_list = JSON.stringify(uploads)
             try {
-                const resp = await api.incomeRecord.saveIncome(data)
-                message.success("收入已添加!")
+                const resp = await api.payouts.savePayout(data)
+                message.success("支出已添加!")
                 formRef.value.resetFields()
                 listRef.value.reload()
             } catch (error) {
-                message.error("收入添加失败!")
+                message.error("支出添加失败!")
             }
         }
     })
@@ -313,6 +318,8 @@ watch(() => form.post.account_id, async () => {
         formState.out_account_id_loading = false
         formState.out_account_id_balance = numberFmt(resp.available_balance)
         formState.out_account_id_currency = resp.currency
+        // formState.available_balance= subNumbers(numberFmt(resp.available_balance), form.post.origin_amount)
+        form.post.currency = resp.currency
     } else {
         formState.out_account_id_color = 'transparent'
         formState.out_account_id_balance = ''
@@ -320,13 +327,14 @@ watch(() => form.post.account_id, async () => {
     }
 }, { immediate: true })
 
+
 </script>
 
 <template>
-    <div style="display:flex; width:100%; height: 100%; padding: 10px; padding-bottom: 0px; margin: 0px;">
+    <div style="display:flex; width:100%;height: 100%; padding: 10px;">
         <div class="left">
             <div class="left-main-pannel">
-                <div>收入历史 <span class="display-result">({{ search.totalPage }}条记录)</span>
+                <div>支出历史 <span class="display-result">({{ search.totalPage }}条记录)</span>
                     <el-button link :loading="loading" @click="() => {
                     listRef.reload()
                 }">
@@ -349,14 +357,15 @@ watch(() => form.post.account_id, async () => {
                     <el-option label="上月" :value="5"></el-option>
                 </el-select>
             </div>
-            <LoadingList :fetch="onSearch" :stop-load="stopLoad" class="loading-list" ref="listRef"
+            <LoadingList :fetch="onSearch" :stop-load="stopLoad" ref="listRef" class='loading-list'
                 @on-fetch-start="onFetchStart" @on-fetch-done="onFetchDone">
                 <template #default="{ info }">
                     <div :class="['record-item', info.voucher_ext_last.is_audit == 1 ? 'audit' : '']">
                         <div> 银行账号： <span class="bold">{{ info.voucher_ext_last?.account_name }}</span> </div>
-                        <div> 收入编号： <span>{{ info.sn }} </span></div>
-                        <div>收入科目：<span>{{ info.account_title }}</span></div>
-                        <div>创建时间：<span>{{ timestampToFormattedString(info.create_time)
+                        <div> 支出编号： <span>{{ info.sn }} </span></div>
+                        <div>支出科目：<span>{{ info?.payment_info?.account_title_parent + ' - ' +
+                    info?.payment_info?.account_title }}</span></div>
+                        <div>创建时间：<span>{{ dateTimeFmt(info.create_time, true)
                                 }}</span></div>
                         <div> 创建： <span>{{ info.creator }}({{ info.department_name }})</span> </div>
                         <div>金额：<el-text>{{ numberFmt(info.origin_total_amount) }}</el-text> <span class="red">{{
@@ -364,16 +373,17 @@ watch(() => form.post.account_id, async () => {
                         <div>备注：<span>{{ info.voucher_ext_last?.note }}</span></div>
                         <div class="flex-row">附件：
                             <el-button link>查看图片[{{ info.attachment_list?.length }}]</el-button>
-                            <el-button link type="primary" @click="modifyNote(info)">修改备注</el-button>
+                            <el-button link type="primary" v-if="store.canModifyNote"
+                                @click="modifyNote(info)">修改备注</el-button>
                             <el-button v-if="store.canModify && info.voucher_ext_last.is_audit !== 1" link type="danger"
                                 @click="editNote(info)"> <i class="iconfont icon-edit" style="font-size:10pt"></i>编辑
                             </el-button>
                             <el-button v-if="store.canCancel && info.voucher_ext_last.is_audit == 1" link type="info"
-                                @click="cancelIncome(info)"> <i class="iconfont icon-chehui"
+                                @click="cancelPayout(info)"> <i class="iconfont icon-chehui"
                                     style="font-size:10pt"></i>撤销
                             </el-button>
                             <el-button v-if="store.canAudit && info.voucher_ext_last.is_audit == 1" link type="success"
-                                @click="auditIncome(info)"> <i class="iconfont icon-pass" style="font-size:10pt"></i>审核
+                                @click="auditPayout(info)"> <i class="iconfont icon-pass" style="font-size:10pt"></i>审核
                             </el-button>
                         </div>
                     </div>
@@ -383,9 +393,9 @@ watch(() => form.post.account_id, async () => {
         </div>
         <div class="right">
             <div class="right-main-pannel">
-                <div>收入管理</div>
+                <div>支出管理</div>
                 <el-form :model="form" label-width="auto" ref="formRef" :rules="formRules">
-                    <el-form-item label="收款账号" prop="post.account_id" required>
+                    <el-form-item label="支出账号" prop="post.account_id" required>
                         <div style=" display: flex;flex-direction: column;width: 100%;"
                             v-loading="formState.out_account_id_loading">
                             <el-select v-model="form.post.account_id" filterable
@@ -394,37 +404,40 @@ watch(() => form.post.account_id, async () => {
                                     :value="item.id" />
                             </el-select>
 
-                            <div style="display: flex;justify-content: flex-start;align-items: center">
+                            <div style="display: flex;justify-content: space-between;align-items: center">
                                 <p><span :class="formState.out_account_id_color">实时余额 </span>
                                     <span style="color:black">{{ formState.out_account_id_balance }}</span>
+                                    <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
+                                </p>
+
+                                <p><span :class="formState.out_account_id_color">可用余额 </span>
+                                    <span style="color:black">{{ formState.available_balance }}</span>
                                     <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
                                 </p>
                             </div>
                         </div>
                     </el-form-item>
 
-                    <el-form-item label="收入科目" prop="post.in_account_title_id"
+                    <el-form-item label="支出科目" prop="post.account_title_id"
                         :rules="[{ message: '请选择收入科目', trigger: 'change', required: true }]">
-                        <el-select v-model="form.post.in_account_title_id" filterable
-                            :disabled="formState.getDisabledState('in_account_title_id')">
-                            <el-option v-for="item in bank.incomes" :key="item.id" :label="item.name"
+                        <el-select v-model="form.post.account_title_id" filterable>
+                            <el-option v-for="item in bank.payouts" :key="item.id" :label="item.name"
                                 :value="item.id" />
                         </el-select>
                     </el-form-item>
 
                     <el-form-item label="金额" prop="post.origin_amount" required
                         :rules="[{ message: '请输入金额', trigger: 'change', required: true }]">
-                        <div style=" display: flex;flex-direction: column;width: 100%;">
-                            <el-input-number v-model="form.post.origin_amount"
-                                :disabled="formState.getDisabledState('origin_amount')" :precision="2" :controls="false"
-                                style="width: 100%">
+                        <div style=" display: flex; width: 100%; justify-content: space-between">
+                            <el-input-number v-model="form.post.origin_amount" :precision="2" :controls="false"
+                                :max="formState.max_origin_amount" style="width: 70%">
                             </el-input-number>
+                            <el-select :validate-event="false" style="width: 30%; padding-left: 5px"
+                                v-model="form.post.currency">
+                                <el-option v-for="item in bank.currencies" :key="item.code" :label="item.code"
+                                    :value="item.code" />
+                            </el-select>
                         </div>
-                    </el-form-item>
-
-                    <el-form-item label="币种" prop="post.currency">
-                        <el-input v-model="form.post.currency" :disabled="formState.getDisabledState('currency')">
-                        </el-input>
                     </el-form-item>
 
                     <el-form-item label="备注" prop="post.note">
@@ -450,14 +463,15 @@ watch(() => form.post.account_id, async () => {
 
                 </el-form>
             </div>
+
         </div>
 
-        <el-drawer v-model="form.editShow" size="50%" destroy-on-close title="编辑" :rules="form.editRules"
+        <el-drawer v-model="form.editShow" size="50%" destroy-on-close title="支出编辑" :rules="form.editRules"
             @opened="form.mode = 'edit'" @closed="form.mode = 'add'">
             <el-form :model="form.editPost" label-width="auto" ref="editFormRef">
-                <el-form-item label="收入科目" prop="in_account_title_id" required>
-                    <el-select v-model="form.editPost.in_account_title_id" filterable>
-                        <el-option v-for="item in bank.incomes" :key="item.id" :label="item.name" :value="item.id" />
+                <el-form-item label="支出科目" prop="account_title_id" required>
+                    <el-select v-model="form.editPost.account_title_id" filterable>
+                        <el-option v-for="item in bank.payouts" :key="item.id" :label="item.name" :value="item.id" />
                     </el-select>
                 </el-form-item>
                 <el-form-item label="金额" prop="origin_amount">
@@ -486,7 +500,7 @@ watch(() => form.post.account_id, async () => {
                         <PictureFilled />
                     </el-icon>截图
                 </el-button>
-                <el-button type="primary" @click="submitEditIncome">
+                <el-button type="primary" @click="submitEditPayout">
                     确认
                 </el-button>
             </template>
@@ -509,7 +523,7 @@ watch(() => form.post.account_id, async () => {
             <template #footer>
                 <div class="dialog-footer">
                     <el-button @click="form.cancelShow = false">关闭</el-button>
-                    <el-button type="primary" @click="submitCancelIncome">
+                    <el-button type="primary" @click="submitCancelPayout">
                         确认
                     </el-button>
                 </div>
@@ -525,7 +539,7 @@ watch(() => form.post.account_id, async () => {
             <template #footer>
                 <div class="dialog-footer">
                     <el-button @click="form.auditShow = false">关闭</el-button>
-                    <el-button type="primary" @click="submitAuditIncome">
+                    <el-button type="primary" @click="submitAuditPayout">
                         确认
                     </el-button>
                 </div>
@@ -567,7 +581,6 @@ watch(() => form.post.account_id, async () => {
 }
 
 .right-main-pannel {
-    height: 100%;
     padding: 10px;
     padding-top: 5px;
     border-radius: 10px;
@@ -595,9 +608,9 @@ watch(() => form.post.account_id, async () => {
 .record-item {
     margin-right: 5px;
     margin-bottom: 10px;
-    background-color: white;
     padding: 10px;
     border-radius: 6px;
+    background-color: #fff;
     box-shadow: 0 2px 10px 0 #dfe2eb;
     color: #353535;
 }
@@ -606,10 +619,10 @@ watch(() => form.post.account_id, async () => {
     font-size: 9pt;
 }
 
-p,
 span {
     color: black;
-    font-size: 10pt
+    font-size: 10pt;
+    user-select: text
 }
 
 .bold {
@@ -629,8 +642,8 @@ div,
     color: red
 }
 
-.bold {
-    font-weight: bold;
+.gray {
+    color: gray
 }
 
 .audit {

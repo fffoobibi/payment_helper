@@ -1,5 +1,11 @@
 import Decimal from "decimal.js"
-const dateTimeFmt = date => {
+
+/**
+ * 将时间戳或日期转换成指定格式
+ * @param {String|Date|timestamp} date
+ * @returns
+ */
+const dateTimeFmt = (date, showDetail = false) => {
     //  auto 0
     const autoZero = (n) => (String(n).length === 1 ? '0' : '') + n
     // string to timestamp
@@ -7,6 +13,8 @@ const dateTimeFmt = date => {
     let oriSecond = date
     if (typeof date === 'String') {
         oriSecond = strToTimestamp(date)
+    } else if (date instanceof Date) {
+        oriSecond = date.getTime() / 1000
     }
     if (oriSecond > 9999999999) {
         oriSecond /= 1000
@@ -42,7 +50,13 @@ const dateTimeFmt = date => {
     if (mewDate.getFullYear() === Y && mewDate.getMonth() + 1 === m && mewDate.getDate() === d) {
         return `昨天`
     } else if (curDate.getFullYear() === Y) {
+        if (showDetail) {
+            return `${m}月${d}日 ${autoZero(H)}:${autoZero(i)}`
+        }
         return `${m}月${d}日`
+    }
+    if (showDetail) {
+        return `${Y}年${m}月${d}日 ${autoZero(H)}:${autoZero(i)}`
     }
     return `${Y}年${m}月${d}日`
 }
@@ -53,7 +67,7 @@ const dateTimeFmt = date => {
  * @returns
  */
 const numberFmt = n => {
-    if(!n){
+    if (!n) {
         return ''
     }
     return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
@@ -66,7 +80,7 @@ const numberFmt = n => {
  */
 const timestampToFormattedString = (timestamp) => {
     // 确保时间戳是以秒为单位
-    if (!timestamp){
+    if (!timestamp) {
         return ''
     }
     const date = new Date(timestamp * 1000);
@@ -96,10 +110,21 @@ const subNumbers = (v1, v2, digit = 2) => {
     return rs
 }
 
-
+const maxText = (str, length = 15) => {
+    if (!str) {
+        return ''
+    }
+    const s = str.toString().trim()
+    if (s.length >= length) {
+        const str = s.slice(0, length) + '...'
+        return str
+    }
+    return s
+}
 export {
     dateTimeFmt,
     numberFmt,
     timestampToFormattedString,
-    subNumbers
+    subNumbers,
+    maxText
 }

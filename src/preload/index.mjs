@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 const electron = {
   // 渲染进程 -> 主进程的调用
   login: data => ipcRenderer.invoke('login', data),
+  toLogin: () => ipcRenderer.invoke('to-login'),
   window: (action, data) => ipcRenderer.invoke('win-action', { action, data }),
   capture: () => ipcRenderer.invoke('btn-capture'),
   log: (level, ...args) => ipcRenderer.send('log-event', level, ...args),

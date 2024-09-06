@@ -94,7 +94,7 @@ function createWindow() {
   })
 
   // ================ ipc 监听事件列表 ================
-  // 登录
+  // 登录成功
   ipcMain.handle('login', (e, data) => {
     mainWindow.setResizable(true)
     mainWindow.setSize(mainWidth, mainHeight)
@@ -105,6 +105,16 @@ function createWindow() {
 
     // TODO: 添加托盘操作
     contextMenu.unshift({ label: data.username, click: () => { } })
+  })
+
+  // 去登录
+  ipcMain.handle('to-login', (e) => {
+    console.log('to-login')
+
+    mainWindow.setResizable(true)
+    mainWindow.setSize(loginWidth, loginHeight)
+    mainWindow.center() // 窗口居中
+    mainWindow.setResizable(false)
   })
 
   // 窗口控制
