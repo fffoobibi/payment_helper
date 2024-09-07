@@ -549,18 +549,6 @@ const tableState = {
               background="true" :page-sizes="[10, 50, 100, 300]" layout="total, sizes, prev, pager, next, jumper"
               :total="queryForm.page.totalCount" />
 
-            <!-- <el-drawer v-model="form.incomeShow" :size="width - 50" class="income-drawer" destroy-on-close
-                ref="incomeDrawerRef">
-                <BankAccountIncome :account-id="form.incomes.accountId" :currency="form.incomes.currency"
-                  :drawer-ref="incomeDrawerRef" />
-              </el-drawer> -->
-
-            <!-- <el-drawer v-model="form.payoutShow" :size="width - 50" class="payout-drawer" destroy-on-close
-                ref="payoutDrawerRef">
-                <BankAccountPayout :account-id="form.payout.accountId" :currency="form.payout.currency"
-                  :drawer-ref="payoutDrawerRef" />
-              </el-drawer> -->
-
             <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500" @opened="menuInputRef.focus()">
               <template #footer>
                 <el-form-item label="目录名称">
@@ -592,7 +580,6 @@ const tableState = {
           <BankAccountHistory :account-id="form.history.accountId" :currency="form.payout.currency"/>
         </el-tab-pane>
       </el-tabs>
-
     </template>
   </Layout>
 </template>

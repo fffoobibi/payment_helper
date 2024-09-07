@@ -14,6 +14,11 @@ const router = createRouter({
             component: () => import('@/views/Login.vue')
         },
         {
+            path: '/image',
+            name: 'image',
+            component: ()=> import('@/views/ImageView.vue')
+        },
+        {
             path: '/home',
             name: 'home',
             redirect: { name: 'payment' },

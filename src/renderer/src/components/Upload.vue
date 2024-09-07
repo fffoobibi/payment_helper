@@ -1,7 +1,8 @@
 <script setup>
 import axios from 'axios'
-import { computed, ref } from 'vue'
+import { computed, ref, toRaw } from 'vue'
 import logger from "@/utils/logger"
+import { viewImages } from "@/utils/tools"
 const fileList = defineModel()
 
 const emit = defineEmits(['done'])
@@ -41,9 +42,10 @@ const index = (url) => {
 
 const handlePreview = (uploadFile) => {
     const fileIndex = index(uploadFile.url)
-    currentPreviewImageIndex.value = fileIndex
-    currentPreviewSrc.value = uploadFile.url
-    previewImageShow.value = true
+    viewImages(toRaw(previewList.value), fileIndex)
+    // currentPreviewImageIndex.value = fileIndex
+    // currentPreviewSrc.value = uploadFile.url
+    // previewImageShow.value = true
 }
 
 const previewImageShow = ref(false)
@@ -51,6 +53,7 @@ const previewImageShow = ref(false)
 const previewList = computed(() => {
     return fileList.value.map(v => v.url)
 })
+
 const currentPreviewImageIndex = ref(0)
 
 const currentPreviewSrc = ref('')
@@ -118,6 +121,16 @@ const base64toFile = (dataUrl = '', filename = 'file') => {
     })
 }
 
+function dataURLToFile(dataUrl, fileName) {
+    const dataArr = dataUrl.split(',')
+    const mime = dataArr[0].match(/:(.*);/)[1]
+    const originStr = atob(dataArr[1])
+    return new File([originStr], fileName, { type: mime })
+}
+// dataURLToFile('data:text/plain;base64,YWFhYWFhYQ==', '测试文件')
+
+// File {name: '测试文件', lastModified: 1640784525620, lastModifiedDate: Wed Dec 29 2021 21:28:45 GMT+0800 (中国标准时间), webkitRelativePath: '', size: 7, …}
+
 const validate = (rule, value, callback) => {
     let count = 0
     value.forEach((v, index) => {
@@ -144,7 +157,8 @@ defineExpose({
 
 <template>
     <div>
-        <el-tooltip effect="dark" :content="'最多上传' + props.limit.toString() + '张图片'" placement="top" :disabled="props.disabled">
+        <el-tooltip effect="dark" :content="'最多上传' + props.limit.toString() + '张图片'" placement="top"
+            :disabled="props.disabled">
             <el-upload list-type="picture-card" accept="image/*" v-model:file-list="fileList" :action="props.action"
                 :auto-upload="false" :http-request="uploadImage" :limit="props.limit" :disabled="props.disabled"
                 :on-preview="handlePreview" :on-error="(rsp, f, fs) => { console.log('error upload', rsp) }"
@@ -157,7 +171,7 @@ defineExpose({
             </el-upload>
         </el-tooltip>
 
-        <el-drawer v-model="previewImageShow" size="100%" destroy-on-close	append-to-body>
+        <el-drawer v-model="previewImageShow" size="100%" destroy-on-close append-to-body>
             <div style="display: flex; justify-content: center;align-items: center">
                 <el-image :zoom-rate="1.2" :max-scale="7" :min-scale="0.2" fit="cover"
                     :initial-index="currentPreviewImageIndex" :src="currentPreviewSrc" :preview-src-list="previewList">

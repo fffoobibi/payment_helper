@@ -5,28 +5,29 @@ import Screenshots from 'electron-screenshots'
 import Store from 'electron-store'
 import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/favicon.ico?asset'
-import log from "electron-log"
-import fs from "fs"
+import log from 'electron-log'
+import fs from 'fs'
+import logger from '../renderer/src/utils/logger'
 
 // 日志配置
 log.transports.file.maxSize = 10 * 1024 * 1024 // 日志大小
 log.transports.file.level = 'debug' // level
 log.transports.console.level = false
 log.transports.file.resolvePathFn = () => {
-  const directoryPath = join(app.getPath('home'), ".payment_helper/logs")
+  const directoryPath = join(app.getPath('home'), '.payment_helper/logs')
   try {
     if (!fs.existsSync(directoryPath)) {
-      fs.mkdirSync(directoryPath, { recursive: true });
+      fs.mkdirSync(directoryPath, { recursive: true })
     }
   } catch (error) {
-    console.error(`Error creating directory: ${error.message}`);
+    console.error(`Error creating directory: ${error.message}`)
   }
   return join(directoryPath, 'main.log')
 }
 
 // 配置文件
 const store = new Store()
-console.log('store ', store)
+// console.log('store ', store)
 
 const NODE_ENV = process.env.NODE_ENV
 
@@ -55,6 +56,9 @@ function createWindow() {
       sandbox: false
     }
   })
+  const _windows = {
+    preview: null
+  }
 
   if (NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools()
@@ -104,7 +108,7 @@ function createWindow() {
     mainWindow.setResizable(true)
 
     // TODO: 添加托盘操作
-    contextMenu.unshift({ label: data.username, click: () => { } })
+    contextMenu.unshift({ label: data.username, click: () => {} })
   })
 
   // 去登录
@@ -119,6 +123,7 @@ function createWindow() {
 
   // 窗口控制
   ipcMain.handle('win-action', (e, { action, data }) => {
+    console.log('win action ==> ', e, action, data)
     const webContents = e.sender
     const win = BrowserWindow.fromWebContents(webContents)
     switch (action) {
@@ -137,6 +142,12 @@ function createWindow() {
       case 'close': {
         if (data.closeType == 0) {
           win.close()
+        } else if (data.closeType == 2) {
+          if (_windows.preview === null) {
+            _windows.preview = win
+          }
+          win.setSkipTaskbar(true)
+          win.hide()
         } else {
           win.setSkipTaskbar(true)
           win.hide()
@@ -148,30 +159,32 @@ function createWindow() {
 
   // 截图事件
   const screenshots = new Screenshots()
-  ipcMain.handle('btn-capture', e => {
+  ipcMain.handle('btn-capture', (e) => {
     screenshots.startCapture()
   })
 
   // 绑定全局快捷键
-  globalShortcut.register("ctrl+q", () => {
+  globalShortcut.register('ctrl+q', () => {
     screenshots.startCapture()
   })
   // 点击确定按钮回调事件
-  screenshots.on("ok", (e, buffer, bounds) => {
+  screenshots.on('ok', (e, buffer, bounds) => {
     // const src = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
-    const src = 'data:image/png;base64,' + btoa(new Uint8Array(buffer).reduce((data, btye) => data + String.fromCharCode(btye), ''))
+    const src =
+      'data:image/png;base64,' +
+      btoa(new Uint8Array(buffer).reduce((data, btye) => data + String.fromCharCode(btye), ''))
     mainWindow.webContents.send('key-capture', src)
   })
   // 点击取消按钮回调事件
-  screenshots.on("cancel", () => {
+  screenshots.on('cancel', () => {
     screenshots.endCapture()
   })
   // 点击保存按钮回调事件
-  screenshots.on("save", (e, buffer, bounds) => {
+  screenshots.on('save', (e, buffer, bounds) => {
     // console.log("capture", buffer, bounds)
   })
   // esc取消
-  globalShortcut.register("esc", () => {
+  globalShortcut.register('esc', () => {
     if (screenshots.$win?.isFocused()) {
       screenshots.endCapture()
     }
@@ -211,22 +224,89 @@ function createWindow() {
     console.log('set default ===> ', key, v)
   })
 
-  ipcMain.on("log-event", (event, level, ...args) => {
+  ipcMain.on('view-images', (event, urls, index) => {
+    let flag
+    if (_windows.preview === null) {
+      flag = true
+      _windows.preview = new BrowserWindow({
+        icon: icon,
+        width: mainWidth,
+        height: mainHeight,
+        show: false,
+        autoHideMenuBar: true,
+        title: '百舟打款助手',
+        titleBarStyle: 'hidden',
+        frame: false,
+        transparent: true,
+        closable: false,
+        resizable: true,
+        maximizable: true,
+        minWidth: mainWidth,
+        minHeight: mainHeight,
+        center: true,
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: true,
+          preload: join(__dirname, '../preload/index.mjs'),
+          sandbox: false
+        }
+      })
+    } else {
+      flag = false
+    }
+    const previewWindow = _windows.preview
+
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+      if (flag) {
+        previewWindow
+          .loadURL(process.env['ELECTRON_RENDERER_URL'])
+          .then(() => {
+            previewWindow.show()
+            previewWindow.webContents.send('preview-images', urls, index, Date.now())
+          })
+          .catch((err) => {
+            logger.error('image preview fail', err)
+          })
+      } else {
+        previewWindow.show()
+        previewWindow.center()
+        previewWindow.webContents.send('preview-images', urls, index, Date.now())
+      }
+    } else {
+      if (flag) {
+        previewWindow
+          .loadFile(join(__dirname, '../renderer/index.html'))
+          .then(() => {
+            previewWindow.show()
+            previewWindow.webContents.send('preview-images', urls, index, Date.now())
+          })
+          .catch((err) => {
+            logger.error('image preview fail', err)
+          })
+      } else {
+        previewWindow.show()
+        previewWindow.center()
+        previewWindow.webContents.send('preview-images', urls, index, Date.now())
+      }
+    }
+  })
+
+  ipcMain.on('log-event', (event, level, ...args) => {
     switch (level) {
-      case "info":
+      case 'info':
         log.info(...args)
-        break;
-      case "debug":
+        break
+      case 'debug':
         log.debug(...args)
-        break;
-      case "warn":
+        break
+      case 'warn':
         log.warn(...args)
-        break;
-      case "error":
+        break
+      case 'error':
         log.error(...args)
-        break;
+        break
       default:
-        break;
+        break
     }
   })
 }
