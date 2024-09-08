@@ -26,17 +26,31 @@ export default ({ mode }) => {
         // 配置代理(解决跨域)
         proxy: {
           '/api': {
-            target: env.VITE_API_DOMAIN,
+            target: '', //env.VITE_API_DOMAIN,
             changeOrigin: true,
-            rewrite: path => path //path.replace(/^\/api/, '')
+            rewrite: (path) => path.replace(/^\/api/, ''), //path
+            configure: (proxy, options) => {
+              // 使用自定义的代理逻辑
+              const originalWeb = proxy.web
+              proxy.web = (req, res, ...args) => {
+                // 根据请求头或其他信息动态设置目标
+                if (req.headers['target-url']){
+                  options.target = req.headers['target-url']
+                }else{
+                  options.target = env.VITE_API_DOMAIN
+                }
+                // 调用原始的代理逻辑
+                originalWeb.call(proxy, req, res, ...args)
+              }
+            }
           },
           '/upload': {
             target: env.VITE_UPLOAD_DOMAIN,
             changeOrigin: true,
-            rewrite: path => path.replace(/^\/upload/, '')
+            rewrite: (path) => path.replace(/^\/upload/, '')
           }
         }
-      },
+      }
     }
   })
 }

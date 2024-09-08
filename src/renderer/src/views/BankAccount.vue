@@ -239,6 +239,7 @@ onMounted(() => {
     onSearch(1, null)
     queryForm.hasSearch = true
   }
+  console.log(import.meta.env);
 })
 
 watch(() => queryForm.page.currentPage, async () => {
