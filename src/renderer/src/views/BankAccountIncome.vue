@@ -5,6 +5,7 @@ import message from "@/utils/message"
 import { useUserStore, useAccountStore } from "@/stores/index"
 import { timestampToFormattedString, numberFmt } from "@/utils/format"
 import { useClient } from "@/utils/client"
+import { viewImages } from "@/utils/tools"
 import logger from "../utils/logger"
 const { height } = useClient()
 const store = useUserStore()
@@ -363,7 +364,8 @@ watch(() => form.post.account_id, async () => {
                     info.currency }}</span></div>
                         <div>备注：<span>{{ info.voucher_ext_last?.note }}</span></div>
                         <div class="flex-row">附件：
-                            <el-button link>查看图片[{{ info.attachment_list?.length }}]</el-button>
+                            <el-button link @click="viewImages(info.attachment_list.map(v => v.path), 0)">查看图片[{{
+                    info.attachment_list?.length }}]</el-button>
                             <el-button link type="primary" @click="modifyNote(info)">修改备注</el-button>
                             <el-button v-if="store.canModify && info.voucher_ext_last.is_audit !== 1" link type="danger"
                                 @click="editNote(info)"> <i class="iconfont icon-edit" style="font-size:10pt"></i>编辑

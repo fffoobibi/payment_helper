@@ -27,7 +27,7 @@ const title = computed(() => {
 <template>
     <div class="main">
         <div style="height: 30px; width: 100%;">
-            <Toolbar :title="title" :close-type="2"></Toolbar>
+            <Toolbar :title="title" :close-type="2" :only-close="true"></Toolbar>
         </div>
         <div class="content">
             <el-image-viewer ref="imgRef" :url-list="urls" :zoom-rate="1.2" :max-scale="7" :min-scale="0.2"

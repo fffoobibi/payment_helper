@@ -23,7 +23,7 @@ instance.interceptors.request.use(
       loading = ElLoading.service({
         lock: true,
         text: config.loadingText || '加载中...',
-        background: 'rgba(0, 0, 0, 0.2)',
+        background: 'rgba(0, 0, 0, 0.2)'
       })
     }
 
@@ -97,12 +97,13 @@ instance.interceptors.response.use(
     }
   },
   (error) => {
-    if (error.response.config.showLoading && loading) {
+    if (error.response?.config.showLoading && loading) {
       loading.close()
     }
+    console.log('error in request', error)
     logger.error(
-      `[${error.response.config?.method?.toUpperCase()}] ${response.config.url} fail, error is `,
-      error
+      `[${error.response?.config?.method?.toUpperCase()}] ${error.response?.config?.url} fail, error is `,
+      error.message
     )
     return Promise.reject({ showError: true, msg: '网络异常' })
   }

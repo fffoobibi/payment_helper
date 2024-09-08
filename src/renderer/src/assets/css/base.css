@@ -89,6 +89,7 @@ body {
   height: 30px;
   margin: 0 !important;
 }
+
 .option-btn i {
   font-size: 1.75em;
 }
@@ -96,6 +97,7 @@ body {
 .el-overlay {
   border-radius: 8px;
 }
+
 .el-drawer.rtl {
   border: 1px solid #e0e0e0;
 }

@@ -11,6 +11,10 @@ const { height, width } = useClient()
 const store = useUserStore()
 const bank = useAccountStore()
 
+const vFocus = {
+  mounted: (el) => el.querySelector('textarea')?.focus()
+}
+
 const props = defineProps({
   accountId: {
     type: [Number, String, null],
@@ -88,6 +92,17 @@ const tableHeight = computed(() => {
   return height.value - th
 })
 
+const processResponse = async (resp) => {
+  const page = parseInt(resp.pages)
+  const limit = parseInt(resp.limit)
+  resp.list.forEach((v, index) => {
+    v.INDEX = (page - 1) * limit + index
+    v._vo_number = v.voucher_no
+    v._vo_show = false
+  })
+  return resp
+}
+
 const onSearch = async (page = null, pageSize = null) => {
   if (page != null) {
     queryForm.search.page = page
@@ -106,9 +121,7 @@ const onSearch = async (page = null, pageSize = null) => {
     post.end_time = post.date[1]
   }
   delete post.date
-
-  console.log(post)
-  const data = await api.bank_account.getAccountHistoryList(post)
+  const data = await api.bank_account.getAccountHistoryList(post, processResponse)
   queryForm.tableData = data.list
   queryForm.page.totalCount = data.count
   queryForm.page.pageSize = data.limit
@@ -150,8 +163,13 @@ onMounted(() => {
         </el-button>
       </el-form-item>
     </el-form>
-    <el-table ref="tableRef" :data="queryForm.tableData" :height="tableHeight" highlight-current-row row-key="id"
-      :row-class-name="renderTableRowClass" @row-contextmenu="(row, col, e) => {
+    <el-table row-key="id" ref="tableRef" highlight-current-row :data="queryForm.tableData" :height="tableHeight"
+      :row-class-name="renderTableRowClass" @cell-dblclick="(row, col) => {
+      if (col.label == '凭证号') {
+        row._vo_show = !row._vo_show
+        console.log('row ', row._vo_show)
+      }
+    }" @row-contextmenu="(row, col, e) => {
       menuRef.pop(row)
     }">
       <template #empty>
@@ -192,8 +210,18 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column label="凭证号">
+        <template #header>
+          <el-tooltip effect="dark" content="双击编辑凭证号" placement="top">
+            <el-space>
+              凭证号<el-icon>
+                <QuestionFilled />
+              </el-icon>
+            </el-space>
+          </el-tooltip>
+        </template>
         <template #default="{ row }">
-          <el-input></el-input>
+          <span class="user-select" v-if="!row._vo_show">{{ row.voucher_no }}</span>
+          <el-input v-if="row._vo_show" v-model="row._vo_number" v-focus clearable :rows="2" type="textarea"></el-input>
         </template>
       </el-table-column>
 

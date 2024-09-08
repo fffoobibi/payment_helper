@@ -107,12 +107,24 @@ const useLocalConfig = defineStore('localConfig', () => {
   const accountMenus = ref([])
   const fetchAccountMenus = computedAsync(async () => {
     const rs = await electron.config.getDefault(Keys.accountMenus)
-    return _parsedResult(rs, [{
-      label: "默认",
-      children: [
+    const dft = _parsedResult(rs, [
+      {
+        id: -1,
+        label: '默认',
+        children: []
+      }
+    ])
+    if (dft.length == 0) {
+      return [
+        {
+          id: -1,
+          label: '默认',
+          children: []
+        }
       ]
-    }])
-  }, [])
+    }
+    return dft
+  })
 
   watch(
     fetchAccountMenus,
@@ -126,7 +138,9 @@ const useLocalConfig = defineStore('localConfig', () => {
   )
 
   const updateAccountMenus = () => {
-    console.log('values ===> ', [...toRaw(accountMenus.value)])
+    // accountMenus.value.splice(0, accountMenus.value.length)
+    // accountMenus.value.push(...values)
+    // console.log('values ===> ', [...toRaw(accountMenus.value)])
     setConfig(Keys.accountMenus, [...toRaw(accountMenus.value)])
   }
 

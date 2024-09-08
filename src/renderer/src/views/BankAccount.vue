@@ -9,13 +9,13 @@ import { useAccountStore, useUserStore } from "@/stores"
 import { timestampToFormattedString, numberFmt } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { useLocalConfig } from "@/stores/config"
+import { getIndexFromArray } from "@/utils/tools"
 import api from "@/api"
 import { computed } from 'vue'
 import message from '@/utils/message'
 const configStore = useLocalConfig()
 const { accountIndexs, accountMenus } = storeToRefs(configStore)
 const store = useUserStore()
-const bank = useAccountStore()
 const { height, width } = useClient()
 
 const queryFormRef = ref(null)
@@ -48,9 +48,81 @@ const menuItemClick = (item, row) => {
     form.menuData.menuDir = item.label.replace('隐藏到', '')
     form.menuData.menuBindId = row.id
     form.menuData.menuBindName = row.account_name
+    row.__hidden = true
     addMenu()
   }
-  console.log('item ', item)
+  console.log('item ===> ', item)
+}
+const removeMenu = (dir, id, node) => {
+  const index = accountMenus.value.findIndex((v) => v.label == dir)
+  if (index > -1) {
+    const updateItem = accountMenus.value[index]
+    const item = updateItem?.children.findIndex(v => v.id == id)
+    if (item > -1) {
+      updateItem.children.splice(item, 1)
+      configStore.updateAccountMenus()
+    }
+  }
+}
+
+const checkedState = computed(() => {
+  const checked = []
+  const unChecked = []
+  accountMenus.value.forEach((v) => {
+    if (v.children) {
+      v.children.forEach(vv => {
+        if (vv.checked) {
+          checked.push(vv.id)
+        } else {
+          unChecked.push(vv.id)
+        }
+      })
+    }
+  })
+  return {
+    checked, unChecked
+  }
+})
+
+const removeMenus = (a1, a2) => {
+  console.log(a1, a2);
+  let updateItem
+  if (a1.id < 0) {
+    updateItem = accountMenus.value[-a1.id - 1]
+  } else {
+    for (let i = 0; i < accountMenus.value.length; i++) {
+      const find = accountMenus.value[i].children.map(v => v.id)
+      if (find.includes(a1.id)) {
+        updateItem = accountMenus.value[i]
+        break
+      }
+    }
+  }
+  const allKeys = []
+  accountMenus.value.forEach((v) => {
+    if (v.children) {
+      allKeys.push(...v.children.map(vv => vv.id))
+    }
+    allKeys.push(v)
+  })
+
+  const checkKeys = a2.checkedKeys
+  updateItem.children.forEach(v => {
+    if (checkKeys.includes(v.id)) {
+      v.checked = true
+    } else {
+      v.checked = false 
+    }
+  })
+
+  queryForm.tableData.map(v=>{
+    if (checkedState.value.checked.includes(v.id)){
+      v.__hidden = true
+    }else{
+      v.__hidden = false
+    }
+  })
+  configStore.updateAccountMenus()
 }
 
 const addMenu = () => {
@@ -59,14 +131,12 @@ const addMenu = () => {
     if (index > -1) {
       //存在
       const updateItem = accountMenus.value[index]
-      console.log('aaa ', updateItem);
       const item = updateItem.children.find(v => v.id == form.menuData.menuBindId)
       if (!item) {
         //不存在则添加
         updateItem.children.push({ label: form.menuData.menuBindName, id: form.menuData.menuBindId })
         accountMenus.value.splice(index, 1, updateItem)
         configStore.updateAccountMenus()
-        // message.success('已收藏')
       } else {
         message.success('已收藏')
         // updateItem.values.push({ label: form.menuData.menuDir })
@@ -74,8 +144,9 @@ const addMenu = () => {
     } else {
       // 不存在
       const addData = {
+        id: -accountMenus.value.length,
         label: form.menuData.menuDir,
-        children: [{ label: form.menuData.menuBindName, id: form.menuData.menuBindId }]
+        children: [{ label: form.menuData.menuBindName, id: form.menuData.menuBindId, checked: true }]
       }
       accountMenus.value.push(addData)
       configStore.updateAccountMenus()
@@ -105,16 +176,23 @@ const menuItems = computed(() => {
     },
   ]
 })
-
+const nodeRef = ref(null)
 const hiddenAccounts = computed(() => {
   const rs = []
   accountMenus.value.forEach(v => {
     v.children?.forEach(d => {
-      rs.push(d.id)
+      if (d.checked) {
+        rs.push(d.id)
+      }
     })
   })
   return rs
 })
+
+const hiddenAccountShow = () => {
+  nodeRef.value?.setCheckedKeys(hiddenAccounts.value)
+}
+
 
 const onResponsePinnedProcess = async (resp) => {
   const returned = []
@@ -460,26 +538,41 @@ const tableState = {
                 <el-space alignment="center">
                   <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
                   <el-button type="primary" @click="addTransfer">日志</el-button>
-                  <el-popover placement="bottom" :width="380" trigger="click">
+                  <el-popover placement="bottom" :width="380" trigger="click" hide-after="0" transition="none"
+                    @show="hiddenAccountShow">
                     <template #reference>
                       <el-button type="primary"> {{ `账号隐藏 (${hiddenAccounts.length})` }}
                       </el-button>
                     </template>
                     <el-tree node-key="id" :default-checked-keys="hiddenAccounts" :data="accountMenus" show-checkbox
-                      check-on-click-node @node-click="(d, { checked }) => {
-        if (!d.children) {
-          const item = queryForm.tableData.find(v => v.id === d.id)
-          console.log('item ', item)
-          if (item) {
-            if (checked) {
-              item.__hidden = true
-            } else {
-              item.__hidden = false
-            }
-          }
-        }
-        console.log('click dd', d, checked);
-      }" default-expand-all />
+                      :expand-on-click-node="false" @check="(a1, a2) => {
+        removeMenus(a1, a2)
+
+      }" ref="nodeRef" check-on-click-node @node-click="(d, node) => {
+        // if (node.isLeaf) {
+        //   const item = queryForm.tableData.find(v => v.id === d.id)
+        //   const checked = node.checked
+        //   removeMenu(node.parent.data.label, d.id, node)
+        //   if (item) {
+        //     if (checked) {
+        //       item.__hidden = true
+        //     } else {
+        //       item.__hidden = false
+        //     }
+        //   }
+        // }
+      }" default-expand-all>
+                      <template #default="{ node, data }">
+                        <span class="custom-tree-node">
+                          <span >{{ node.label }}</span>
+                          <span v-if="!data.children">
+                            <el-button link type="danger" style="margin-left: 5px;" @click.stop="console.log('ccc ')">
+                              删除
+                            </el-button>
+                          </span>
+                        </span>
+                      </template>
+                    </el-tree>
                   </el-popover>
                 </el-space>
 
@@ -577,7 +670,7 @@ const tableState = {
             :drawer-ref="payoutDrawerRef" />
         </el-tab-pane>
         <el-tab-pane v-if="form.historyShow" label="历史" name="历史">
-          <BankAccountHistory :account-id="form.history.accountId" :currency="form.payout.currency"/>
+          <BankAccountHistory :account-id="form.history.accountId" :currency="form.payout.currency" />
         </el-tab-pane>
       </el-tabs>
     </template>
@@ -590,6 +683,7 @@ const tableState = {
   padding: 0 10px;
   color: #333;
   font-weight: bold;
+  line-height: 30px !important;
 }
 
 .pannel {
@@ -642,6 +736,12 @@ const tableState = {
   background-size: 10px 10px;
 }
 
+:deep(.account-pined:nth-child(-n+3)) {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
 :deep(.el-table .hidden-row) {
   display: none !important;
 }
@@ -664,16 +764,55 @@ const tableState = {
   border: none !important
 }
 
+:deep(.el-tabs__nav .el-tabs__item) {
+  height: 36px !important;
+  transition: none !important;
+}
+
+:deep(.el-tabs__nav .el-tabs__item:hover) {
+  color: black !important;
+}
+
 :deep(.el-tabs__nav .el-tabs__item:first-child .el-icon.is-icon-close) {
   display: none;
 }
 
+/* :deep(.el-tabs__nav .el-tabs__item:not(:first-child) .el-icon.is-icon-close ) {
+  color: transparent;
+}
+:deep(.el-tabs__nav .el-tabs__item:not(:first-child) .el-icon.is-icon-close:hover ) {
+  background-color: transparent!important;
+  color: transparent;
+} */
+
 :deep(.el-tabs__nav .el-tabs__item:first-child) {
-  padding: 0px 12px;
+  padding: 0px;
+  margin-left: 10px;
+  margin-top: -3px;
+  margin-right: 0px !important;
   font-size: 15px;
 }
 
-:deep(.el-tabs__item),
+:deep(.el-tabs__nav .el-tabs__item:not(:first-child)) {
+  padding: 0px !important;
+  margin: 0px;
+  padding-right: 10px;
+  margin-left: 20px;
+  margin-top: -3px;
+  font-size: 15px;
+}
+
+
+
+:deep(.el-tabs__nav .el-tabs__item.is-active:not(:first-child)) {
+  padding: 0px !important;
+  margin: 0px;
+  padding-right: 10px;
+  margin-left: 20px;
+  margin-top: -3px;
+  font-size: 15px;
+}
+
 :deep(.el-tabs__nav) {
   border: none !important;
 }

@@ -1,6 +1,6 @@
 <template>
-    <div class="infinite-scroll-container" ref="scrollContainer" v-loading="loading" @wheel="handleWheel"
-        element-loading-text="加载中" element-loading-background="transparent">
+    <div class="infinite-scroll-container" ref="scrollContainer" v-loading="firstLoading && loading"
+        @wheel="handleWheel" element-loading-text="加载中" element-loading-background="transparent">
         <div v-if="empty" style="display: flex; justify-content: center; align-items: center; height: 100%;">
             <slot name="empty">
                 <el-empty :image-size="200" />
@@ -14,11 +14,21 @@
                     </slot>
                 </li>
             </ul>
-            <div v-if="error" class="error-ind">{{ errorMessage }}</div>
             <slot name="noMoreData">
                 <div v-if="noMoreData" class="no-more-data-indicator">无更多数据</div>
             </slot>
+            <div v-if="loading && !firstLoading" style="display:flex;justify-content: center; align-items:center">
+                <el-button :loading="loading" link type="info" size="large">加载中...</el-button>
+            </div>
+            <div v-if="error && !firstLoading" style="display:flex;justify-content: center; align-items:center">
+                <span style="font-size: 9pt !important; color:red">加载失败</span>
+            </div>
+            <div v-if="error && firstLoading" class="first-loading-error">
+                <el-result icon="error" title="加载失败">
 
+                </el-result>
+            </div>
+            <el-backtop :right="100" :bottom="100" target="div" />
         </div>
 
     </div>
@@ -50,7 +60,8 @@ const props = defineProps({
     }
 })
 const limit = ref(props.limit)
-
+const firstLoading = ref(true)
+const loadingCount = ref(0)
 const emit = defineEmits(["on-fetch-done", "on-fetch-start"])
 const items = ref([])
 const loading = ref(false)
@@ -63,13 +74,13 @@ const totalCount = ref(null)
 
 const fetchData = async () => {
     if (loading.value || noMoreData.value) {
-        console.log('无数据了')
         return
     }
     loading.value = true
     error.value = false
+    loadingCount.value++
     try {
-        emit('on-fetch-start', { limit: limit.value, page: page.value })
+        emit('on-fetch-start', { limit: limit.value, page: page.value, error: null })
         const response = await props.fetch(page.value, limit.value)
         if (props.stopLoad(response, page.value)) {
             const rs = response[props.maps.data]
@@ -85,7 +96,7 @@ const fetchData = async () => {
         } else {
             const rs = response[props.maps.data]
             const total = response[props.maps.total]
-            emit('on-fetch-done', { total, page: page.value })
+            emit('on-fetch-done', { total, page: page.value, error: null })
             totalCount.value = total
             items.value.push(...rs.map((v, index) => {
                 v.NUMBER = (page.value - 1) * limit.value + index + 1
@@ -93,17 +104,22 @@ const fetchData = async () => {
             }))
             page.value += 1
         }
-    } catch (error) {
-        console.error('Error fetching data', error);
-        error.value = true;
-        errorMessage.value = 'Failed to load data! Please try again later.';
+        firstLoading.value = false
+    } catch (err) {
+        if (loadingCount.value > 1) {
+            firstLoading.value = false
+        }
+        emit('on-fetch-done', { total: null, page: page.value, error: err })
+        console.error('Error fetching data', err)
+        error.value = true
+        errorMessage.value = '加载失败'
     } finally {
-        loading.value = false;
+        loading.value = false
     }
 };
 
 const empty = computed(() => {
-    if (loading.value === false && items.value.length === 0) {
+    if (loading.value === false && items.value.length === 0 && !error.value) {
         return true
     } else {
         return false
@@ -112,10 +128,10 @@ const empty = computed(() => {
 
 
 const handleWheel = _.debounce(async (event) => {
-    const container = scrollContainer.value
-    const { clientHeight, scrollHeight, scrollTop } = container
-    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 4
-    if (event.deltaY > 0 && isAtBottom) {
+    // const container = scrollContainer.value
+    const { clientHeight, scrollHeight, scrollTop } = event.target
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10
+    if (event.deltaY > 0 && isAtBottom && !loading.value) {
         await fetchData()
     }
 }, 200)
@@ -123,6 +139,8 @@ const handleWheel = _.debounce(async (event) => {
 
 const reload = () => {
     const itemLength = items.value.length
+    firstLoading.value = true
+    loadingCount.value = 0
     items.value.splice(0, itemLength)
     loading.value = false
     page.value = 1
@@ -151,6 +169,13 @@ defineExpose({
 </script>
 
 <style scoped>
+
+:deep(.el-result) {
+    /* height: calc(100vh - 130px)!important; */
+    overflow-y: auto;
+    height: v-bind("props.height + 'px'") !important;
+}
+
 .infinite-scroll-container {
     overflow-y: auto;
     height: v-bind("props.height + 'px'");

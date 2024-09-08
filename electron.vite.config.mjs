@@ -28,7 +28,7 @@ export default ({ mode }) => {
           '/api': {
             target: env.VITE_API_DOMAIN,
             changeOrigin: true,
-            rewrite: path => path.replace(/^\/api/, '')
+            rewrite: path => path //path.replace(/^\/api/, '')
           },
           '/upload': {
             target: env.VITE_UPLOAD_DOMAIN,

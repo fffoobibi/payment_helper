@@ -27,7 +27,7 @@ log.transports.file.resolvePathFn = () => {
 
 // 配置文件
 const store = new Store()
-// console.log('store ', store)
+console.log('store ', store)
 
 const NODE_ENV = process.env.NODE_ENV
 
@@ -113,8 +113,6 @@ function createWindow() {
 
   // 去登录
   ipcMain.handle('to-login', (e) => {
-    console.log('to-login')
-
     mainWindow.setResizable(true)
     mainWindow.setSize(loginWidth, loginHeight)
     mainWindow.center() // 窗口居中
@@ -224,6 +222,7 @@ function createWindow() {
     console.log('set default ===> ', key, v)
   })
 
+  // 图片查看
   ipcMain.on('view-images', (event, urls, index) => {
     let flag
     if (_windows.preview === null) {
@@ -234,7 +233,7 @@ function createWindow() {
         height: mainHeight,
         show: false,
         autoHideMenuBar: true,
-        title: '百舟打款助手',
+        title: '图片查看',
         titleBarStyle: 'hidden',
         frame: false,
         transparent: true,
@@ -243,6 +242,7 @@ function createWindow() {
         maximizable: true,
         minWidth: mainWidth,
         minHeight: mainHeight,
+        alwaysOnTop: true,
         center: true,
         webPreferences: {
           nodeIntegration: true,
