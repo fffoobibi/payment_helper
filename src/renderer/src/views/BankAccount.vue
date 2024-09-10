@@ -2,17 +2,19 @@
 import BankAccountIncome from "@/views/BankAccountIncome.vue"
 import BankAccountPayout from "@/views/BankAccountPayout.vue"
 import BankAccountHistory from "@/views/BankAccountHistory.vue"
+import BankAccountRecord from "@/views/BankAccountRecord.vue"
 
 import { reactive, ref, watch, onMounted } from 'vue'
 import { storeToRefs } from "pinia"
-import { useAccountStore, useUserStore } from "@/stores"
+import { useUserStore } from "@/stores"
 import { timestampToFormattedString, numberFmt } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { useLocalConfig } from "@/stores/config"
-import { getIndexFromArray } from "@/utils/tools"
+import { setUpCapture } from "@/utils/tools"
 import api from "@/api"
 import { computed } from 'vue'
 import message from '@/utils/message'
+import logger from "../utils/logger"
 const configStore = useLocalConfig()
 const { accountIndexs, accountMenus } = storeToRefs(configStore)
 const store = useUserStore()
@@ -35,10 +37,19 @@ const queryForm = reactive({
   hasSearch: false
 })
 
+const menuRef = ref(null)
 const menuInputRef = ref(null)
 const menuItemClick = (item, row) => {
+  if (row.__pinned === true && item.label == '置顶') {
+    row.__pinned = false
+    configStore.removeAccountIndex(row.id)
+    onSearch(1, null)
+    return
+  }
   if (item.label === '置顶') {
     configStore.setAccountIndexs(row.id)
+    row.__pinned = true
+    onSearch(1, null)
   } else if (item.label === '隐藏到...') {
     form.menuData.menuDir = ''
     form.menuData.menuBindId = row.id
@@ -51,17 +62,34 @@ const menuItemClick = (item, row) => {
     row.__hidden = true
     addMenu()
   }
-  console.log('item ===> ', item)
 }
-const removeMenu = (dir, id, node) => {
-  const index = accountMenus.value.findIndex((v) => v.label == dir)
-  if (index > -1) {
-    const updateItem = accountMenus.value[index]
-    const item = updateItem?.children.findIndex(v => v.id == id)
-    if (item > -1) {
-      updateItem.children.splice(item, 1)
-      configStore.updateAccountMenus()
-    }
+const menuItems = computed(() => {
+  const others = accountMenus.value.map(v => {
+    return { label: "隐藏到" + v.label }
+  })
+  return [
+    {
+      label: '置顶'
+    },
+    {
+      label: '隐藏',
+      children: [
+        ...others,
+        { label: '隐藏到...' }
+      ]
+    },
+  ]
+})
+
+const removeMenu = (node, data) => {
+  const { parent } = node
+  const updateItem = accountMenus.value[-parent.data.id - 1]
+  const item = updateItem.children.findIndex(v => v.id == data.id)
+  if (item > -1) {
+    updateItem.children.splice(item, 1)
+    const row = queryForm.tableData.find(item => item.id == data.id)
+    row.__hidden = false
+    configStore.updateAccountMenus()
   }
 }
 
@@ -85,7 +113,6 @@ const checkedState = computed(() => {
 })
 
 const removeMenus = (a1, a2) => {
-  console.log(a1, a2);
   let updateItem
   if (a1.id < 0) {
     updateItem = accountMenus.value[-a1.id - 1]
@@ -111,14 +138,14 @@ const removeMenus = (a1, a2) => {
     if (checkKeys.includes(v.id)) {
       v.checked = true
     } else {
-      v.checked = false 
+      v.checked = false
     }
   })
 
-  queryForm.tableData.map(v=>{
-    if (checkedState.value.checked.includes(v.id)){
+  queryForm.tableData.map(v => {
+    if (checkedState.value.checked.includes(v.id)) {
       v.__hidden = true
-    }else{
+    } else {
       v.__hidden = false
     }
   })
@@ -134,7 +161,7 @@ const addMenu = () => {
       const item = updateItem.children.find(v => v.id == form.menuData.menuBindId)
       if (!item) {
         //不存在则添加
-        updateItem.children.push({ label: form.menuData.menuBindName, id: form.menuData.menuBindId })
+        updateItem.children.push({ label: form.menuData.menuBindName, id: form.menuData.menuBindId, checked: true })
         accountMenus.value.splice(index, 1, updateItem)
         configStore.updateAccountMenus()
       } else {
@@ -158,24 +185,7 @@ const addMenu = () => {
   }
 }
 
-const menuItems = computed(() => {
 
-  const others = accountMenus.value.map(v => {
-    return { label: "隐藏到" + v.label }
-  })
-  return [
-    {
-      label: '置顶'
-    },
-    {
-      label: '隐藏',
-      children: [
-        ...others,
-        { label: '隐藏到...' }
-      ]
-    },
-  ]
-})
 const nodeRef = ref(null)
 const hiddenAccounts = computed(() => {
   const rs = []
@@ -197,8 +207,8 @@ const hiddenAccountShow = () => {
 const onResponsePinnedProcess = async (resp) => {
   const returned = []
   const pinned = []
-  resp.list.forEach(v => {
-
+  resp.list.forEach( (v, index) => {
+    v.__index=index
     if (hiddenAccounts.value.includes(v.id)) {
       v.__hidden = true
     } else {
@@ -252,7 +262,7 @@ watch(() => queryForm.page.pageSize, async () => {
 })
 
 const tableHeight = computed(() => {
-  const h = queryFormRef.value?.clientHeight || 0
+  const h = queryFormRef.value?.$el.clientHeight || 0
   width.value + 1
   let th
   if (h > 60) {
@@ -266,7 +276,6 @@ const tableHeight = computed(() => {
   return height.value - th
 })
 
-const menuRef = ref(null)
 const tableRef = ref(null)
 const formRef = ref(null)
 
@@ -280,8 +289,6 @@ const renderTableRowClass = ({ row }) => {
   }
   return name
 }
-const incomeDrawerRef = ref(null)
-const payoutDrawerRef = ref(null)
 
 const form = reactive({
   currentTab: '银行账户',
@@ -340,11 +347,37 @@ const form = reactive({
     currency: '',
   },
 
+  historyTabLabel: '历史',
   historyShow: false,
   history: {
     accountId: '',
     currency: '',
+    balance: '',
+    typeName: '',
+    available: null,
   },
+  recordShow: false,
+
+  panzhangShow: false,
+  panzhangCurrency: '',
+  pangZhangTitle: '',
+  panzhangState: {
+    account_name: '',
+    available_balance: null, //可用余额
+    gold_rolling_balance: null, //  不可用余额子项  滚动金
+    freeze_balance: null, //不可用余额子项  冻结
+    deposit_balance: null, //不可用余额子项  押金
+    withdrawable_balance: null, //不可用余额子项  可下撤资金
+  },
+  panzhangPost: {
+    account_id: null,
+    attachment_list: [],
+    available_balance: null, //可用余额
+    gold_rolling_balance: null, //  不可用余额子项  滚动金
+    freeze_balance: null, //不可用余额子项  冻结
+    deposit_balance: null, //不可用余额子项  押金
+    withdrawable_balance: null,
+  }
 })
 
 const formState = reactive({
@@ -366,7 +399,6 @@ const formState = reactive({
     } return "transparent"
   }),
   getDisabledState: name => {
-    const disabled = Object.keys(form.post)
     if (form.mode === "view") {
       return true
     }
@@ -425,29 +457,7 @@ watch(() => form.post.out_account_id, async () => {
   }
 })
 
-const resetForm = () => {
-  form.post = {
-    out_account_id: null,
-    in_account_id: null,
-    origin_amount: null,
-    currency: null,
-    received_amount: null,
-    received_currency: null,
-    note: null,
-    in_account_title_id: null,
-    out_account_title_id: null,
-    attachment_list: [],
-  }
-  formRef.value?.resetFields()
-}
 
-const addTransfer = () => {
-  resetForm()
-  form.post.out_account_title_id = 181 //"财务费 - 内部转账支出"
-  form.post.in_account_title_id = 197 // "收入 - 内部转账收入"
-  form.mode = 'add'
-  form.show = true
-}
 const viewIncomes = async (row) => {
   form.incomes.currency = row.currency
   form.incomes.accountId = row.id
@@ -456,30 +466,79 @@ const viewIncomes = async (row) => {
 }
 
 const viewPayouts = async (row) => {
-  form.history.currency = row.currency
-  form.history.accountId = row.id
+  form.payout.currency = row.currency
+  form.payout.accountId = row.id
   form.payoutShow = true
   form.currentTab = '支出'
 }
 
 const viewHistory = async (row) => {
+  form.historyTabLabel = '历史-' + row.account_name
   form.historyShow = true
+  form.history.typeName = row.type_name
+  form.history.balance  = row.ending_balance
+  form.history.available = row.is_available == 1 ? true: false
   form.history.accountId = row.id
+  form.history.currency = row.currency
   form.currentTab = '历史'
 }
 
-const noteTransfer = async (row) => {
-  console.log('ropw ', row);
-  form.notePost.note = row.note
-  form.notePost.voucher_ext_id = row.voucher_ext_id
-  form.noteShow = true
-}
+const unavilable = computed(() => {
+  return form.panzhangState.gold_rolling_balance || form.panzhangState.freeze_balance || form.panzhangState.deposit_balance ||
+    form.panzhangState.withdrawable_balance
+})
 
-const cancelTransfer = async (row) => {
-  form.cancelShow = true
-  form.cancelPost.voucher_ext_id = row.voucher_ext_id
-}
+const viewPanZhang = async (row) => {
+  try {
+    const resp = await api.bank_account.getUnavailableShowStatus({ account_id: row.id })
+    form.pangZhangTitle = '盘账'
+    form.panzhangState.account_name = row.account_name
+    form.panzhangState.available_balance = resp.available
+    form.panzhangState.deposit_balance = resp.deposit
+    form.panzhangState.freeze_balance = resp.freeze
+    form.panzhangState.gold_rolling_balance = resp.gold_rolling
+    form.panzhangState.withdrawable_balance = resp.withdrawable
 
+    form.panzhangPost.account_id = row.id
+    form.panzhangPost.attachment_list = []
+    form.panzhangPost.available_balance = row.ending_balance
+    form.panzhangPost.deposit_balance = row.deposit_balance
+    form.panzhangPost.freeze_balance = row.freeze_balance
+    form.panzhangPost.gold_rolling_balance = row.gold_rolling_balance
+    form.panzhangPost.withdrawable_balance = row.withdrawable_balance
+    form.panzhangCurrency = row.currency
+    form.panzhangShow = true
+  } catch (error) {
+
+  }
+
+}
+const uploadRef = ref(null)
+const rules = {
+  attachment_list: [{
+    required: true, validator: (...args) => {
+      console.log('ref ', uploadRef.value);
+      return uploadRef.value.validate(...args)
+    }, trigger: 'blur'
+  }]
+}
+const submitPanZhang = async () => {
+  formRef.value.validate().then(async valid => {
+    try {
+      if (valid) {
+        const uploads = await uploadRef.value.uploadImage()
+        const data = { ...form.panzhangPost }
+        data.attachment_list = JSON.stringify(uploads)
+        message.success('盘账已完成!')
+        form.panzhangShow = false
+        onSearch(1, null)
+      }
+    } catch (err) {
+      logger.error('盘账失败', err
+      )
+    }
+  })
+}
 
 const tableState = {
   isToday(timestamp) {
@@ -510,6 +569,11 @@ const tableState = {
   }
 }
 
+const crop = setUpCapture(src => {
+  form.panzhangPost.attachment_list.push({
+    url: src
+  })
+})
 
 </script>
 
@@ -522,7 +586,10 @@ const tableState = {
         } else if (name == '支出') {
           form.payoutShow = false
         } else if (name == '历史') {
+          form.historyTabLabel = '历史'
           form.historyShow = false
+        } else if (name == '日志') {
+          form.recordShow = false
         }
         form.currentTab = '银行账户'
       }">
@@ -538,7 +605,10 @@ const tableState = {
               <el-form-item>
                 <el-space alignment="center">
                   <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
-                  <el-button type="primary" @click="addTransfer">日志</el-button>
+                  <el-button type="primary" @click="() => {
+        form.recordShow = true
+        form.currentTab = '日志'
+      }">日志</el-button>
                   <el-popover placement="bottom" :width="380" trigger="click" hide-after="0" transition="none"
                     @show="hiddenAccountShow">
                     <template #reference>
@@ -546,28 +616,14 @@ const tableState = {
                       </el-button>
                     </template>
                     <el-tree node-key="id" :default-checked-keys="hiddenAccounts" :data="accountMenus" show-checkbox
-                      :expand-on-click-node="false" @check="(a1, a2) => {
-        removeMenus(a1, a2)
-
-      }" ref="nodeRef" check-on-click-node @node-click="(d, node) => {
-        // if (node.isLeaf) {
-        //   const item = queryForm.tableData.find(v => v.id === d.id)
-        //   const checked = node.checked
-        //   removeMenu(node.parent.data.label, d.id, node)
-        //   if (item) {
-        //     if (checked) {
-        //       item.__hidden = true
-        //     } else {
-        //       item.__hidden = false
-        //     }
-        //   }
-        // }
-      }" default-expand-all>
+                      :expand-on-click-node="false" @check="(a1, a2) => removeMenus(a1, a2)" ref="nodeRef"
+                      check-on-click-node default-expand-all>
                       <template #default="{ node, data }">
                         <span class="custom-tree-node">
-                          <span >{{ node.label }}</span>
+                          <span>{{ node.label }}</span>
                           <span v-if="!data.children">
-                            <el-button link type="danger" style="margin-left: 5px;" @click.stop="console.log('ccc ')">
+                            <el-button link type="danger" style="margin-left: 5px;"
+                              @click.stop="removeMenu(node, data)">
                               删除
                             </el-button>
                           </span>
@@ -581,12 +637,17 @@ const tableState = {
             </el-form>
 
             <ContextMenu ref="menuRef" :target-element="tableRef" @item-click="menuItemClick" :menu-items="menuItems">
+              <template #label="{ item, data, index }">
+                <template v-if="index == 0">
+                  <span> {{ data[0].__pinned == true ? '取消置顶' : '置顶' }}</span>
+                </template>
+                <template v-else>
+                </template>
+              </template>
             </ContextMenu>
 
             <el-table ref="tableRef" :data="queryForm.tableData" :height="tableHeight" highlight-current-row
-              row-key="id" :row-class-name="renderTableRowClass" @row-contextmenu="(row, col, e) => {
-        menuRef.pop(row)
-      }">
+              row-key="id" :row-class-name="renderTableRowClass" @row-contextmenu="(row, col, e) => menuRef.pop(row)">
               <template #empty>
                 <el-empty :image-size="200" />
               </template>
@@ -595,16 +656,18 @@ const tableState = {
                   <div>{{ scope.$index + 1 + (queryForm.page.currentPage - 1) * queryForm.page.pageSize }}</div>
                 </template>
               </el-table-column>
-              <el-table-column label="摘要信息">
+              <el-table-column label="摘要信息" width="380">
                 <template #default="scope">
-                  <div>名称：{{ scope.row.account_name }}</div>
-                  <div>类型：<span style="color:gray">{{ `${scope.row.type_name} (${scope.row.company_name})` }}</span>
+                  <div>名称：<span class="user-select black">{{ scope.row.account_name }}</span></div>
+                  <div>类型：<span class="user-select black">{{ `${scope.row.type_name} (${scope.row.company_name})`
+                      }}</span>
                   </div>
                 </template>
               </el-table-column>
               <el-table-column label="账户余额">
                 <template #default="scope">
-                  <div><span style="font-weight: bold;">{{ numberFmt(scope.row.ending_balance) }}</span> {{ " " +
+                  <div><span style="font-weight: bold;" class="user-select black">{{ numberFmt(scope.row.ending_balance)
+                      }}</span> {{ " " +
         scope.row.currency }}</div>
                 </template>
               </el-table-column>
@@ -625,7 +688,7 @@ const tableState = {
                     <el-button type="warning" @click="viewPayouts(scope.row)" link>
                       支出
                     </el-button>
-                    <el-button type="danger" @click="noteTransfer(scope.row)" link>
+                    <el-button type="danger" @click="viewPanZhang(scope.row)" link>
                       盘账
                     </el-button>
                     <el-button type="primary" @click="viewHistory(scope.row)" link>
@@ -663,17 +726,81 @@ const tableState = {
           </div>
         </el-tab-pane>
         <el-tab-pane v-if="form.incomeShow" label="收入" name="收入">
-          <BankAccountIncome :account-id="form.incomes.accountId" :currency="form.incomes.currency"
-            :drawer-ref="incomeDrawerRef" />
+          <BankAccountIncome :account-id="form.incomes.accountId" :currency="form.incomes.currency" />
         </el-tab-pane>
         <el-tab-pane v-if="form.payoutShow" label="支出" name="支出">
-          <BankAccountPayout :account-id="form.payout.accountId" :currency="form.payout.currency"
-            :drawer-ref="payoutDrawerRef" />
+          <BankAccountPayout :account-id="form.payout.accountId" :currency="form.payout.currency" />
         </el-tab-pane>
-        <el-tab-pane v-if="form.historyShow" label="历史" name="历史">
-          <BankAccountHistory :account-id="form.history.accountId" :currency="form.payout.currency" />
+        <el-tab-pane v-if="form.recordShow" label="日志" name="日志">
+          <BankAccountRecord></BankAccountRecord>
+        </el-tab-pane>
+        <el-tab-pane v-if="form.historyShow" :label="form.historyTabLabel" name="历史">
+          <BankAccountHistory :account-id="form.history.accountId" 
+          :currency="form.history.currency" 
+          :type-name="form.history.typeName" 
+          :available="form.history.available"
+          :balance="form.history.balance"
+          />
         </el-tab-pane>
       </el-tabs>
+      <el-drawer destroy-on-close v-model="form.panzhangShow" size="50%" :title="form.pangZhangTitle">
+        <el-form :model="form.panzhangPost" label-width="auto" :rules="rules" ref="formRef">
+          <p style="font-size: 11pt; color:blue; margin-bottom: 10px; margin-top: -20px;">
+            {{ form.panzhangState.account_name }}
+          </p>
+          <el-form-item label="可用余额" v-if="form.panzhangState.available_balance">
+            <el-space>
+              <el-input-number :precision="2" :controls="false" style="width: 90%" clearable
+                v-model="form.panzhangPost.available_balance"></el-input-number>
+              <span class="black" style="padding-left: 4px;">{{ form.panzhangCurrency }}</span>
+            </el-space>
+          </el-form-item>
+          <p class="black" style="font-size: 11pt;" v-if="unavilable">不可用余额</p>
+          <el-form-item label="滚动金" v-if="form.panzhangState.gold_rolling_balance">
+            <el-space>
+              <el-input-number :precision="2" :controls="false" style="width: 90%" clearable
+                v-model="form.panzhangPost.gold_rolling_balance"></el-input-number>
+              <span class="black" style="padding-left: 4px;">{{ form.panzhangCurrency }}</span>
+            </el-space>
+          </el-form-item>
+          <el-form-item label="冻结" v-if="form.panzhangState.freeze_balance">
+            <el-space>
+              <el-input-number :precision="2" :controls="false" style="width: 90%" clearable
+                v-model="form.panzhangPost.freeze_balance"></el-input-number>
+              <span class="black" style="padding-left: 4px;">{{ form.panzhangCurrency }}</span>
+            </el-space>
+          </el-form-item>
+          <el-form-item label="押金" v-if="form.panzhangState.deposit_balance">
+            <el-space>
+              <el-input-number :precision="2" :controls="false" style="width: 90%" clearable
+                v-model="form.panzhangPost.deposit_balance"></el-input-number>
+              <span class="black" style="padding-left: 4px;">{{ form.panzhangCurrency }}</span>
+            </el-space>
+          </el-form-item>
+          <el-form-item label="可下撤金额" v-if="form.panzhangState.withdrawable_balance">
+            <el-space>
+              <el-input-number :precision="2" :controls="false" style="width: 90%" clearable
+                v-model="form.panzhangPost.withdrawable_balance"></el-input-number>
+              <span class="black" style="padding-left: 4px;">{{ form.panzhangCurrency }}</span>
+            </el-space>
+          </el-form-item>
+          <el-form-item label="图片上传" prop="attachment_list">
+            <Upload action="upload" ref="uploadRef" v-model="form.panzhangPost.attachment_list" :limit="10"
+              dir="account">
+            </Upload>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button link type="danger" @click="crop">
+            <el-icon>
+              <PictureFilled />
+            </el-icon>截图
+          </el-button>
+          <el-button type="primary" @click="submitPanZhang">
+            确认
+          </el-button>
+        </template>
+      </el-drawer>
     </template>
   </Layout>
 </template>
@@ -685,6 +812,10 @@ const tableState = {
   color: #333;
   font-weight: bold;
   line-height: 30px !important;
+}
+
+.user-select {
+  user-select: text
 }
 
 .pannel {
@@ -737,10 +868,10 @@ const tableState = {
   background-size: 10px 10px;
 }
 
-:deep(.account-pined:nth-child(-n+3)) {
-  position: sticky;
+:deep(.account-pined) {
+  /* position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 100; */
 }
 
 :deep(.el-table .hidden-row) {

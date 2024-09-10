@@ -1,8 +1,8 @@
 @font-face {
   font-family: "iconfont"; /* Project id 4661782 */
-  src: url('iconfont.woff2?t=1725524375186') format('woff2'),
-       url('iconfont.woff?t=1725524375186') format('woff'),
-       url('iconfont.ttf?t=1725524375186') format('truetype');
+  src: url('iconfont.woff2?t=1725851904363') format('woff2'),
+       url('iconfont.woff?t=1725851904363') format('woff'),
+       url('iconfont.ttf?t=1725851904363') format('truetype');
 }
 
 .iconfont {
@@ -13,28 +13,24 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-Excel:before {
+  content: "\e6df";
+}
+
+.icon-excelwenjian:before {
+  content: "\e745";
+}
+
+.icon-operate:before {
+  content: "\e775";
+}
+
 .icon-chehuisekuai:before {
   content: "\e602";
 }
 
 .icon-chehui:before {
   content: "\e643";
-}
-
-.icon-pass:before {
-  content: "\e72a";
-}
-
-.icon-combine:before {
-  content: "\e73a";
-}
-
-.icon-unpass:before {
-  content: "\e76c";
-}
-
-.icon-remove:before {
-  content: "\e797";
 }
 
 .icon-shenpizhong:before {

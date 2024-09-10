@@ -5,6 +5,7 @@ import message from "@/utils/message"
 import { useUserStore, useAccountStore } from "@/stores/index"
 import { timestampToFormattedString, numberFmt, dateTimeFmt, subNumbers } from "@/utils/format"
 import { useClient } from "@/utils/client"
+import { setUpCapture, viewImages } from "@/utils/tools"
 import logger from "../utils/logger"
 const { height } = useClient()
 const store = useUserStore()
@@ -128,7 +129,7 @@ const formState = reactive({
         return numberFmt(rs)
     }),
     max_origin_amount: computed(() => {
-        return formState.out_account_id_balance
+        return formState.out_account_id_balance?.replaceAll(',', '')
     }),
     available_color: computed(() => {
         if (form.post.origin_amount) {
@@ -291,7 +292,26 @@ const onSubmit = () => {
 }
 
 // 截图
-electron.onCapture(async (src) => {
+// electron.onCapture(async (src) => {
+//     if (form.mode == 'add') {
+//         form.post.attachment_list.push({
+//             url: src
+//         })
+//     } else {
+//         form.editPost.attachment_list.push({
+//             url: src
+//         })
+//     }
+
+// })
+
+// const crop = () => {
+//     electron.capture().catch(err => {
+//         logger.error('capture fail', err)
+//     })
+// }
+
+const crop = setUpCapture(src => {
     if (form.mode == 'add') {
         form.post.attachment_list.push({
             url: src
@@ -301,14 +321,7 @@ electron.onCapture(async (src) => {
             url: src
         })
     }
-
 })
-
-const crop = () => {
-    electron.capture().catch(err => {
-        logger.error('capture fail', err)
-    })
-}
 
 watch(() => form.post.account_id, async () => {
     if (form.post.account_id) {
@@ -372,7 +385,7 @@ watch(() => form.post.account_id, async () => {
                     info.currency }}</span></div>
                         <div>备注：<span>{{ info.voucher_ext_last?.note }}</span></div>
                         <div class="flex-row">附件：
-                            <el-button link>查看图片[{{ info.attachment_list?.length }}]</el-button>
+                            <el-button link @click="()=>viewImages(info.attachment_list.map(v=>v.path), 0)">查看图片[{{ info.attachment_list?.length }}]</el-button>
                             <el-button link type="primary" v-if="store.canModifyNote"
                                 @click="modifyNote(info)">修改备注</el-button>
                             <el-button v-if="store.canModify && info.voucher_ext_last.is_audit !== 1" link type="danger"

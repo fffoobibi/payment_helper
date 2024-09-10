@@ -78,7 +78,7 @@ const numberFmt = n => {
  * @param {number} timestamp
  * @returns
  */
-const timestampToFormattedString = (timestamp) => {
+const timestampToFormattedString = (timestamp, sep = false, getNormal = false) => {
     // 确保时间戳是以秒为单位
     if (!timestamp) {
         return ''
@@ -93,8 +93,40 @@ const timestampToFormattedString = (timestamp) => {
     const minutes = ("0" + date.getMinutes()).slice(-2);
     const seconds = ("0" + date.getSeconds()).slice(-2);
 
+    if (sep) {
+        return `${year}${month}${day}_${hours}_${minutes}_${seconds}`
+    }
+    if (getNormal) {
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
     // 拼接成指定格式的字符串
     return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ *
+ * @param {Date|Number} date
+ * @returns String
+ */
+const formatDate = (date, { start = false, end = false, sep = "-" }) => {
+    console.log('fff d', date);
+    if (date instanceof Number) {
+        let date = new Date(date * 1000)
+    }
+    const year = date.getFullYear();
+    const month = ("0" + (date.getMonth() + 1)).slice(-2);
+    const day = ("0" + date.getDate()).slice(-2);
+    const hours = ("0" + date.getHours()).slice(-2);
+    const minutes = ("0" + date.getMinutes()).slice(-2);
+    const seconds = ("0" + date.getSeconds()).slice(-2);
+    const r = `${year}${sep}${month}${sep}${day}`
+    if (start) {
+        return r + ' 00:00:00'
+    }
+    if (end) {
+        return r + ' 23:59:59'
+    }
+    return r + `${hours}:${minutes}:${seconds}`
 }
 
 /**
@@ -104,19 +136,26 @@ const timestampToFormattedString = (timestamp) => {
  * @returns string
  */
 const subNumbers = (v1, v2, digit = 2) => {
-    const a = Decimal((v1 || '0').toString().replaceAll(',', ''))
-    const b = Decimal((v2 || '0').toString().replaceAll(',', ''))
+    const a = new Decimal((v1 || '0').toString().replaceAll(',', ''))
+    const b = new Decimal((v2 || '0').toString().replaceAll(',', ''))
     const rs = a.sub(b).toFixed(digit)
     return rs
 }
 
-const maxText = (str, length = 15) => {
+const addNumbers = (v1, v2, digit = 2) => {
+    const a = new Decimal((v1 || '0').toString().replaceAll(',', ''))
+    const b = new Decimal((v2 || '0').toString().replaceAll(',', ''))
+    const rs = a.plus(b).toFixed(digit)
+    return rs
+}
+
+const maxText = (str, length = 10) => {
     if (!str) {
         return ''
     }
     const s = str.toString().trim()
     if (s.length >= length) {
-        const str = s.slice(0, length) + '...'
+        const str = s.slice(0, length - 2) + '...'
         return str
     }
     return s
@@ -125,6 +164,8 @@ export {
     dateTimeFmt,
     numberFmt,
     timestampToFormattedString,
+    formatDate,
     subNumbers,
+    addNumbers,
     maxText
 }

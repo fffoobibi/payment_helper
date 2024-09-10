@@ -13,11 +13,26 @@ const electron = {
     getDefault: (key) => ipcRenderer.invoke('get-default', key),
     setDefault: (key, value) => ipcRenderer.invoke('set-default', key, value)
   },
-  viewImages: (urls, index=0) => ipcRenderer.send('view-images', urls, index),
+  viewImages: (urls, index = 0) => ipcRenderer.send('view-images', urls, index),
 
   // 主进程 -> 渲染进程的事件
   onCapture: (callback) => ipcRenderer.on('key-capture', (_event, data) => callback(data)),
-  onPreviewImage: (callback) => ipcRenderer.on('preview-images', (_event, urls, index, render) => callback(urls, index, render))
+  onPreviewImage: (callback) => ipcRenderer.on('preview-images', (_event, urls, index, render) => callback(urls, index, render)),
+  onExportExcel: (scallback, fcallback, ccallback) => {
+    ipcRenderer.on('export-excel-success', () => {
+      scallback?.()
+    })
+
+    ipcRenderer.on('export-excel-error', (event, error) => {
+      fcallback?.(error)
+    })
+    ipcRenderer.on('export-excel-cancel', () => {
+      ccallback?.()
+    })
+    return (data, fileName) => {
+      ipcRenderer.send('export-excel', data, fileName)
+    }
+  }
 }
 
 contextBridge.exposeInMainWorld('electron', electron)

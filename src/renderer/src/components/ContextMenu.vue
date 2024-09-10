@@ -3,15 +3,15 @@
     <ul>
       <li v-for="(item, index) in menuItems" :key="index" @click="handleMenuItemClick(item)">
         <div style="display: flex; justify-content: space-between;">
-          <v-slot name="label" :item="item">
+          <slot name="label" :item="item" :data="data" :index="index">
             <span>{{ item.label }} </span>
-          </v-slot>
+          </slot>
           <span v-if="item.children">
-            <v-slot name="tag">
+            <slot name="tag">
               <el-icon color="gray" size="small">
                 <ArrowRight />
               </el-icon>
-            </v-slot>
+            </slot>
           </span>
         </div>
         <template v-if="item.children && item.children.length > 0">
@@ -47,7 +47,6 @@ const x = ref(0);
 const y = ref(0);
 const { menuItems } = toRefs(props)
 
-
 const trigger = () => {
   showMenu.value = true
 }
@@ -67,7 +66,8 @@ const handleContextMenu = (event) => {
 }
 
 const pop = (...args) => {
-  data.value = args
+  data.value.splice(0, data.value.length)
+  data.value.push(...args)
   showMenu.value = true
 }
 

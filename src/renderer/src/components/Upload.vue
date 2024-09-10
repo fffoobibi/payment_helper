@@ -127,9 +127,7 @@ function dataURLToFile(dataUrl, fileName) {
     const originStr = atob(dataArr[1])
     return new File([originStr], fileName, { type: mime })
 }
-// dataURLToFile('data:text/plain;base64,YWFhYWFhYQ==', '测试文件')
 
-// File {name: '测试文件', lastModified: 1640784525620, lastModifiedDate: Wed Dec 29 2021 21:28:45 GMT+0800 (中国标准时间), webkitRelativePath: '', size: 7, …}
 
 const validate = (rule, value, callback) => {
     let count = 0

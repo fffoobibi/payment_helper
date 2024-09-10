@@ -5,7 +5,7 @@ import message from "@/utils/message"
 import { useUserStore, useAccountStore } from "@/stores/index"
 import { timestampToFormattedString, numberFmt } from "@/utils/format"
 import { useClient } from "@/utils/client"
-import { viewImages } from "@/utils/tools"
+import { viewImages, setUpCapture } from "@/utils/tools"
 import logger from "../utils/logger"
 const { height } = useClient()
 const store = useUserStore()
@@ -287,7 +287,7 @@ const onSubmit = () => {
 }
 
 // 截图
-electron.onCapture(async (src) => {
+const crop = setUpCapture(src => {
     if (form.mode == 'add') {
         form.post.attachment_list.push({
             url: src
@@ -297,14 +297,8 @@ electron.onCapture(async (src) => {
             url: src
         })
     }
-
 })
 
-const crop = () => {
-    electron.capture().catch(err => {
-        logger.error('capture fail', err)
-    })
-}
 
 watch(() => form.post.account_id, async () => {
     if (form.post.account_id) {
@@ -416,17 +410,17 @@ watch(() => form.post.account_id, async () => {
 
                     <el-form-item label="金额" prop="post.origin_amount" required
                         :rules="[{ message: '请输入金额', trigger: 'change', required: true }]">
-                        <div style=" display: flex;flex-direction: column;width: 100%;">
+                        <div style=" display: flex;justify-content: space-between;width: 100%;">
                             <el-input-number v-model="form.post.origin_amount"
                                 :disabled="formState.getDisabledState('origin_amount')" :precision="2" :controls="false"
-                                style="width: 100%">
+                                style="width: 70%">
                             </el-input-number>
+                            <el-select :validate-event="false" style="width: 30%; padding-left: 5px"
+                                v-model="form.post.currency">
+                                <el-option v-for="item in bank.currencies" :key="item.code" :label="item.code"
+                                    :value="item.code" />
+                            </el-select>
                         </div>
-                    </el-form-item>
-
-                    <el-form-item label="币种" prop="post.currency">
-                        <el-input v-model="form.post.currency" :disabled="formState.getDisabledState('currency')">
-                        </el-input>
                     </el-form-item>
 
                     <el-form-item label="备注" prop="post.note">

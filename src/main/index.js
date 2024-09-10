@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, clipboard } from 'electron'
+import { app, shell, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import Screenshots from 'electron-screenshots'
@@ -8,6 +8,7 @@ import trayIcon from '../../resources/favicon.ico?asset'
 import log from 'electron-log'
 import fs from 'fs'
 import logger from '../renderer/src/utils/logger'
+import * as XLSX from "xlsx"
 
 // 日志配置
 log.transports.file.maxSize = 10 * 1024 * 1024 // 日志大小
@@ -108,7 +109,7 @@ function createWindow() {
     mainWindow.setResizable(true)
 
     // TODO: 添加托盘操作
-    contextMenu.unshift({ label: data.username, click: () => {} })
+    contextMenu.unshift({ label: data.username, click: () => { } })
   })
 
   // 去登录
@@ -290,6 +291,38 @@ function createWindow() {
       }
     }
   })
+
+  // excel保存
+  ipcMain.on('export-excel', (event, data, defaultPath) => {
+    dialog.showSaveDialog({
+      title: '保存Excel文件',
+      defaultPath,
+      filters: [{ name: 'Excel files', extensions: ['xlsx'] }]
+    }).then(result => {
+      if (!result.canceled && result.filePath) {
+        try {
+          const wb = XLSX.utils.book_new();
+          const ws = XLSX.utils.json_to_sheet(data);
+          XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+          const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+          fs.writeFile(result.filePath, buffer, err => {
+            if (err) {
+              event.reply('export-excel-error', err.message)  // 发送错误消息
+            } else {
+              event.reply('export-excel-success')  // 发送成功消息
+            }
+          });
+        } catch (error) {
+          logger.error("保存excel失败", err)
+          event.reply('export-excel-error', error.message);  // 发送错误消息
+        }
+      }else{
+        event.reply('export-excel-cancel')
+      }
+    }).catch(err => {
+      logger.error("保存excel失败", err)
+    });
+  });
 
   ipcMain.on('log-event', (event, level, ...args) => {
     switch (level) {

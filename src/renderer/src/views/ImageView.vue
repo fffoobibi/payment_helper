@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Toolbar from '@/components/Toolbar.vue';
 import { useImageStore } from '@/stores/images'
 import { storeToRefs } from "pinia"

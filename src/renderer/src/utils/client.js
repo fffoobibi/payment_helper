@@ -1,21 +1,34 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
-export function useClient() {
+export function useClient(target = null) {
     const height = ref(0)
     const width = ref(0)
 
     function update(event) {
-        height.value = event.target.innerHeight
-        width.value = event.target.innerWidth
+        if (target === null) {
+            height.value = event.target.innerHeight
+            width.value = event.target.innerWidth
+        } else {
+            height.value = target.clientHeight
+            width.value = target.clientWidth
+        }
     }
-
     onMounted(() => {
-        height.value = window.innerHeight
-        width.value = window.innerWidth
-        window.addEventListener('resize', update)
+        if (target === null) {
+            height.value = window.innerHeight
+            width.value = window.innerWidth
+            window.addEventListener('resize', update)
+        } else {
+            target.addEventListener('resize', update)
+        }
+
     })
     onUnmounted(() => {
-        window.removeEventListener('resize', update)
+        if (target === null) {
+            window.removeEventListener('resize', update)
+        } else {
+            target.removeEventListener('resize', update)
+        }
     })
 
     return { height, width }

@@ -1,7 +1,8 @@
 <script setup>
-import { reactive, ref, watch, computed, onMounted } from 'vue'
+import { reactive, ref, watch, computed, onMounted, onActivated } from 'vue'
 import { timestampToFormattedString, numberFmt, subNumbers } from "@/utils/format"
 import { useClient } from "@/utils/client"
+import { setUpCapture } from "@/utils/tools"
 import { useUserStore, useAccountStore } from "@/stores"
 import api from "@/api"
 import Message from "@/utils/message"
@@ -27,6 +28,10 @@ const pageInfo = reactive({
   currentPage: 1,
   pageSize: 10,
   totalCount: null,
+})
+
+onActivated(() => {
+  tableHeight.value = 1
 })
 
 onMounted(() => {
@@ -63,20 +68,26 @@ const onSearch = async (page = null, pageSize = null) => {
   pageInfo.pageSize = data.limit
 }
 
-const tableHeight = computed(() => {
-  const h = queryFormRef.value?.clientHeight || 0
-  width.value + 1
-  let th
-  if (h > 60) {
-    th = 234
-  } else {
-    th = 184
-  }
-  if (queryForm.page.totalCount == 0) {
-    return height.value - th
-  }
-  return height.value - th
-})
+const tableHeight = computed(
+  {
+    get: () => {
+      const h = queryFormRef.value?.$el?.clientHeight || 0
+      width.value + 1
+      let th
+      if (h > 60) {
+        th = 234
+      } else {
+        th = 184
+      }
+      if (queryForm.page.totalCount == 0) {
+        return height.value - th
+      }
+      return height.value - th
+    },
+    set: val => {
+      width.value = width.value - 1
+    }
+  })
 
 const formRef = ref(null)
 const form = reactive({
@@ -474,19 +485,11 @@ const handleClose = () => {
   resetForm()
 }
 
-electron.onCapture(async (src) => {
-  // const url = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
-  console.log('src ==> ', src)
+const crop = setUpCapture(src => {
   form.post.attachment_list.push({
     url: src
   })
 })
-
-const crop = () => {
-  electron.capture().then(res => {
-    console.log('rs ===> ', res)
-  })
-}
 
 </script>
 
@@ -506,67 +509,64 @@ const crop = () => {
       </Header>
 
       <div class="pannel">
-        <div ref="queryFormRef">
-          <el-form :inline="true" :model="queryForm" class="demo-form-inline">
-            <el-form-item label="提现银行">
-              <el-input v-model="queryForm.out_account_alias_name" placeholder="支持模糊查找" clearable />
-            </el-form-item>
-            <el-form-item label="日期">
-              <el-select v-model="queryForm.condition" placeholder="">
-                <el-option label="全部" value="0" />
-                <el-option label="今天" value="1" />
-                <el-option label="昨天" value="2" />
-                <el-option label="近7天" value="3" />
-                <el-option label="本月" value="4" />
-                <el-option label="上月" value="5" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="在途状态">
-              <el-select v-model="queryForm.status" placeholder="">
-                <el-option label="全部" value="0" />
-                <el-option label="在途中" value="1" />
-                <el-option label="已到账" value="2" />
-              </el-select>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
-              <el-button type="primary" @click="addTransit">添加</el-button>
-            </el-form-item>
-          </el-form>
-        </div>
+        <el-form :inline="true" :model="queryForm" class="demo-form-inline" ref="queryFormRef">
+          <el-form-item label="提现银行">
+            <el-input v-model="queryForm.out_account_alias_name" placeholder="支持模糊查找" clearable />
+          </el-form-item>
+          <el-form-item label="日期">
+            <el-select v-model="queryForm.condition" placeholder="">
+              <el-option label="全部" value="0" />
+              <el-option label="今天" value="1" />
+              <el-option label="昨天" value="2" />
+              <el-option label="近7天" value="3" />
+              <el-option label="本月" value="4" />
+              <el-option label="上月" value="5" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="在途状态">
+            <el-select v-model="queryForm.status" placeholder="">
+              <el-option label="全部" value="0" />
+              <el-option label="在途中" value="1" />
+              <el-option label="已到账" value="2" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
+            <el-button type="primary" @click="addTransit">添加</el-button>
+          </el-form-item>
+        </el-form>
 
-        <!-- style="height: calc(100vh - 210px)" -->
-        <el-table :data="tableData" :height="tableHeight" highlight-current-row>
+        <el-table :data="tableData" :height="tableHeight" highlight-current-row :show-header="pageInfo.totalCount > 0">
           <template #empty>
             <el-empty :image-size="200" />
           </template>
           <el-table-column label="序号" width="60">
             <template #default="scope">
-              <div>{{ scope.$index + 1 }}</div>
+              <div>{{ scope.$index + 1 + (pageInfo.currentPage - 1) * pageInfo.pageSize }}</div>
             </template>
           </el-table-column>
-          <el-table-column label="摘要信息">
+          <el-table-column label="摘要信息" width="254">
             <template #default="scope">
               <div :class="{ audit: scope.row.voucher_ext_last.is_audit == 1 }">
-                <div>编号：{{ scope.row.sn }}</div>
-                <div>状态：<span :style="{ color: scope.row.status === 1 ? 'red' : 'green' }">{{
+                <div>编号：<span class="user-black">{{ scope.row.sn }}</span></div>
+                <div>状态：<span class="bold" :style="{ color: scope.row.status === 1 ? 'red' : 'green' }">{{
             scope.row.status === 1 ? '在途中' :
               '已到账' }}</span></div>
-                <div>备注：{{ scope.row.note }}</div>
+                <div>备注：<span class="user-black">{{ scope.row.note }}</span></div>
               </div>
             </template>
           </el-table-column>
           <el-table-column label="银行信息">
             <template #default="scope">
-              <div>提现银行：{{ scope.row.out_account_alias_name }}</div>
-              <div>到账银行：{{ scope.row.in_account_alias_name }}</div>
-              <div>提现时间：{{ timestampToFormattedString(scope.row.create_time) }}</div>
+              <div>提现银行：<span class="user-black">{{ scope.row.out_account_alias_name }}</span></div>
+              <div>到账银行：<span class="user-black">{{ scope.row.in_account_alias_name }}</span></div>
+              <div>提现时间：<span class="user-black">{{ timestampToFormattedString(scope.row.create_time) }}</span></div>
             </template>
           </el-table-column>
 
-          <el-table-column label="操作">
+          <el-table-column label="操作" width="260">
             <template #default="scope">
-              <p>创建：{{ scope.row.creator + `(${scope.row.department_name})` }}</p>
+              <p>创建：<span class="user-black">{{ scope.row.creator + `(${scope.row.department_name})` }}</span></p>
               <el-space>
                 <p>操作：</p>
                 <el-button size="default" type="primary" @click="viewTransit(scope.row)" link>
@@ -599,8 +599,9 @@ const crop = () => {
 
         </el-table>
         <el-pagination size="default" style="padding-top: 5px;" v-model:current-page="pageInfo.currentPage"
-          v-model:page-size="pageInfo.pageSize" background="true" :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper" :total="pageInfo.totalCount" />
+          v-show="pageInfo.totalCount > 0" v-model:page-size="pageInfo.pageSize" background="true"
+          :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
+          :total="pageInfo.totalCount" />
 
         <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" @closed="handleClose"
           ref="drawRef">
@@ -797,6 +798,15 @@ h4 {
 
 .black {
   color: black
+}
+
+.bold {
+  font-weight: bold
+}
+
+.user-black {
+  color: black;
+  user-select: text;
 }
 
 .transparent {

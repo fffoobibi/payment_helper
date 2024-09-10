@@ -100,7 +100,16 @@ const useLocalConfig = defineStore('localConfig', () => {
 
   const setAccountIndexs = (value) => {
     accountIndexs.value.push(value)
-    setConfig(Keys.accountIndexs, [...accountIndexs.value])
+    setConfig(Keys.accountIndexs, [...new Set(accountIndexs.value)])
+  }
+
+  const removeAccountIndex = value =>{
+    const rs = [...new Set(accountIndexs.value)]
+    const index = rs.indexOf(value)
+    if(index>-1){
+      accountIndexs.value.splice(index, 1)
+    }
+    setConfig(Keys.accountIndexs, [...new Set(accountIndexs.value)])
   }
 
   // accountMenus
@@ -138,9 +147,6 @@ const useLocalConfig = defineStore('localConfig', () => {
   )
 
   const updateAccountMenus = () => {
-    // accountMenus.value.splice(0, accountMenus.value.length)
-    // accountMenus.value.push(...values)
-    // console.log('values ===> ', [...toRaw(accountMenus.value)])
     setConfig(Keys.accountMenus, [...toRaw(accountMenus.value)])
   }
 
@@ -149,6 +155,7 @@ const useLocalConfig = defineStore('localConfig', () => {
     setPin,
     accountIndexs,
     setAccountIndexs,
+    removeAccountIndex,
     accountMenus,
     updateAccountMenus,
     currentUserName,
