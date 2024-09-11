@@ -108,8 +108,7 @@ const timestampToFormattedString = (timestamp, sep = false, getNormal = false) =
  * @param {Date|Number} date
  * @returns String
  */
-const formatDate = (date, { start = false, end = false, sep = "-" }) => {
-    console.log('fff d', date);
+const formatDate = (date, { start = false, end = false, sep = "-", sepLast = ":", trancate }) => {
     if (date instanceof Number) {
         let date = new Date(date * 1000)
     }
@@ -120,13 +119,22 @@ const formatDate = (date, { start = false, end = false, sep = "-" }) => {
     const minutes = ("0" + date.getMinutes()).slice(-2);
     const seconds = ("0" + date.getSeconds()).slice(-2);
     const r = `${year}${sep}${month}${sep}${day}`
+    if (trancate == 'y') {
+        return `${year}`
+    }
+    else if (trancate == 'm') {
+        return `${year}${sep}${month}`
+    }
+    else if (trancate == 'd') {
+        return r
+    }
     if (start) {
         return r + ' 00:00:00'
     }
     if (end) {
         return r + ' 23:59:59'
     }
-    return r + `${hours}:${minutes}:${seconds}`
+    return r + ` ${hours}${sepLast}${minutes}${sepLast}${seconds}`
 }
 
 /**

@@ -5,6 +5,7 @@ import transfer from './transfer' // 内部银行转账
 import bank_account from './bank_account' // 银行账户
 import incomeRecord from './income_record' // 银行账户-收入
 import payouts from './payout'
+import creditCard from './creditcard'
 
 const api = { // 导出所有API接口
   ...user,
@@ -13,7 +14,8 @@ const api = { // 导出所有API接口
   transfer,
   bank_account,
   incomeRecord,
-  payouts
+  payouts,
+  creditCard
 }
 
 export default api

@@ -10,7 +10,7 @@ const electron = {
   config: {
     set: (key, value) => ipcRenderer.invoke('set-config', key, value),
     get: (key, defaultValue) => ipcRenderer.invoke('get-config', key, defaultValue),
-    getDefault: (key) => ipcRenderer.invoke('get-default', key),
+    getDefault: (key, defaultValue) => ipcRenderer.invoke('get-default', key, defaultValue),
     setDefault: (key, value) => ipcRenderer.invoke('set-default', key, value)
   },
   viewImages: (urls, index = 0) => ipcRenderer.send('view-images', urls, index),

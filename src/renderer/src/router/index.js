@@ -58,6 +58,11 @@ const router = createRouter({
                     component: () => import('@/views/BankAccount.vue')
                 },
                 {
+                    path: '/creditCard',
+                    name: 'creditCard',
+                    component: () => import('@/views/CreditCard.vue')
+                },
+                {
                     path: '/user',
                     name: 'user',
                     component: () => import('@/views/User.vue')

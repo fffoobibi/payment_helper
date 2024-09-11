@@ -331,7 +331,6 @@ const noteTransit = async (row) => {
 
 const submitNoteTransit = async () => {
   const data = { user_id: store.user.id, voucher_ext_id: form.notePost.voucher_ext_id, note: form.notePost.note }
-  console.log('post data', data);
   try {
     const resp = await api.transit.noteTransit(data)
     form.noteShow = false

@@ -1,8 +1,8 @@
 @font-face {
   font-family: "iconfont"; /* Project id 4661782 */
-  src: url('iconfont.woff2?t=1725851904363') format('woff2'),
-       url('iconfont.woff?t=1725851904363') format('woff'),
-       url('iconfont.ttf?t=1725851904363') format('truetype');
+  src: url('iconfont.woff2?t=1726017318674') format('woff2'),
+       url('iconfont.woff?t=1726017318674') format('woff'),
+       url('iconfont.ttf?t=1726017318674') format('truetype');
 }
 
 .iconfont {
@@ -11,6 +11,14 @@
   font-style: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-dingdingdingd:before {
+  content: "\e7c0";
+}
+
+.icon-exceldaochu:before {
+  content: "\e6bf";
 }
 
 .icon-Excel:before {
@@ -123,6 +131,10 @@
 
 .icon-max:before {
   content: "\e869";
+}
+
+.icon-history-record:before {
+  content: "\e73e";
 }
 
 .icon-import:before {

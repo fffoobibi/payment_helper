@@ -2,15 +2,16 @@
 import { reactive, ref } from 'vue'
 
 import avatar from '@/assets/images/avatar-1.png?asset'
-import { useRouter } from 'vue-router';
-
+import { useRouter } from 'vue-router'
+import { useUserStore } from "@/stores/index"
+const store = useUserStore()
 const router = useRouter()
-
 const menuItems = reactive([
-  { icon: 'payment', text: '钉钉打款', name: 'payment' },
+  { icon: 'dingdingdingd', text: '钉钉打款', name: 'payment' },
   { icon: 'fund-intransit', text: '在途资金', name: 'fundInTransit' },
-  { icon: 'bank-transfer', text: '银行转账', name: 'bankTransfer' },
-  { icon: 'bank-account', text: '银行账户', name: 'bankAccount' }
+  { icon: 'payment', text: '银行转账', name: 'bankTransfer' },
+  { icon: 'bank-transfer', text: '银行账户', name: 'bankAccount' },
+  { icon: 'bank-account', text: '信用卡管理', name: 'creditCard' },
 ])
 
 const optionItems = reactive([
@@ -29,30 +30,40 @@ const onMenu = (item) => {
     router.push({ name: item.name })
   }
 }
+
 </script>
 
 
 <template>
   <div class="win">
     <div class="sider">
-      <div class="avatar">
-        <img :src="avatar" alt="">
-        </img>
-      </div>
+      <el-popover placement="right-start" :title="store.user.username" :width="200" trigger="hover"
+        content="您好">
+        <template #reference>
+          <div class="avatar">
+            <img :src="avatar" alt="">
+            </img>
+          </div>
+        </template>
+      </el-popover>
 
       <ul class="menu">
-        <li :class="['menu-item', {active: item.name == currItem.name}]" v-for="item in menuItems">
-          <el-button @click="onMenu(item)" text>
-            <el-icon :class="['iconfont', 'icon-' + item.icon]"></el-icon>
-          </el-button>
+        <li :class="['menu-item', { active: item.name == currItem.name }]" v-for="item in menuItems">
+          <el-tooltip :content="item.text" hide-after="0" effect="dark" transition="none" placement="right-start">
+            <el-button @click="onMenu(item)" text>
+              <el-icon :class="['iconfont', 'icon-' + item.icon]"></el-icon>
+            </el-button>
+          </el-tooltip>
         </li>
       </ul>
 
       <ul class="options">
-        <li :class="['menu-item', {active: item.name == currItem.name}]" v-for="item in optionItems">
-          <el-button @click="onMenu(item)" text>
-            <el-icon :class="['iconfont', 'icon-' + item.icon]"></el-icon>
-          </el-button>
+        <li :class="['menu-item', { active: item.name == currItem.name }]" v-for="item in optionItems">
+          <el-tooltip :content="item.text" hide-after="0" effect="dark" transition="none" placement="right-start">
+            <el-button @click="onMenu(item)" text>
+              <el-icon :class="['iconfont', 'icon-' + item.icon]"></el-icon>
+            </el-button>
+          </el-tooltip>
         </li>
       </ul>
     </div>

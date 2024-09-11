@@ -202,14 +202,14 @@ function createWindow() {
     return rs
   })
 
-  ipcMain.handle('get-default', (event, key) => {
+  ipcMain.handle('get-default', (event, key, defaultValue) => {
     const v = store.get('currentUserId', null)
     if (v === null || v === undefined) {
       return null
     }
     const field = `${v}.${key}`
-    const rs = store.get(field)
-    console.log('get default ===> ', key, v, rs)
+    const rs = store.get(field, defaultValue)
+    console.log('get default ===> ', key, v, defaultValue)
     return rs
   })
 
