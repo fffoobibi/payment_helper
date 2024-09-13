@@ -1,11 +1,13 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 
 import avatar from '@/assets/images/avatar-1.png?asset'
 import { useRouter } from 'vue-router'
 import { useUserStore } from "@/stores/index"
+import { useLocalConfig } from "@/stores/config"
 const store = useUserStore()
 const router = useRouter()
+const cfg = useLocalConfig()
 const menuItems = reactive([
   { icon: 'dingdingdingd', text: '钉钉打款', name: 'payment' },
   { icon: 'fund-intransit', text: '在途资金', name: 'fundInTransit' },
@@ -14,10 +16,23 @@ const menuItems = reactive([
   { icon: 'bank-account', text: '信用卡管理', name: 'creditCard' },
 ])
 
-const optionItems = reactive([
-  { icon: 'jietu', text: '截图', name: 'jietu' },
-  { icon: 'setting', text: '设置', name: 'setting' }
-])
+const optionItems = computed(() => {
+  if (cfg.mode) {
+    return [{ icon: 'setting', text: '设置', name: 'setting' }]
+  } else {
+    return [
+      {
+        icon: 'debug', text: '当前为调试服', name: 'jietu'
+      },
+      { icon: 'setting', text: '设置', name: 'setting' }
+    ]
+  }
+}
+)
+const switchAccount = ()=>{
+  router.push({name: 'login'})
+  electron.toLogin()
+}
 
 const currItem = ref(menuItems[0])
 
@@ -37,14 +52,19 @@ const onMenu = (item) => {
 <template>
   <div class="win">
     <div class="sider">
-      <el-popover placement="right-start" :title="store.user.username" :width="200" trigger="hover"
-        content="您好">
+      <el-popover placement="right-start" :title="store.user.username" :width="200" trigger="hover" >
         <template #reference>
-          <div class="avatar">
+          <el-avatar :size="34">
+            {{ store.user.username[0] }}
+          </el-avatar>
+          <!-- <div class="avatar">
             <img :src="avatar" alt="">
             </img>
-          </div>
+          </div> -->
         </template>
+        <el-space direction="vertical"> 
+          <el-button link type="primary" @click="switchAccount">切换账号</el-button>
+        </el-space>
       </el-popover>
 
       <ul class="menu">

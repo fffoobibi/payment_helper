@@ -7,8 +7,9 @@ import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/favicon.ico?asset'
 import log from 'electron-log'
 import fs from 'fs'
-import logger from '../renderer/src/utils/logger'
 import * as XLSX from "xlsx"
+
+
 
 // 日志配置
 log.transports.file.maxSize = 10 * 1024 * 1024 // 日志大小
@@ -26,19 +27,107 @@ log.transports.file.resolvePathFn = () => {
   return join(directoryPath, 'main.log')
 }
 
+
 // 配置文件
 const store = new Store()
-console.log('store ', store)
-
-const NODE_ENV = process.env.NODE_ENV
+console.log('store ', store.path)
 
 const loginWidth = 320
 const loginHeight = 320
-const mainWidth = 900
-const mainHeight = 670
+const mainWidth = 950
+const mainHeight = 700
+
+
+function formatDate(date) {
+  function padZero(num) {
+    return num < 10 ? '0' + num : num;
+  }
+
+  const year = date.getFullYear();
+  const month = padZero(date.getMonth() + 1); // getMonth() 返回的是从0开始的月份
+  const day = padZero(date.getDate());
+  const hours = padZero(date.getHours());
+  const minutes = padZero(date.getMinutes());
+  const seconds = padZero(date.getSeconds());
+  const milliseconds = date.getMilliseconds().toString().padStart(3, '0'); // 确保毫秒有三位数
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
 
 function createWindow() {
   // Create the browser window.
+  let webSecurity
+  if (is.dev) {
+    webSecurity = true
+  } else {
+    webSecurity = false
+  }
+
+  const _windows = {
+    preview: null,
+    log: null
+  }
+
+
+  log.transports.custom = (msg) => {
+    if (_windows.log) {
+      
+      const s0 = log.transports.file.transforms[3](msg)
+      const s1 = "[" + formatDate(msg.date) + "] " + `[${msg.level}]  ` + s0
+      console.log('sn ...', msg.toString())
+      _windows.log.webContents.send('log-append', s1, log.transports.file.resolvePathFn())
+    }
+  }
+
+  const createOtherWindow = (name, create, after, openDevTools = false) => {
+    let flag = false
+    if (_windows[name] == null) {
+      _windows[name] = create()
+      flag = true
+    }
+    const previewWindow = _windows[name]
+
+    if (is.dev) {
+      if (flag) {
+        previewWindow
+          .loadURL(process.env['ELECTRON_RENDERER_URL'])
+          .then(() => {
+            previewWindow.show()
+            after(previewWindow)
+          })
+          .catch((err) => {
+            log.error('open fail', err)
+          })
+      } else {
+        previewWindow.show()
+        previewWindow.center()
+        if (openDevTools) {
+          previewWindow.openDevTools()
+        }
+        after(previewWindow)
+      }
+    } else {
+      if (flag) {
+        previewWindow
+          .loadFile(join(__dirname, '../renderer/index.html'))
+          .then(() => {
+            previewWindow.show()
+            if (openDevTools) {
+              previewWindow.openDevTools()
+            }
+            after(previewWindow)
+          })
+          .catch((err) => {
+            log.error('open fail', err)
+          })
+      } else {
+        previewWindow.show()
+        previewWindow.center()
+        after(previewWindow)
+      }
+    }
+  }
+
   const mainWindow = new BrowserWindow({
     icon: icon,
     width: loginWidth,
@@ -54,19 +143,36 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: true,
       preload: join(__dirname, '../preload/index.mjs'),
-      sandbox: false
+      sandbox: false,
+      webSecurity: webSecurity
     }
   })
-  const _windows = {
-    preview: null
-  }
 
-  if (NODE_ENV === 'development') {
+
+  if (is.dev) {
     mainWindow.webContents.openDevTools()
   }
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  mainWindow.on('closed', () => {
+    console.log('main closed ');
+    // if (_windows.log) {
+    //   console.log('close log window',  _windows.log);
+    //   _windows.log.close()
+    //   _windows.log = null
+    // }
+    // if (_windows.preview) {
+    //   _windows.preview.close()
+    // }
+    // console.log('quit ...');
+    // app.quit()
+  })
+
+  mainWindow.on('hide', () => {
+    console.log('main hide ');
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -114,15 +220,23 @@ function createWindow() {
 
   // 去登录
   ipcMain.handle('to-login', (e) => {
-    mainWindow.setResizable(true)
-    mainWindow.setSize(loginWidth, loginHeight)
-    mainWindow.center() // 窗口居中
-    mainWindow.setResizable(false)
+    // mainWindow.setResizable(true)
+    // mainWindow.setSize(loginWidth, loginHeight)
+    // mainWindow.center() // 窗口居中
+    // mainWindow.setResizable(false)
+    // console.log('tologin ', mainWindow.getSize());
+
+    mainWindow.setResizable(true);
+    console.log('Current size:', mainWindow.getSize());
+    mainWindow.setSize(320, 320);
+    mainWindow.center();
+    console.log('New size after to-login:', mainWindow.getSize());
+    // 设置窗口不可再次调整大小
+    mainWindow.setResizable(false);
   })
 
   // 窗口控制
   ipcMain.handle('win-action', (e, { action, data }) => {
-    console.log('win action ==> ', e, action, data)
     const webContents = e.sender
     const win = BrowserWindow.fromWebContents(webContents)
     switch (action) {
@@ -141,13 +255,20 @@ function createWindow() {
       case 'close': {
         if (data.closeType == 0) {
           win.close()
-        } else if (data.closeType == 2) {
+        }
+        else if (data.closeType == 1) {
+          win.hide()
+        }
+        else if (data.closeType == 2) {
           if (_windows.preview === null) {
             _windows.preview = win
           }
           win.setSkipTaskbar(true)
           win.hide()
-        } else {
+        } else if (data.closeType == 3) {
+          if (_windows.log === null) {
+            _windows.log = win
+          }
           win.setSkipTaskbar(true)
           win.hide()
         }
@@ -198,7 +319,7 @@ function createWindow() {
 
   ipcMain.handle('get-config', (event, key, defaultValue) => {
     const rs = store.get(key, defaultValue)
-    console.log('get ', key, defaultValue, rs)
+    console.log('get ', key, rs, defaultValue)
     return rs
   })
 
@@ -225,10 +346,8 @@ function createWindow() {
 
   // 图片查看
   ipcMain.on('view-images', (event, urls, index) => {
-    let flag
-    if (_windows.preview === null) {
-      flag = true
-      _windows.preview = new BrowserWindow({
+    createOtherWindow('preview', () => {
+      return new BrowserWindow({
         icon: icon,
         width: mainWidth,
         height: mainHeight,
@@ -252,44 +371,42 @@ function createWindow() {
           sandbox: false
         }
       })
-    } else {
-      flag = false
-    }
-    const previewWindow = _windows.preview
+    }, frame => {
+      frame.webContents.send('preview-images', urls, index, Date.now())
+    })
+  })
 
-    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-      if (flag) {
-        previewWindow
-          .loadURL(process.env['ELECTRON_RENDERER_URL'])
-          .then(() => {
-            previewWindow.show()
-            previewWindow.webContents.send('preview-images', urls, index, Date.now())
-          })
-          .catch((err) => {
-            logger.error('image preview fail', err)
-          })
-      } else {
-        previewWindow.show()
-        previewWindow.center()
-        previewWindow.webContents.send('preview-images', urls, index, Date.now())
-      }
-    } else {
-      if (flag) {
-        previewWindow
-          .loadFile(join(__dirname, '../renderer/index.html'))
-          .then(() => {
-            previewWindow.show()
-            previewWindow.webContents.send('preview-images', urls, index, Date.now())
-          })
-          .catch((err) => {
-            logger.error('image preview fail', err)
-          })
-      } else {
-        previewWindow.show()
-        previewWindow.center()
-        previewWindow.webContents.send('preview-images', urls, index, Date.now())
-      }
-    }
+  // 日志打开
+  ipcMain.on('open-log', (event) => {
+    createOtherWindow('log', () => {
+      return new BrowserWindow({
+        icon: icon,
+        width: mainWidth,
+        height: mainHeight,
+        show: false,
+        autoHideMenuBar: true,
+        title: '日志',
+        titleBarStyle: 'hidden',
+        frame: false,
+        transparent: true,
+        closable: false,
+        resizable: true,
+        maximizable: true,
+        minWidth: mainWidth,
+        minHeight: mainHeight,
+        alwaysOnTop: true,
+        center: true,
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: true,
+          preload: join(__dirname, '../preload/index.mjs'),
+          sandbox: false
+        }
+      })
+    }, frame => {
+      const filePath = log.transports.file.resolvePathFn()
+      frame.webContents.send('log-result', '', filePath)
+    }, true)
   })
 
   // excel保存
@@ -313,16 +430,17 @@ function createWindow() {
             }
           });
         } catch (error) {
-          logger.error("保存excel失败", err)
+          log.error("保存excel失败", err)
           event.reply('export-excel-error', error.message);  // 发送错误消息
         }
-      }else{
+      } else {
         event.reply('export-excel-cancel')
       }
     }).catch(err => {
-      logger.error("保存excel失败", err)
+      log.error("保存excel失败", err)
     });
   });
+
 
   ipcMain.on('log-event', (event, level, ...args) => {
     switch (level) {
@@ -375,6 +493,7 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
 
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.

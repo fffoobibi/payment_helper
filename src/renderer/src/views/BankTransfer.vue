@@ -245,9 +245,11 @@ const resetForm = () => {
   }
   formRef.value?.clearValidate()
 }
+
 const crop = setUpCapture(src => {
   form.post.attachment_list.push({ url: src })
 })
+
 const onSubmit = async () => {
   if (form.mode == 'add') {
     form.validateMinCount = 1
@@ -404,11 +406,11 @@ const submitAuditTransfer = async () => {
           <h4>银行转账</h4>
         </template>
 
-        <template #option>
+        <!-- <template #option>
           <el-button size="small" class="option-btn" link>
             <i class="iconfont icon-setting"></i>
           </el-button>
-        </template>
+        </template> -->
       </Header>
 
       <div class="pannel">
@@ -456,8 +458,8 @@ const submitAuditTransfer = async () => {
             <template #default="scope">
               <div>转出：<span class="user-black">{{ scope.row.out_account_name }}</span></div>
               <div>转入：<span class="user-black">{{ scope.row.in_account_name }}</span></div>
-              <div>金额：<span class="user-black bold">{{ `${numberFmt(scope.row.origin_amount)}` }}</span>{{ `
-                ${scope.row.currency}` }}</div>
+              <div>金额：<span class="user-black red light">{{ `${numberFmt(scope.row.origin_amount)}` }}</span> <span class="black light">{{ `
+                ${scope.row.currency}` }}</span></div>
             </template>
           </el-table-column>
           <el-table-column label="备注">
@@ -711,7 +713,11 @@ h4 {
 }
 
 .red {
-  color: red
+  color: rgb(245, 108, 108) !important
+}
+
+.light{
+  font-weight: 600
 }
 
 .user-black {

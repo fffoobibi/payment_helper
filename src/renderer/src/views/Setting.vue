@@ -2,16 +2,15 @@
 import { reactive, ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from "pinia"
 import { useUserStore } from "@/stores"
-import { useLocalConfig, getConfig, Keys } from "@/stores/config"
-import { debounce } from "lodash"
-
-
+import { useLocalConfig } from "@/stores/config"
 import api from "@/api"
 import message from '../utils/message'
 const cfgStore = useLocalConfig()
-const { autoClick, autoConfirm, formalUrl, testUrl } = storeToRefs(cfgStore)
+const { autoClick, autoConfirm, formalUrl, testUrl, uploadFormalUrl, uploadTestUrl, mode } = storeToRefs(cfgStore)
 const store = useUserStore()
+// import fs from 'fs'
 
+// console.log('fs ==> ', fs.readFileSync);
 const showHidden = ref(false)
 const handleCtrlShiftQ = event => {
   if (event.ctrlKey && event.shiftKey && event.code === 'KeyQ') {
@@ -19,9 +18,6 @@ const handleCtrlShiftQ = event => {
   }
 }
 onMounted(() => {
-  console.log('auto click ==>', autoClick.value)
-  console.log('auto confirm ===>', autoConfirm.value);
-  console.log('formalUrl ', formalUrl.value)
   window.addEventListener('keydown', handleCtrlShiftQ)
 })
 onUnmounted(() => {
@@ -33,13 +29,20 @@ const changeForm = reactive({
   new_pws: null,
   confirm: null
 })
-const updateFormalUrl = debounce(() => {
+const reset = () => {
+  formalUrl.value = 'http://bdapi.baizhoucn.com:2501'
+  testUrl.value = 'http://192.168.0.10:20011'
+  uploadFormalUrl.value = 'http://bdupload.baizhoucn.com'
+  uploadTestUrl.value = 'http://192.168.0.10/index.php'
   cfgStore.updateFormalUrl()
-}, 500)
-const updateTestUrl = debounce(() => {
   cfgStore.updateTestUrl()
-}, 500)
-
+  cfgStore.updateUploadFormal()
+  cfgStore.updateUploadTest()
+  message.success('域名已重置')
+}
+const openLog = ()=>{
+  electron.viewLog()
+}
 
 const formRef = ref(null)
 const changePwd = async () => {
@@ -88,12 +91,6 @@ const validatePassConfirm = (rule, value, callback) => {
         <template #title>
           <h4>设置</h4>
         </template>
-
-        <template #option>
-          <el-button size="small" class="option-btn" link>
-            <i class="iconfont icon-setting"></i>
-          </el-button>
-        </template>
       </Header>
       <el-scrollbar>
         <div class="pannel">
@@ -131,26 +128,68 @@ const validatePassConfirm = (rule, value, callback) => {
             </el-form-item>
           </el-form>
         </div>
-        <div class="pannel">
+
+        <!-- <div class="pannel">
           <span class="black" style="font-size: 11pt;border-bottom: 2px solid purple;">截图设置</span>
           <el-form label-width="auto">
             <el-form-item label="">
               <el-checkbox label="隐藏窗口截图" value="Value A" />
             </el-form-item>
           </el-form>
-        </div>
+        </div> -->
 
-        <div v-if="showHidden" class="pannel">
-          <span class="black"
-            style="font-size: 11pt;border-bottom: 2px solid purple; margin-bottom: 10px!important;">开发设置</span>
-          <el-form label-width="auto">
-            <el-form-item label="正式/测试服">
-              <el-input style="width: 350px; margin-right: 10px;" placeholder="正式服" v-model="formalUrl"
-                @input="v => updateFormalUrl()" clearable></el-input>
-              <el-input style="width: 350px;" placeholder="测试服" v-model="testUrl" clearable @input="v => updateTestUrl()">
-              </el-input>
+        <div v-if="showHidden || !cfgStore.mode" class="pannel">
+          <el-space>
+            <span class="black"
+              style="font-size: 11pt;border-bottom: 2px solid purple; margin-bottom: 0px!important;">开发设置</span>
+            <el-button link @click="reset">
+              <el-icon color="black">
+                <RefreshRight />
+              </el-icon>
+              重置
+            </el-button>
+
+          </el-space>
+
+          <el-form label-width="auto" style=" margin-top: 5px!important;">
+            <el-form-item label="切换">
+              <el-space align="center">
+                <el-radio-group v-model="mode">
+                  <el-radio :value="true">正式服</el-radio>
+                  <el-radio :value="false">测试服</el-radio>
+                </el-radio-group>
+                <el-button link @click="openLog">打开日志</el-button>
+              </el-space>
 
             </el-form-item>
+            <el-form-item label='接口'>
+              <el-input type="text" style="width: 45%; margin-right: 10px;" placeholder="正式服" v-model="formalUrl"
+                @input="v => cfgStore.updateFormalUrl()" clearable>
+                <template #prefix>
+                  <i class="iconfont icon-xianshang" />
+                </template>
+              </el-input>
+              <el-input type="text" style="width:45%;" placeholder="测试服" v-model="testUrl" clearable
+                @input="v => cfgStore.updateTestUrl()">
+                <template #prefix>
+                  <i class="iconfont icon-debug" />
+                </template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label='图片'>
+              <el-input style="width: 45%; margin-right: 10px;" placeholder="正式服" v-model="uploadFormalUrl"
+                @input="v => cfgStore.updateUploadFormal()" clearable>
+                <template #prefix>
+                  <i class="iconfont icon-xianshang" />
+                </template></el-input>
+              <el-input style="width: 45%;" placeholder="测试服" v-model="uploadTestUrl" clearable
+                @input="v => cfgStore.updateUploadTest()">
+                <template #prefix>
+                  <i class="iconfont icon-debug" />
+                </template>
+              </el-input>
+            </el-form-item>
+
 
           </el-form>
         </div>

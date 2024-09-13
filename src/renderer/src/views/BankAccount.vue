@@ -207,8 +207,8 @@ const hiddenAccountShow = () => {
 const onResponsePinnedProcess = async (resp) => {
   const returned = []
   const pinned = []
-  resp.list.forEach( (v, index) => {
-    v.__index=index
+  resp.list.forEach((v, index) => {
+    v.__index = index
     if (hiddenAccounts.value.includes(v.id)) {
       v.__hidden = true
     } else {
@@ -476,8 +476,8 @@ const viewHistory = async (row) => {
   form.historyTabLabel = '历史-' + row.account_name
   form.historyShow = true
   form.history.typeName = row.type_name
-  form.history.balance  = row.ending_balance
-  form.history.available = row.is_available == 1 ? true: false
+  form.history.balance = row.ending_balance
+  form.history.available = row.is_available == 1 ? true : false
   form.history.accountId = row.id
   form.history.currency = row.currency
   form.currentTab = '历史'
@@ -666,9 +666,8 @@ const crop = setUpCapture(src => {
               </el-table-column>
               <el-table-column label="账户余额">
                 <template #default="scope">
-                  <div><span style="font-weight: bold;" class="user-select black">{{ numberFmt(scope.row.ending_balance)
-                      }}</span> {{ " " +
-        scope.row.currency }}</div>
+                  <div><span class="user-select light black">{{ numberFmt(scope.row.ending_balance)
+                      }}</span> <span class="light">{{ " " + scope.row.currency }}</span></div>
                 </template>
               </el-table-column>
               <el-table-column label="今日盘账">
@@ -735,12 +734,8 @@ const crop = setUpCapture(src => {
           <BankAccountRecord></BankAccountRecord>
         </el-tab-pane>
         <el-tab-pane v-if="form.historyShow" :label="form.historyTabLabel" name="历史">
-          <BankAccountHistory :account-id="form.history.accountId" 
-          :currency="form.history.currency" 
-          :type-name="form.history.typeName" 
-          :available="form.history.available"
-          :balance="form.history.balance"
-          />
+          <BankAccountHistory :account-id="form.history.accountId" :currency="form.history.currency"
+            :type-name="form.history.typeName" :available="form.history.available" :balance="form.history.balance" />
         </el-tab-pane>
       </el-tabs>
       <el-drawer destroy-on-close v-model="form.panzhangShow" size="50%" :title="form.pangZhangTitle">
@@ -850,8 +845,13 @@ const crop = setUpCapture(src => {
   color: rgb(79, 79, 197)
 }
 
+
 .red {
-  color: red
+  color: rgb(245, 108, 108) !important
+}
+
+.light {
+  font-weight: 600
 }
 
 .audit {

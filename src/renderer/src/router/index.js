@@ -19,6 +19,11 @@ const router = createRouter({
             component: ()=> import('@/views/ImageView.vue')
         },
         {
+            path: '/log',
+            name: 'log',
+            component: ()=> import('@/views/Log.vue')
+        },
+        {
             path: '/home',
             name: 'home',
             redirect: { name: 'payment' },

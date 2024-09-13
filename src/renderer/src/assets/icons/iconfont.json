@@ -6,6 +6,20 @@
   "description": "",
   "glyphs": [
     {
+      "icon_id": "1115014",
+      "name": "debug",
+      "font_class": "debug",
+      "unicode": "e606",
+      "unicode_decimal": 58886
+    },
+    {
+      "icon_id": "20662284",
+      "name": "线上",
+      "font_class": "xianshang",
+      "unicode": "e68c",
+      "unicode_decimal": 59020
+    },
+    {
       "icon_id": "20186142",
       "name": "钉钉dingd",
       "font_class": "dingdingdingd",

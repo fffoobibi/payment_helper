@@ -157,17 +157,17 @@ onActivated(() => {
             <Header>
                 <template #title>
                     <h4>信用卡管理
-
                     </h4>
                 </template>
 
                 <template #option>
                     <el-space>
-                        <span class="red" style="font-size: 10pt;padding-left: 10px;"> *注: 每月5号之前核销上月消费金额</span>
+                        <span class="red" style="font-size: 10pt;padding-left: 10px;margin-right: 10px;"> *注:
+                            每月5号之前核销上月消费金额</span>
                     </el-space>
-                    <el-button size="small" class="option-btn" link>
+                    <!-- <el-button size="small" class="option-btn" link>
                         <i class="iconfont icon-setting"></i>
-                    </el-button>
+                    </el-button> -->
                 </template>
             </Header>
 

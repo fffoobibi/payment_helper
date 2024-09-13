@@ -3,9 +3,10 @@ import Decimal from "decimal.js"
 /**
  * 将时间戳或日期转换成指定格式
  * @param {String|Date|timestamp} date
+ * @param {number} type 格式：1) y年m月d日  2) yyyy-mm-dd hh:ii   3) yyyy-mm-dd  4) y年m月d日 hh:ii
  * @returns
  */
-const dateTimeFmt = (date, showDetail = false) => {
+const dateTimeFmt = (date, type = 1) => {
     //  auto 0
     const autoZero = (n) => (String(n).length === 1 ? '0' : '') + n
     // string to timestamp
@@ -42,23 +43,31 @@ const dateTimeFmt = (date, showDetail = false) => {
         curDate.getFullYear() === Y &&
         curDate.getMonth() + 1 === m &&
         curDate.getDate() === d
-    ) {
-        return `${autoZero(H)}:${autoZero(i)}`
-    }
-    // yesterday
-    let mewDate = new Date((curSecond - 86400) * 1000)
-    if (mewDate.getFullYear() === Y && mewDate.getMonth() + 1 === m && mewDate.getDate() === d) {
-        return `昨天`
-    } else if (curDate.getFullYear() === Y) {
-        if (showDetail) {
+    )
+
+    if (type == 1) {
+        // yesterday
+        let mewDate = new Date((curSecond - 86400) * 1000)
+        if (mewDate.getFullYear() === Y && mewDate.getMonth() + 1 === m && mewDate.getDate() === d) {
+            return `昨天`
+        } else if (curDate.getFullYear() === Y) {
+            return `${m}月${d}日`
+        }
+        return `${Y}年${m}月${d}日`
+    } else if (type == 2) {
+        return `${Y}-${autoZero(m)}-${autoZero(d)} ${autoZero(H)}:${autoZero(i)}`
+    } else if (type == 3) {
+        return `${Y}-${autoZero(m)}-${autoZero(d)}`
+    } else if (type == 4) {
+        // yesterday
+        let mewDate = new Date((curSecond - 86400) * 1000)
+        if (mewDate.getFullYear() === Y && mewDate.getMonth() + 1 === m && mewDate.getDate() === d) {
+            return `昨天 ${autoZero(H)}:${autoZero(i)}`
+        } else if (curDate.getFullYear() === Y) {
             return `${m}月${d}日 ${autoZero(H)}:${autoZero(i)}`
         }
-        return `${m}月${d}日`
-    }
-    if (showDetail) {
         return `${Y}年${m}月${d}日 ${autoZero(H)}:${autoZero(i)}`
     }
-    return `${Y}年${m}月${d}日`
 }
 
 /**
@@ -67,9 +76,7 @@ const dateTimeFmt = (date, showDetail = false) => {
  * @returns
  */
 const numberFmt = n => {
-    if (!n) {
-        return ''
-    }
+    if (!n) return ''
     return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 

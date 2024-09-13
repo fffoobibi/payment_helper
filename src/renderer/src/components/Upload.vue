@@ -1,10 +1,12 @@
 <script setup>
 import axios from 'axios'
 import { computed, ref, toRaw } from 'vue'
-import logger from "@/utils/logger"
 import { viewImages } from "@/utils/tools"
+import { useLocalConfig } from "@/stores/config"
+const cfg = useLocalConfig()
 const fileList = defineModel()
 
+const env = import.meta.env
 const emit = defineEmits(['done'])
 const props = defineProps({
     validateMinCount: {
@@ -64,19 +66,32 @@ const upload = async (file, r) => {
     f.append('dir', props.dir)
     f.append('file_name', file.name)
     f.append('token', 'b7M89zeAFj8ts493d1Ujz2HrjC')
+    let targetUrl
+    if (cfg.mode) {
+        targetUrl = cfg.uploadFormalUrl
+    } else {
+        targetUrl = cfg.uploadTestUrl
+    }
+    const headers = {
+        "Content-Type": "multipart/form-data",
+        "target-url": targetUrl
+    }
     try {
-        const response = await axios.post(props.action, f, {
-            headers: {
-                "Content-Type": "multipart/form-data"
-            }
+        let url
+        if (env.PROD){
+            url = cfg.uploadUrl
+        }else{
+            url = props.action
+        }
+        const response = await axios.post(url, f, {
+            headers
         })
         if (response.status === 200) {
             r.response = response.data
             return response.data
         }
-        logger.error('err --> ', resp)
     } catch (err) {
-        logger.error('err --> ', err)
+        
     }
 }
 

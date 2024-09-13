@@ -1,10 +1,9 @@
+import { defineStore } from 'pinia'
 import { useUserStore } from '@/stores/index'
 import { computedAsync } from '@vueuse/core'
-import { defineStore } from 'pinia'
-import { ref, watch, toRaw, onMounted } from 'vue'
-import _ from "lodash"
-const store = useUserStore()
-
+import { ref, watch, toRaw, computed } from 'vue'
+import { debounce } from "lodash"
+const env = import.meta.env
 
 const Keys = {
   remmber: 'remmber',
@@ -19,34 +18,35 @@ const Keys = {
   formalUrl: 'formalUrl',
   testUrl: 'testUrl',
   autoClick: 'autoClick',
-  autoConfirm: 'autoConfirm'
-}
-const getConfig = async (key, defaultValue = null) => {
-  const field = `${store.user.id}.${key}`
-  const rs = await electron.config.get(field, defaultValue)
-  return _parsedResult(rs, defaultValue)
+  autoConfirm: 'autoConfirm',
+  uploadFormalUrl: 'uploadFormalUrl',
+  uploadTestUrl: 'uploadTestUrl',
 }
 
-const setConfig = async (key, value, expire = -1) => {
-  const field = `${store.user.id}.${key}`
-  const saved = { value, save: Date.now(), expire }
-  electron.config.set(field, saved)
+const Globals = {
+  formalUrl: 'formalUrl',
+  testUrl: 'testUrl',
+  uploadFormalUrl: 'uploadFormalUrl',
+  uploadTestUrl: 'uploadTestUrl',
+  pro: 'pro'
 }
 
 const _parsedResult = (rs, defaultValue) => {
-  if (rs.value !== defaultValue) {
-    if (rs.expire === -1) {
-      return rs.value
-    }
-    if (Date.now() - rs.save >= rs.expire * 24 * 3600 * 1000) {
-      return defaultValue
-    }
-    return rs.value
+  if (rs === undefined) {
+    return defaultValue
+  }
+  if (rs.expire === -1) {
+    return rs.value === undefined ? defaultValue : rs.value
+  }
+  if (Date.now() - rs.save >= rs.expire * 24 * 3600 * 1000) {
+    return defaultValue
   }
   return rs.value
 }
 
 const useLocalConfig = defineStore('localConfig', () => {
+  const store = useUserStore()
+
   const setId = ref(null)
 
   const setConfig = async (key, value, expire = -1) => {
@@ -65,6 +65,92 @@ const useLocalConfig = defineStore('localConfig', () => {
     electron.config.set(field, saved)
   }
 
+
+  const getConfig = async (key, defaultValue = null) => {
+    const field = `${store.user.id}.${key}`
+    const rs = await electron.config.get(field)
+    return _parsedResult(rs, defaultValue)
+  }
+
+  const makeScope = (initValue, fetch, key, options = { debounced: false, depends: null, autoSave: false }) => {
+    const refV = ref(initValue)
+    const fetChRef = computedAsync(fetch)
+    const dep = [...(options.depends || []), store.user.id]
+
+    watch(fetChRef, v => {
+      refV.value = v
+    }, { immediate: false })
+
+    watch(refV, val => {
+      if (options.autoSave) {
+        setConfig(key, toRaw(val))
+      }
+    }, { immediate: false })
+
+    let update
+    if (options.debounced) {
+      update = debounce((val) => {
+        if (val !== undefined) {
+          refV.value = val
+        }
+        setConfig(key, toRaw(refV.value))
+      }, 500)
+    } else {
+      update = (val) => {
+        if (val !== undefined) {
+          refV.value = val
+        }
+        setConfig(key, toRaw(refV.value))
+      }
+    }
+    return { refV, update }
+  }
+
+
+  const setGlobalConfig = async (key, value, expire = -1) => {
+    const saved = { value, save: Date.now(), expire }
+    electron.config.set(key, saved)
+  }
+
+  const getGlobalConfig = async (key, defaultValue) => {
+    const rs = await electron.config.get(key)
+    return _parsedResult(rs, defaultValue)
+  }
+
+  const makeGlobal = (initValue, fetch, key, options = { debounced: false, autoSave: false }) => {
+    const refV = ref(initValue)
+    const fetChRef = computedAsync(fetch)
+    watch(fetChRef, v => {
+      if (v !== undefined) {
+        refV.value = v
+      }
+    }, { immediate: false })
+
+    watch(refV, val => {
+      if (options.autoSave) {
+        setGlobalConfig(key, toRaw(val))
+      }
+    }, { immediate: false })
+
+    let update
+    if (options.debounced) {
+      update = debounce((val) => {
+        if (val !== undefined) {
+          refV.value = val
+        }
+        setGlobalConfig(key, toRaw(refV.value))
+      }, 500)
+    } else {
+      update = (val) => {
+        if (val !== undefined) {
+          refV.value = val
+        }
+        setGlobalConfig(key, toRaw(refV.value))
+      }
+    }
+    return { refV, update }
+  }
+
   const currentUserName = computedAsync(async () => {
     const rs = await electron.config.getDefault(Keys.username)
     return _parsedResult(rs, null)
@@ -79,20 +165,6 @@ const useLocalConfig = defineStore('localConfig', () => {
     const rs = await electron.config.getDefault(Keys.remmber)
     return _parsedResult(rs, null)
   }, null)
-
-
-
-  // isPin
-  const isPin = computedAsync(async () => {
-    store.user.id
-    const rs = await electron.config.getDefault(Keys.pinned)
-    return _parsedResult(rs, null)
-  }, false)
-
-  const setPin = (value) => {
-    isPin.value = value
-    setConfig(Keys.pinned, value)
-  }
 
   // accountIndexs
   const accountIndexs = ref([])
@@ -166,94 +238,73 @@ const useLocalConfig = defineStore('localConfig', () => {
     setConfig(Keys.accountMenus, [...toRaw(accountMenus.value)])
   }
 
+  // isPin
+  const { refV: isPin, update: setPin } = makeScope(false, async () => {
+    return await getConfig(Keys.pinned)
+  }, Keys.pinned)
 
   // 自动点单确认
-  const autoConfirm = ref('')
-  onMounted(() => {
-    const fetchAutoConfirm = computedAsync(async () => {
-      console.log('fetch local autoConfirm ...')
-      store.user.id
-      const rs = await electron.config.getDefault(Keys.autoConfirm, { save: Date.now(), value: true, expire: -1 })
-      const dft = _parsedResult(rs)
-      return dft
-    })
-
-    watch(
-      fetchAutoConfirm,
-      v => {
-        autoConfirm.value = v
-      },
-      { immediate: false }
-    )
-
-  })
-
-  const updateAutoConfirm = () => {
-    setConfig(Keys.autoConfirm, toRaw(autoConfirm.value))
-  }
+  const { refV: autoConfirm, update: updateAutoConfirm } = makeScope(true, async () => {
+    return await getConfig(Keys.autoConfirm)
+  }, Keys.autoConfirm)
 
   // 自动点单关闭
-  const autoClick = ref('')
-
-  onMounted(() => {
-    const fetchAutoClick = computedAsync(async () => {
-      const rs = await electron.config.getDefault(Keys.autoClick, { save: Date.now(), value: false, expire: -1 })
-      const dft = _parsedResult(rs)
-      return dft
-    })
-
-    watch(
-      fetchAutoClick,
-      v => {
-        autoClick.value = v
-      },
-      { immediate: false }
-    )
-  })
-
-  const updateAutoClick = () => {
-    setConfig(Keys.autoClick, toRaw(autoClick.value))
-  }
+  const { refV: autoClick, update: updateAutoClick } = makeScope(false, async () => {
+    return await getConfig(Keys.autoClick)
+  }, Keys.autoClick)
 
   // 正式服
-  const formalUrl = ref()
-  const fetchFormalUrl = computedAsync(async () => {
-    store.user.id
-    const rs = await  electron.config.getDefault(Keys.formalUrl, { save: Date.now(), value: 'http://bdapi.baizhoucn.com:2501', expire: -1 })
-    return _parsedResult(rs, )
-  },)
-  watch(fetchFormalUrl, v => {
-    formalUrl.value = v
-  }, { immediate: false })
-
-  // watch(formalUrl, v=>{
-  //   console.log('change ....');
-  //   _.debounce(()=>{
-  //     console.log('save to local ...');
-  //     updateFormalUrl()
-  //   }, 200)
-  // })
-  const updateFormalUrl = () => {
-    setConfig(Keys.formalUrl, toRaw(formalUrl.value))
-  }
+  const { refV: formalUrl, update: updateFormalUrl } = makeGlobal('http://bdapi.baizhoucn.com:2501', async () => {
+    return await getGlobalConfig(Globals.formalUrl)
+  }, Globals.formalUrl, { debounced: true })
 
   // 測試服
-  const testUrl = ref()
-  const fetchTestUrl = computedAsync(async () => {
-    store.user.id
-    const rs = await  electron.config.getDefault(Keys.testUrl,  { save: Date.now(), value: 'http://192.168.0.10:20011', expire: -1 })
-    return _parsedResult(rs)
-  },)
-  watch(fetchTestUrl, v => {
-    testUrl.value = v
-  }, { immediate: false })
-  const updateTestUrl = () => {
-    setConfig(Keys.testUrl, toRaw(testUrl.value))
-  }
+  const { refV: testUrl, update: updateTestUrl } = makeGlobal('http://192.168.0.10:20011', async () => {
+    return await getGlobalConfig(Globals.testUrl)
+  }, Globals.testUrl, { debounced: true })
+
+  // 图片上传正式服
+  const { refV: uploadFormalUrl, update: updateUploadFormal } = makeGlobal('http://bdupload.baizhoucn.com', async () => {
+    return await getGlobalConfig(Globals.uploadFormalUrl)
+  }, Globals.uploadFormalUrl, { debounced: true })
+
+  // 图片上传测试服
+  const { refV: uploadTestUrl, update: updateUploadTest } = makeGlobal('http://192.168.0.10/index.php', async () => {
+    return await getGlobalConfig(Globals.uploadTestUrl)
+  }, Globals.uploadTestUrl, { debounced: true })
+
+  const { refV: mode, update: updateMode } = makeGlobal(true, async () => {
+    return await getGlobalConfig(Globals.pro)
+  }, Globals.pro, { autoSave: true })
+
+
+  // prod
+  const apiUrl = computed(() => {
+    if (env.PROD) {
+      if (mode.value) {
+        return formalUrl.value
+      } else {
+        return testUrl.value
+      }
+    }
+
+  })
+
+  const uploadUrl = computed(() => {
+    if (env.PROD) {
+      if (mode.value) {
+        return uploadFormalUrl.value
+      } else {
+        return uploadTestUrl.value
+      }
+    }
+  })
 
   return {
-    setConfig,
+    apiUrl,
+    uploadUrl,
 
+    setConfig,
     isPin,
     setPin,
     accountIndexs,
@@ -273,13 +324,21 @@ const useLocalConfig = defineStore('localConfig', () => {
     formalUrl,
     updateFormalUrl,
     testUrl,
-    updateTestUrl
+    updateTestUrl,
+
+    uploadFormalUrl,
+    updateUploadFormal,
+    uploadTestUrl,
+    updateUploadTest,
+
+    mode,
+    updateMode
+
   }
 })
 
 export {
   Keys,
+  Globals,
   useLocalConfig,
-  getConfig,
-  setConfig
 }

@@ -3,9 +3,11 @@ import { ElLoading } from 'element-plus'
 import Message from '@/utils/message'
 import logger from '@/utils/logger'
 import { useUserStore } from '@/stores'
+import { useLocalConfig } from "@/stores/config"
 
 const env = import.meta.env
 const store = useUserStore()
+const cfgStore = useLocalConfig()
 const contentTypeForm = 'application/x-www-form-urlencoded;charset=UTF-8'
 const contentTypeJson = 'application/json'
 const instance = axios.create({
@@ -19,6 +21,9 @@ let loading = null
 // 添加请求拦截器
 instance.interceptors.request.use(
   (config) => {
+    if (env.PROD) {
+      config.baseURL = cfgStore.apiUrl
+    }
     if (config.showLoading) {
       loading = ElLoading.service({
         lock: true,
@@ -85,10 +90,16 @@ instance.interceptors.response.use(
       if (res.code == 1007) {
         // 未登录，返回登录页
         location.href = '/login'
-      } else {
+      }
+      // else if (res.code == 402) {
+      //   // token 过期
+      //   location.href = '/login'
+      //   electron.toLogin()
+      // }
+      else {
         errorCallback && errorCallback(res)
         logger.error(
-          `[${response.config?.method?.toUpperCase()}] ${response.config.url} fail, error info is `,
+          `[${response.config?.method?.toUpperCase()}] ${response.config?.url} fail, error info is `,
           res
         )
         Message.error(res.msg)
@@ -100,7 +111,6 @@ instance.interceptors.response.use(
     if (error.response?.config.showLoading && loading) {
       loading.close()
     }
-    console.log('error in request', error)
     logger.error(
       `[${error.response?.config?.method?.toUpperCase()}] ${error.response?.config?.url} fail, error is `,
       error.message
@@ -133,13 +143,21 @@ const http = (config) => {
   }
 
   const token = localStorage.getItem('token')
+
+  let targetUrl
+  if (cfgStore.mode) {
+    targetUrl = cfgStore.formalUrl
+  } else {
+    targetUrl = cfgStore.testUrl
+  }
   const headers = {
     'Content-Type': contentType,
     'X-Requested-With': 'XMLHttpRequest',
+    'target-url': targetUrl,
     token: token
   }
   if (method === 'post') {
-    logger.info(`[post] ${url}, headers-token: ${headers.token}, form-data: `, formData)
+    logger.info(`[post] ${url}`, ' data: ', {...params})
     return instance.post(url, formData, {
       headers,
       showLoading,
@@ -150,7 +168,7 @@ const http = (config) => {
       errorCallback: config.errorCallback
     })
   } else {
-    logger.info(`[get] ${url}, headers-token: ${headers.token}`)
+    logger.info(`[get] ${url}, headers: ${headers}`)
     return instance.get(url, {
       headers,
       showLoading,

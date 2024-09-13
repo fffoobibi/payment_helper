@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-
+import fs from "fs"
 const electron = {
   // 渲染进程 -> 主进程的调用
   login: (data) => ipcRenderer.invoke('login', data),
@@ -14,7 +14,15 @@ const electron = {
     setDefault: (key, value) => ipcRenderer.invoke('set-default', key, value)
   },
   viewImages: (urls, index = 0) => ipcRenderer.send('view-images', urls, index),
-
+  viewLog: () => ipcRenderer.send('open-log'),
+  files: {
+    readFile: (path, callback) => {
+      fs.readFile(path, 'utf8', (err, data) => {
+        callback(err, data)
+      }
+      )
+    }
+  },
   // 主进程 -> 渲染进程的事件
   onCapture: (callback) => ipcRenderer.on('key-capture', (_event, data) => callback(data)),
   onPreviewImage: (callback) => ipcRenderer.on('preview-images', (_event, urls, index, render) => callback(urls, index, render)),
@@ -32,6 +40,14 @@ const electron = {
     return (data, fileName) => {
       ipcRenderer.send('export-excel', data, fileName)
     }
+  },
+  onOpenLog: (callback, aCallback) => {
+    ipcRenderer.on('log-result', (event, content, path) => {
+      callback(content, path)
+    })
+    ipcRenderer.on('log-append', (event, content, path)=>{
+      aCallback?.(content, path)
+    })
   }
 }
 

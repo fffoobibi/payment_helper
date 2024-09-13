@@ -438,7 +438,7 @@ const onSubmitForm = async () => {
         console.log(form.post.attachment_list)
         data.attachment_list = form.attrs.attachment_list
         if (uploads) {
-          uploads.forEach(f => data.attachment_list.push(f))
+          uploads.forEach(f => data.attachment_list.push({url: f}))
         }
         data.attachment_list = JSON.stringify(data.attachment_list)
         data.currency = formState.in_account_id_currency
@@ -500,11 +500,11 @@ const crop = setUpCapture(src => {
           <h4>在途资金</h4>
         </template>
 
-        <template #option>
+        <!-- <template #option>
           <el-button size="small" class="option-add" link @click="onAdd">
             <i class="iconfont icon-tianjia"></i>
             新增</el-button>
-        </template>
+        </template> -->
       </Header>
 
       <div class="pannel">

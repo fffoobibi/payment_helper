@@ -68,7 +68,7 @@ const editFormRef = ref(null)
 const editUploadRef = ref(null)
 
 const form = reactive({
-    mode: 'add', // add, edit 
+    mode: 'add', // add, edit
 
     post: {
         account_id: props.accountId,
@@ -378,7 +378,7 @@ watch(() => form.post.account_id, async () => {
                         <div> 支出编号： <span>{{ info.sn }} </span></div>
                         <div>支出科目：<span>{{ info?.payment_info?.account_title_parent + ' - ' +
                     info?.payment_info?.account_title }}</span></div>
-                        <div>创建时间：<span>{{ dateTimeFmt(info.create_time, true)
+                        <div>创建时间：<span>{{ dateTimeFmt(info.create_time, 4)
                                 }}</span></div>
                         <div> 创建： <span>{{ info.creator }}({{ info.department_name }})</span> </div>
                         <div>金额：<el-text>{{ numberFmt(info.origin_total_amount) }}</el-text> <span class="red">{{

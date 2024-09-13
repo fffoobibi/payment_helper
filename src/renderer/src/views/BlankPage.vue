@@ -14,7 +14,7 @@ header {
   width: 100%;
   height: 36px;
   padding: 0 0 0 10px;
-  background-color: #fff;
+  background-color: #fffc;
   border-bottom: 1px solid #eee;
 }
 

@@ -115,7 +115,10 @@ const onSubmit = async () => {
       </el-form-item>
     </el-form>
 
-    <div class="footer">v2.0.1</div>
+    <div class="footer">
+      {{ configStore.mode ? '' : '测试服' }}
+       <span style="font-weight: bold">v2.0.1</span> 
+    </div>
   </div>
 </template>
 

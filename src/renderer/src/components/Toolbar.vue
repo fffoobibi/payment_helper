@@ -61,7 +61,11 @@ const onWindow = (action, data) => {
 
 <template>
   <div class="toolbar" :class="{ 'only-close': onlyClose }">
-    <div class="drag" :class="{ 'title': onlyClose }">{{ title }}</div>
+    <div class="drag" :class="{ 'title': onlyClose }">
+      <slot>
+        {{ title }}
+      </slot>
+    </div>
     <div class="win-options">
       <el-button v-if="!onlyClose" class="win-option win-pin" @click="onPin" :title="isPin ? '取消固定' : '固定'" text>
         <el-icon class="iconfont" :class="[isPin ? 'icon-pin' : 'icon-unpin']"></el-icon>

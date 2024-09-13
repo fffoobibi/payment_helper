@@ -105,3 +105,15 @@ body {
 .el-table .cell {
   font-size: 0.9em;
 }
+
+.el-dialog__title {
+  font-size: 1em;
+}
+
+.el-drawer__header {
+  margin-bottom: 0;
+}
+
+.records .el-drawer__body {
+  padding: 12px 0 !important;
+}

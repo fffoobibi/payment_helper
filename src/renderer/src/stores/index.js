@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { defineStore } from 'pinia'
 
 // 用户信息
@@ -73,7 +73,26 @@ const useAccountStore = defineStore('accounts', () => {
 
 })
 
+const useLogStore = defineStore('logStore', () => {
+  const content = ref('')
+  const dynamic = ref([])
+  const file = ref('')
+  const append = v =>{
+    dynamic.value.push(v)
+  }
+  // watch(dynamic, ()=>{
+  //   console.log('dynamic change ...');
+  // }, {deep: true})
+  // watchEffect(()=>{
+  //   dynamic.value
+  //   console.log('dynamic change ...');
+  // })
+  return { content, dynamic, file, append }
+})
+
 export {
   useUserStore,
-  useAccountStore
+  useAccountStore,
+  useLogStore
 }
+
