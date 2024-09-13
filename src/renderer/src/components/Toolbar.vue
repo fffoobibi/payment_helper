@@ -67,6 +67,9 @@ const onWindow = (action, data) => {
       </slot>
     </div>
     <div class="win-options">
+      <slot name="options">
+
+      </slot>
       <el-button v-if="!onlyClose" class="win-option win-pin" @click="onPin" :title="isPin ? '取消固定' : '固定'" text>
         <el-icon class="iconfont" :class="[isPin ? 'icon-pin' : 'icon-unpin']"></el-icon>
       </el-button>

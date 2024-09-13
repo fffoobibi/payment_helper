@@ -48,7 +48,9 @@ const electron = {
     ipcRenderer.on('log-append', (event, content, path)=>{
       aCallback?.(content, path)
     })
-  }
+  }, 
+  // update
+  onUpdater: (callback)=> ipcRenderer.on('updater-message', (event, key, msg)=>callback(key, msg))
 }
 
 contextBridge.exposeInMainWorld('electron', electron)

@@ -7,9 +7,58 @@ import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/favicon.ico?asset'
 import log from 'electron-log'
 import fs from 'fs'
-import * as XLSX from "xlsx"
+import * as XLSX from 'xlsx'
 
+import _ from 'electron-updater'
+const autoUpdater = _.autoUpdater
 
+class Updater {
+  win = null
+
+  sendStatusToWindow(event, text) {
+    this.win.webContents.send('updater-message', event, text)
+    console.log('send event updater-message ==>', event, this.win)
+  }
+
+  init(win) {
+    // autoUpdater.setFeedURL('http://127.0.0.1/updates')
+    this.win = win
+    autoUpdater.forceDevUpdateConfig = true
+    autoUpdater.autoDownload = false
+    autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
+    
+    autoUpdater.on('checking-for-update', () => {
+      this.sendStatusToWindow('checking-for-update', 'Checking for update...')
+    })
+
+    autoUpdater.on('update-available', (info) => {
+      this.sendStatusToWindow('update-available', 'Update available.')
+    })
+
+    autoUpdater.on('update-not-available', (info) => {
+      this.sendStatusToWindow('update-not-available', 'Update not available.')
+    })
+    
+    autoUpdater.on('error', (err) => {
+      this.sendStatusToWindow('error', 'Error in auto-updater. ' + err)
+    })
+
+    autoUpdater.on('download-progress', (progressObj) => {
+      let log_message = 'Download speed: ' + progressObj.bytesPerSecond
+      log_message = log_message + ' - Downloaded ' + progressObj.percent + '%'
+      log_message = log_message + ' (' + progressObj.transferred + '/' + progressObj.total + ')'
+      this.sendStatusToWindow('download-progress', log_message)
+    })
+
+    autoUpdater.on('update-downloaded', (info) => {
+      this.sendStatusToWindow('update-downloaded', 'Update downloaded')
+    })
+
+    autoUpdater.checkForUpdatesAndNotify()
+  }
+}
+
+const updater = new Updater()
 
 // 日志配置
 log.transports.file.maxSize = 10 * 1024 * 1024 // 日志大小
@@ -27,7 +76,6 @@ log.transports.file.resolvePathFn = () => {
   return join(directoryPath, 'main.log')
 }
 
-
 // 配置文件
 const store = new Store()
 console.log('store ', store.path)
@@ -37,21 +85,20 @@ const loginHeight = 320
 const mainWidth = 950
 const mainHeight = 700
 
-
 function formatDate(date) {
   function padZero(num) {
-    return num < 10 ? '0' + num : num;
+    return num < 10 ? '0' + num : num
   }
 
-  const year = date.getFullYear();
-  const month = padZero(date.getMonth() + 1); // getMonth() 返回的是从0开始的月份
-  const day = padZero(date.getDate());
-  const hours = padZero(date.getHours());
-  const minutes = padZero(date.getMinutes());
-  const seconds = padZero(date.getSeconds());
-  const milliseconds = date.getMilliseconds().toString().padStart(3, '0'); // 确保毫秒有三位数
+  const year = date.getFullYear()
+  const month = padZero(date.getMonth() + 1) // getMonth() 返回的是从0开始的月份
+  const day = padZero(date.getDate())
+  const hours = padZero(date.getHours())
+  const minutes = padZero(date.getMinutes())
+  const seconds = padZero(date.getSeconds())
+  const milliseconds = date.getMilliseconds().toString().padStart(3, '0') // 确保毫秒有三位数
 
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`
 }
 
 function createWindow() {
@@ -68,12 +115,10 @@ function createWindow() {
     log: null
   }
 
-
   log.transports.custom = (msg) => {
     if (_windows.log) {
-      
       const s0 = log.transports.file.transforms[3](msg)
-      const s1 = "[" + formatDate(msg.date) + "] " + `[${msg.level}]  ` + s0
+      const s1 = '[' + formatDate(msg.date) + '] ' + `[${msg.level}]  ` + s0
       console.log('sn ...', msg.toString())
       _windows.log.webContents.send('log-append', s1, log.transports.file.resolvePathFn())
     }
@@ -148,17 +193,18 @@ function createWindow() {
     }
   })
 
-
   if (is.dev) {
     mainWindow.webContents.openDevTools()
   }
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+    //
+    updater.init(mainWindow)
   })
 
   mainWindow.on('closed', () => {
-    console.log('main closed ');
+    console.log('main closed ')
     // if (_windows.log) {
     //   console.log('close log window',  _windows.log);
     //   _windows.log.close()
@@ -172,7 +218,7 @@ function createWindow() {
   })
 
   mainWindow.on('hide', () => {
-    console.log('main hide ');
+    console.log('main hide ')
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -215,7 +261,7 @@ function createWindow() {
     mainWindow.setResizable(true)
 
     // TODO: 添加托盘操作
-    contextMenu.unshift({ label: data.username, click: () => { } })
+    contextMenu.unshift({ label: data.username, click: () => {} })
   })
 
   // 去登录
@@ -226,13 +272,13 @@ function createWindow() {
     // mainWindow.setResizable(false)
     // console.log('tologin ', mainWindow.getSize());
 
-    mainWindow.setResizable(true);
-    console.log('Current size:', mainWindow.getSize());
-    mainWindow.setSize(320, 320);
-    mainWindow.center();
-    console.log('New size after to-login:', mainWindow.getSize());
+    mainWindow.setResizable(true)
+    console.log('Current size:', mainWindow.getSize())
+    mainWindow.setSize(320, 320)
+    mainWindow.center()
+    console.log('New size after to-login:', mainWindow.getSize())
     // 设置窗口不可再次调整大小
-    mainWindow.setResizable(false);
+    mainWindow.setResizable(false)
   })
 
   // 窗口控制
@@ -255,11 +301,9 @@ function createWindow() {
       case 'close': {
         if (data.closeType == 0) {
           win.close()
-        }
-        else if (data.closeType == 1) {
+        } else if (data.closeType == 1) {
           win.hide()
-        }
-        else if (data.closeType == 2) {
+        } else if (data.closeType == 2) {
           if (_windows.preview === null) {
             _windows.preview = win
           }
@@ -311,7 +355,7 @@ function createWindow() {
   })
 
   ipcMain.handle('set-config', (event, key, value) => {
-    console.log('set ', key, value)
+    // console.log('set ', key, value)
     if (value !== undefined) {
       store.set(key, value)
     }
@@ -319,7 +363,7 @@ function createWindow() {
 
   ipcMain.handle('get-config', (event, key, defaultValue) => {
     const rs = store.get(key, defaultValue)
-    console.log('get ', key, rs, defaultValue)
+    // console.log('get ', key, rs, defaultValue)
     return rs
   })
 
@@ -330,7 +374,7 @@ function createWindow() {
     }
     const field = `${v}.${key}`
     const rs = store.get(field, defaultValue)
-    console.log('get default ===> ', key, v, defaultValue)
+    // console.log('get default ===> ', key, v, defaultValue)
     return rs
   })
 
@@ -341,106 +385,117 @@ function createWindow() {
     }
     const field = `${v}.${key}`
     store.set(field, value)
-    console.log('set default ===> ', key, v)
+    // console.log('set default ===> ', key, v)
   })
 
   // 图片查看
   ipcMain.on('view-images', (event, urls, index) => {
-    createOtherWindow('preview', () => {
-      return new BrowserWindow({
-        icon: icon,
-        width: mainWidth,
-        height: mainHeight,
-        show: false,
-        autoHideMenuBar: true,
-        title: '图片查看',
-        titleBarStyle: 'hidden',
-        frame: false,
-        transparent: true,
-        closable: false,
-        resizable: true,
-        maximizable: true,
-        minWidth: mainWidth,
-        minHeight: mainHeight,
-        alwaysOnTop: true,
-        center: true,
-        webPreferences: {
-          nodeIntegration: true,
-          contextIsolation: true,
-          preload: join(__dirname, '../preload/index.mjs'),
-          sandbox: false
-        }
-      })
-    }, frame => {
-      frame.webContents.send('preview-images', urls, index, Date.now())
-    })
+    createOtherWindow(
+      'preview',
+      () => {
+        return new BrowserWindow({
+          icon: icon,
+          width: mainWidth,
+          height: mainHeight,
+          show: false,
+          autoHideMenuBar: true,
+          title: '图片查看',
+          titleBarStyle: 'hidden',
+          frame: false,
+          transparent: true,
+          closable: false,
+          resizable: true,
+          maximizable: true,
+          minWidth: mainWidth,
+          minHeight: mainHeight,
+          alwaysOnTop: true,
+          center: true,
+          webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: true,
+            preload: join(__dirname, '../preload/index.mjs'),
+            sandbox: false
+          }
+        })
+      },
+      (frame) => {
+        frame.webContents.send('preview-images', urls, index, Date.now())
+      }
+    )
   })
 
   // 日志打开
   ipcMain.on('open-log', (event) => {
-    createOtherWindow('log', () => {
-      return new BrowserWindow({
-        icon: icon,
-        width: mainWidth,
-        height: mainHeight,
-        show: false,
-        autoHideMenuBar: true,
-        title: '日志',
-        titleBarStyle: 'hidden',
-        frame: false,
-        transparent: true,
-        closable: false,
-        resizable: true,
-        maximizable: true,
-        minWidth: mainWidth,
-        minHeight: mainHeight,
-        alwaysOnTop: true,
-        center: true,
-        webPreferences: {
-          nodeIntegration: true,
-          contextIsolation: true,
-          preload: join(__dirname, '../preload/index.mjs'),
-          sandbox: false
-        }
-      })
-    }, frame => {
-      const filePath = log.transports.file.resolvePathFn()
-      frame.webContents.send('log-result', '', filePath)
-    }, true)
+    createOtherWindow(
+      'log',
+      () => {
+        return new BrowserWindow({
+          icon: icon,
+          width: mainWidth,
+          height: mainHeight,
+          show: false,
+          autoHideMenuBar: true,
+          title: '日志',
+          titleBarStyle: 'hidden',
+          frame: false,
+          transparent: true,
+          closable: false,
+          resizable: true,
+          maximizable: true,
+          minWidth: mainWidth,
+          minHeight: mainHeight,
+          alwaysOnTop: true,
+          center: true,
+          webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: true,
+            preload: join(__dirname, '../preload/index.mjs'),
+            sandbox: false
+          }
+        })
+      },
+      (frame) => {
+        const filePath = log.transports.file.resolvePathFn()
+        frame.webContents.send('log-result', '', filePath)
+      },
+      true
+    )
   })
 
   // excel保存
   ipcMain.on('export-excel', (event, data, defaultPath) => {
-    dialog.showSaveDialog({
-      title: '保存Excel文件',
-      defaultPath,
-      filters: [{ name: 'Excel files', extensions: ['xlsx'] }]
-    }).then(result => {
-      if (!result.canceled && result.filePath) {
-        try {
-          const wb = XLSX.utils.book_new();
-          const ws = XLSX.utils.json_to_sheet(data);
-          XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-          const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
-          fs.writeFile(result.filePath, buffer, err => {
-            if (err) {
-              event.reply('export-excel-error', err.message)  // 发送错误消息
-            } else {
-              event.reply('export-excel-success')  // 发送成功消息
-            }
-          });
-        } catch (error) {
-          log.error("保存excel失败", err)
-          event.reply('export-excel-error', error.message);  // 发送错误消息
+    dialog
+      .showSaveDialog({
+        title: '保存Excel文件',
+        defaultPath,
+        filters: [{ name: 'Excel files', extensions: ['xlsx'] }]
+      })
+      .then((result) => {
+        if (!result.canceled && result.filePath) {
+          try {
+            const wb = XLSX.utils.book_new()
+            const ws = XLSX.utils.json_to_sheet(data)
+            XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
+            const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' })
+            fs.writeFile(result.filePath, buffer, (err) => {
+              if (err) {
+                event.reply('export-excel-error', err.message) // 发送错误消息
+              } else {
+                event.reply('export-excel-success') // 发送成功消息
+              }
+            })
+          } catch (error) {
+            log.error('保存excel失败', err)
+            event.reply('export-excel-error', error.message) // 发送错误消息
+          }
+        } else {
+          event.reply('export-excel-cancel')
         }
-      } else {
-        event.reply('export-excel-cancel')
-      }
-    }).catch(err => {
-      log.error("保存excel失败", err)
-    });
-  });
-
+      })
+      .catch((err) => {
+        log.error('保存excel失败', err)
+      })
+  })
 
   ipcMain.on('log-event', (event, level, ...args) => {
     switch (level) {
@@ -460,6 +515,8 @@ function createWindow() {
         break
     }
   })
+
+  return mainWindow
 }
 
 // This method will be called when Electron has finished
@@ -493,7 +550,6 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
-
 
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.

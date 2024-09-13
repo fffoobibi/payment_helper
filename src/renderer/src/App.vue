@@ -4,6 +4,7 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useRouter, useRoute } from 'vue-router'
 import { useImageStore } from '@/stores/images'
 import { useLogStore } from './stores';
+import message from './utils/message';
 
 const imgStore = useImageStore()
 const logStore = useLogStore()
@@ -31,6 +32,25 @@ electron.onOpenLog((content, path) => {
   logStore.file = path
   logStore.append(c)
 })
+
+electron.onUpdater((name, value) => {
+  console.log('get updater msg ...');
+  switch (name) {
+    case 'checking-for-update':
+      // console.log('版本检查中...');
+      // message.success('版本检查中...')
+      break;
+    case 'update-available':
+      console.log('有可用版本');
+      message.success("有可用版本")
+      break;
+    default:
+      break;
+  }
+})
+
+console.log('app view ...');
+// 
 
 </script>
 

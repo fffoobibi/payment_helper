@@ -295,7 +295,7 @@ monaco.languages.setMonarchTokensProvider('log', {
 });
 // 主题
 monaco.editor.defineTheme('log', {
-    base: 'vs', 
+    base: 'vs',
     inherit: true,
     rules: [
         { token: 'custom-date', foreground: '1E7C38' }, // 灰色
@@ -331,6 +331,7 @@ onMounted(() => {
         cursorStyle: 'line',
         cursorWidth: 3
     });
+    toEnd()
 });
 
 
@@ -342,6 +343,11 @@ onBeforeUnmount(() => {
 const getEditorValue = () => {
     return editor.getValue();
 }
+const toEnd = () => {
+    const model = editor.getModel();
+    editor.revealLine(model.getLineCount());
+}
+
 const appendTextToEnd = (text) => {
     const model = editor.getModel();
     const lastLine = model.getLineCount();
@@ -360,4 +366,3 @@ defineExpose({
     appendTextToEnd
 });
 </script>
-

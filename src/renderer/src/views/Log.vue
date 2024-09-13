@@ -7,62 +7,38 @@ import message from '../utils/message';
 const logStore = useLogStore()
 const { content } = storeToRefs(logStore)
 
-// const title = computed(() => {
-//     return `图片查看 ${currentIndex.value + 1}/${urls.value.length}`
-// })
-
-// const content = ref(`[2024-09-12 17:13:06.780] [info]  [get] /accountTitle/getClientSubject, headers: [object Object]
-// [2024-09-12 17:13:06.781] [info]  [get] /accountTitle/getClientSubject?type=1, headers: [object Object]
-// [2024-09-12 17:13:06.781] [info]  [get] /incomeRecord/getCurrencies, headers: [object Object]
-// [2024-09-12 17:13:06.915] [info]  [post] /paymentCashier/getPaymentList, headers: {
-//   'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-//   'X-Requested-With': 'XMLHttpRequest',
-//   'target-url': 'http://bdapi.baizhoucn.com:2501',
-//   token: '139.1726132386.1726218786.e2d31d6937736248761ba31f998a4a45'
-// } form-data:  {}
-// [2024-09-12 17:13:08.272] [info]  [post] /creditCard/getAccounts, headers: {
-//   'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-//   'X-Requested-With': 'XMLHttpRequest',
-//   'target-url': 'http://bdapi.baizhoucn.com:2501',
-//   token: '139.1726132386.1726218786.e2d31d6937736248761ba31f998a4a45'
-// } form-data:  {}
-// [2024-09-12 17:13:08.443] [info]  [post] /creditCard/getList, headers: {
-//   'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-//   'X-Requested-With': 'XMLHttpRequest',
-//   'target-url': 'http://bdapi.baizhoucn.com:2501',
-//   token: '139.1726132386.1726218786.e2d31d6937736248761ba31f998a4a45'
-// } form-data:  {}`)
-
 const loading = ref(false)
 const reload = () => {
     loading.value = true
-    message.success('已重新加载')
     electron.files.readFile(logStore.file, (err, data) => {
         if (!err) {
             logStore.content = data
+            message.success('已重新加载')
         }
-        message.success('已重新加载')
         loading.value = false
     })
 }
-
 </script>
 
 <template>
     <div class="main">
         <div style="height: 30px; width: 100%;">
             <Toolbar title="日志查看" :close-type="3" :only-close="true">
-                <el-button text="text" link :loading="loading" @click="reload">
-                    <template #loading>
-                        <el-icon style="animation: loading-rotate 2s linear infinite;" size="large">
-                            <Refresh />
-                        </el-icon>
-                    </template>
-                    <span class="bold black">日志查看</span>
-                    <el-icon v-if="!loading" size="large">
-                        <Refresh />
-                    </el-icon>
-                </el-button>
+                <template #options>
+                    <el-button class="win-option" type="text" link :loading="loading" @click="reload">
+                        <template #loading>
+                            <el-icon style="animation: loading-rotate 2s linear infinite;">
+                                <Refresh />
+                            </el-icon>
+                        </template>
+                        <el-space>
+                            <el-icon v-if="!loading">
+                                <Refresh />
+                            </el-icon>
+                            <span class=" black">重载</span>
+                        </el-space>
+                    </el-button>
+                </template>
             </Toolbar>
         </div>
         <div class="content">
@@ -75,6 +51,10 @@ const reload = () => {
 <style scoped>
 .bold {
     font-weight: 600;
+}
+
+.black {
+    color: black;
 }
 
 .main {

@@ -44,6 +44,8 @@ const openLog = ()=>{
   electron.viewLog()
 }
 
+console.log('aaaaa')
+
 const formRef = ref(null)
 const changePwd = async () => {
   formRef.value.validate().then(async valid => {
