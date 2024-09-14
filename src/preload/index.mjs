@@ -23,6 +23,13 @@ const electron = {
       )
     }
   },
+  update: {
+    open: () => ipcRenderer.send('open-update'),
+    install: () => ipcRenderer.send('update:install'),
+    download: () => ipcRenderer.send('update:download'),
+    cancel: () => ipcRenderer.send('update:cancel'),
+    checkForUpdates: (showMsgIfNew = true) => ipcRenderer.send('update:checkForUpdates', showMsgIfNew),
+  },
   // 主进程 -> 渲染进程的事件
   onCapture: (callback) => ipcRenderer.on('key-capture', (_event, data) => callback(data)),
   onPreviewImage: (callback) => ipcRenderer.on('preview-images', (_event, urls, index, render) => callback(urls, index, render)),
@@ -45,12 +52,14 @@ const electron = {
     ipcRenderer.on('log-result', (event, content, path) => {
       callback(content, path)
     })
-    ipcRenderer.on('log-append', (event, content, path)=>{
+    ipcRenderer.on('log-append', (event, content, path) => {
       aCallback?.(content, path)
     })
-  }, 
+  },
   // update
-  onUpdater: (callback)=> ipcRenderer.on('updater-message', (event, key, msg)=>callback(key, msg))
+  onUpdater: (callback) => ipcRenderer.on('updater-message', (event, key, msg, ...args) => callback(key, msg, ...args)),
+  onOpenUpdate: (callback) => ipcRenderer.on('update:dialog', (_event,) => callback())
+
 }
 
 contextBridge.exposeInMainWorld('electron', electron)

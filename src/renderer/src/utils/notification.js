@@ -1,9 +1,9 @@
 import { ElNotification } from 'element-plus'
 
 const showNotification = (msg, onClose, onClick, type) => {
-
+    const title = type[0].toUpperCase() + type.slice(1)
     ElNotification({
-        title: type,
+        title,
         message: msg,
         type,
         onClose,

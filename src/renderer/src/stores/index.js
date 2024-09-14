@@ -77,22 +77,65 @@ const useLogStore = defineStore('logStore', () => {
   const content = ref('')
   const dynamic = ref([])
   const file = ref('')
-  const append = v =>{
+  const append = v => {
     dynamic.value.push(v)
   }
-  // watch(dynamic, ()=>{
-  //   console.log('dynamic change ...');
-  // }, {deep: true})
-  // watchEffect(()=>{
-  //   dynamic.value
-  //   console.log('dynamic change ...');
-  // })
   return { content, dynamic, file, append }
+})
+
+const useUpdateStore = defineStore('updateStore', () => {
+  function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    if (!bytes) return ''
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  }
+
+  const checking = ref(false)
+  const update_available = ref(false)
+  const update_err = ref(false)
+  const update_success = ref(false)
+  const update_info = ref({})
+  const version = ref(null)
+  const downloading = ref(false)
+  const canUpdate = ref(false)
+
+  const percent = computed(() => {
+    if (update_success.value) {
+      return 100
+    }
+    if (update_info.value.percent) {
+      return update_info.value.percent.toFixed(2)
+    }
+    return 0
+  })
+
+  const download_info = computed(() => {
+    if (downloading.value && update_info.value.total) {
+      const { total, bytesPerSecond } = update_info.value
+      const speed = formatBytes(bytesPerSecond, 2)
+      const all = formatBytes(total, 2)
+      return `${speed}/s ${all}`
+    }
+  })
+
+  return {
+    checking, update_available, update_success, update_info, update_err, version, downloading, canUpdate,
+    percent,
+    download_info
+  }
 })
 
 export {
   useUserStore,
   useAccountStore,
-  useLogStore
+  useLogStore,
+  useUpdateStore
 }
 

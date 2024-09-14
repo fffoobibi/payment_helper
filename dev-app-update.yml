@@ -1,3 +1,4 @@
 provider: generic
 updaterCacheDirName: dev-updater
-url: "http://127.0.0.1/updates"
+url: http://36.32.174.26:5018/updates
+# url: "http://127.0.0.1/updates"

@@ -24,6 +24,11 @@ const router = createRouter({
             component: ()=> import('@/views/Log.vue')
         },
         {
+            path: '/update',
+            name: 'update',
+            component: ()=> import('@/views/Update.vue')
+        },
+        {
             path: '/home',
             name: 'home',
             redirect: { name: 'payment' },

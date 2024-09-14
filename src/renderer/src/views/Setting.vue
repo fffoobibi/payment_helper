@@ -1,16 +1,18 @@
 <script setup>
 import { reactive, ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from "pinia"
-import { useUserStore } from "@/stores"
+import { useUpdateStore, useUserStore } from "@/stores"
 import { useLocalConfig } from "@/stores/config"
 import api from "@/api"
 import message from '../utils/message'
+import updater from "@/utils/update"
+import app_info from '../../../../package.json'
+
 const cfgStore = useLocalConfig()
 const { autoClick, autoConfirm, formalUrl, testUrl, uploadFormalUrl, uploadTestUrl, mode } = storeToRefs(cfgStore)
 const store = useUserStore()
-// import fs from 'fs'
+const update = useUpdateStore()
 
-// console.log('fs ==> ', fs.readFileSync);
 const showHidden = ref(false)
 const handleCtrlShiftQ = event => {
   if (event.ctrlKey && event.shiftKey && event.code === 'KeyQ') {
@@ -40,7 +42,7 @@ const reset = () => {
   cfgStore.updateUploadTest()
   message.success('域名已重置')
 }
-const openLog = ()=>{
+const openLog = () => {
   electron.viewLog()
 }
 
@@ -83,6 +85,32 @@ const validatePassConfirm = (rule, value, callback) => {
     callback()
   }
 }
+
+const show = ref(false)
+const checkUpdates = () => {
+  if (update.downloading) {
+
+  }
+  else if (update.update_success) {
+
+  }
+  else {
+    update.checking = true
+    updater.checkUpdates(false)
+  }
+  show.value = true
+}
+
+const download = () => {
+  if (update.update_success) {
+    console.log('send install ...');
+    updater.install()
+  } else {
+    update.downloading = true
+    updater.download()
+  }
+}
+
 </script>
 
 
@@ -95,6 +123,20 @@ const validatePassConfirm = (rule, value, callback) => {
         </template>
       </Header>
       <el-scrollbar>
+
+        <div class="pannel">
+          <span class="black" style="font-size: 11pt;border-bottom: 2px solid purple;">版本信息</span>
+          <el-form>
+            <el-form-item label="当前版本">
+              <el-space>
+                <span class="black">{{ "v" + app_info.version }}</span>
+                <el-button @click="checkUpdates" :loading="update.checking">检查更新</el-button>
+              </el-space>
+            </el-form-item>
+          </el-form>
+
+
+        </div>
         <div class="pannel">
           <span class="black" style="font-size: 11pt;border-bottom: 2px solid purple;">密码重置</span>
           <el-form label-width="auto" ref="formRef" :model="changeForm">
@@ -122,23 +164,14 @@ const validatePassConfirm = (rule, value, callback) => {
           <el-form label-width="auto">
             <el-form-item label="自动点单">
               <el-checkbox label="自动点单确认" v-model="autoConfirm" @change="v => {
-            cfgStore.updateAutoConfirm()
-          }" />
+                  cfgStore.updateAutoConfirm()
+                }" />
               <el-checkbox label="关闭自动点单" v-model="autoClick" @change="v => {
-            cfgStore.updateAutoClick()
-          }" />
+                  cfgStore.updateAutoClick()
+                }" />
             </el-form-item>
           </el-form>
         </div>
-
-        <!-- <div class="pannel">
-          <span class="black" style="font-size: 11pt;border-bottom: 2px solid purple;">截图设置</span>
-          <el-form label-width="auto">
-            <el-form-item label="">
-              <el-checkbox label="隐藏窗口截图" value="Value A" />
-            </el-form-item>
-          </el-form>
-        </div> -->
 
         <div v-if="showHidden || !cfgStore.mode" class="pannel">
           <el-space>
@@ -199,16 +232,43 @@ const validatePassConfirm = (rule, value, callback) => {
 
       </el-scrollbar>
 
+      <el-dialog v-model="show">
+        <div v-if="update.canUpdate">
+          <p class="bold black">发现新版本!</p>
+          <p>版本：{{ "v" + update.version.version }}</p>
+          <div style="display: flex" v-if="update.downloading || update.update_success">
+            <span style="margin-right: 0px;">进度：</span>
+            <el-progress :text-inside="true" :stroke-width="20" :percentage="update.percent" style="width:85%" />
+          </div>
+          <p v-if="update.downloading">速度：<span style="font-size: 10pt;" class="black">{{ update.download_info }}</span>
+          </p>
+        </div>
+        <div v-else style="text-align: center;">
+          <p class="bold black">无可用更新</p>
+        </div>
+        <template #footer>
+          <div v-if="update.canUpdate">
+            <el-button @click="show = false">取消</el-button>
+            <el-button :type="update.update_success ? 'danger' : 'primary'" :loading="update.downloading"
+              @click="download">
+              {{ update.update_success ? "退出重启" : '更新' }}
+            </el-button>
+          </div>
 
+        </template>
+      </el-dialog>
     </template>
   </Layout>
 </template>
-
 
 <style scoped>
 h4 {
   padding: 0 10px;
   color: #333;
+}
+
+.bold {
+  font-weight: 600;
 }
 
 .black {

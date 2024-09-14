@@ -1,19 +1,27 @@
 <script setup>
 import { nextTick, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router';
+import { useRouter } from 'vue-router'
 import { storeToRefs } from "pinia"
-import Toolbar from '@/components/Toolbar.vue';
+import Toolbar from '@/components/Toolbar.vue'
 import api from "@/api"
-import { useUserStore, useAccountStore } from '@/stores'
+import { useUserStore, useAccountStore, useUpdateStore } from '@/stores'
 import { Keys, useLocalConfig } from "@/stores/config"
+import { computed } from 'vue'
+import app_info from '../../../../package.json'
+import updater from '../utils/update'
 
 const router = useRouter();
 const userStore = useUserStore()
 const accountStore = useAccountStore()
 const configStore = useLocalConfig()
+const updateStore = useUpdateStore()
 const { currentUserName: username, currentUserPasswd: password, currentUserRemeber: remember } = storeToRefs(configStore)
 
-
+const version = computed(() => {
+  if (updateStore.version) {
+    return "v" + updateStore.version.version
+  }
+})
 const formData = reactive({
   username,
   password,
@@ -33,49 +41,56 @@ const formRules = reactive({
 })
 
 const onSubmit = async () => {
-  formRef.value.validate(async valid => {
-    if (!valid) {
-      return false
-    }
-    try {
-      const res = await api.login(formData)
-      userStore.setUser(res)
-      localStorage.setItem('token', res.token)
-      electron.login({ username: formData.username, password: formData.password, remember: formData.remember })
-      router.replace({ name: 'home' })
-
-      if (formData.remember) {
-        configStore.setConfig(Keys.username, username.value)
-        configStore.setConfig(Keys.password, password.value, 7)
-        configStore.setConfig(Keys.remmber, remember.value)
-      } else {
-        configStore.setConfig(Keys.username, username.value)
-        configStore.setConfig(Keys.password, null)
-        configStore.setConfig(Keys.remmber, remember.value)
+  if (false) {
+    updater.open()
+  } else {
+    formRef.value.validate(async valid => {
+      if (!valid) {
+        return false
       }
-      await nextTick(() => formRef.value.resetFields())
+      try {
+        const res = await api.login(formData)
+        userStore.setUser(res)
+        localStorage.setItem('token', res.token)
+        electron.login({ username: formData.username, password: formData.password, remember: formData.remember })
+        router.replace({ name: 'home' })
 
-      api.getAccountList({ user_id: res.id, limit: 500 }).then(resp => {
-        accountStore.setAccounts(resp.list)
-      })
+        if (formData.remember) {
+          configStore.setConfig(Keys.username, username.value)
+          configStore.setConfig(Keys.password, password.value, 7)
+          configStore.setConfig(Keys.remmber, remember.value)
+        } else {
+          configStore.setConfig(Keys.username, username.value)
+          configStore.setConfig(Keys.password, null)
+          configStore.setConfig(Keys.remmber, remember.value)
+        }
+        await nextTick(() => formRef.value.resetFields())
 
-      api.getPayOutList().then(resp => {
-        accountStore.setPayouts(resp)
-        console.log('payouts: ', resp)
-      })
-      api.getInComeList().then(resp => {
-        accountStore.setInComes(resp)
-        console.log('incomes: ', resp)
-      })
-      api.getCurrencyList().then(resp => {
-        accountStore.setCurrencies(resp)
-      })
+        api.getAccountList({ user_id: res.id, limit: 500 }).then(resp => {
+          accountStore.setAccounts(resp.list)
+        })
 
-    } catch (error) {
-      console.log(error)
-    }
-  })
+        api.getPayOutList().then(resp => {
+          accountStore.setPayouts(resp)
+          console.log('payouts: ', resp)
+        })
+        api.getInComeList().then(resp => {
+          accountStore.setInComes(resp)
+          console.log('incomes: ', resp)
+        })
+        api.getCurrencyList().then(resp => {
+          accountStore.setCurrencies(resp)
+        })
+
+      } catch (error) {
+        console.log(error)
+      }
+    })
+  }
+
 }
+
+// console.log('vvv ', __APP_VERSION__)
 </script>
 
 
@@ -116,8 +131,14 @@ const onSubmit = async () => {
     </el-form>
 
     <div class="footer">
-      {{ configStore.mode ? '' : '测试服' }}
-       <span style="font-weight: bold">v2.0.1</span> 
+      <p>
+        {{ configStore.mode ? '' : '测试服' }}
+        <span style="font-weight: bold">{{ app_info.version }}</span>
+      </p>
+      <p v-if="updateStore.update_available" style="color: red">
+        {{ "新版本" }}
+        <span style="font-weight: bold">{{ version }}</span>
+      </p>
     </div>
   </div>
 </template>

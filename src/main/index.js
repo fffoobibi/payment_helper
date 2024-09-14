@@ -12,53 +12,193 @@ import * as XLSX from 'xlsx'
 import _ from 'electron-updater'
 const autoUpdater = _.autoUpdater
 
+// 更新管理
 class Updater {
   win = null
+  showIfNew = true
+  flag = false
 
-  sendStatusToWindow(event, text) {
-    this.win.webContents.send('updater-message', event, text)
-    console.log('send event updater-message ==>', event, this.win)
+  sendStatusToWindow(event, text, ...args) {
+    this.win.webContents.send('updater-message', event, text, ...args)
+    console.log('send event updater-message ==>', event)
+  }
+
+  _initCallback() {
+    ipcMain.on('update:download', (_event) => {
+      autoUpdater.downloadUpdate()
+    })
+    ipcMain.on('update:cancel', (_event) => {
+
+    })
+    ipcMain.on('update:checkForUpdates', (_event, showIfNew) => {
+      this.showIfNew = showIfNew
+      autoUpdater.checkForUpdates()
+    })
+    ipcMain.on('update:install', (_event) => {
+      autoUpdater.quitAndInstall(false, true)
+    })
   }
 
   init(win) {
     // autoUpdater.setFeedURL('http://127.0.0.1/updates')
     this.win = win
-    autoUpdater.forceDevUpdateConfig = true
-    autoUpdater.autoDownload = false
-    autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
-    
-    autoUpdater.on('checking-for-update', () => {
-      this.sendStatusToWindow('checking-for-update', 'Checking for update...')
-    })
+    if (!this.flag) {
+      ipcMain.on('open-update', () => {
+        manager.createWindow('update', frame => {
+          frame.webContents.send('update:dialog')
+          this.win = frame
+        }, { width: 400, height: 300 }, true)
+      })
 
-    autoUpdater.on('update-available', (info) => {
-      this.sendStatusToWindow('update-available', 'Update available.')
-    })
+      autoUpdater.forceDevUpdateConfig = true
+      autoUpdater.autoDownload = false
+      autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
 
-    autoUpdater.on('update-not-available', (info) => {
-      this.sendStatusToWindow('update-not-available', 'Update not available.')
-    })
-    
-    autoUpdater.on('error', (err) => {
-      this.sendStatusToWindow('error', 'Error in auto-updater. ' + err)
-    })
+      autoUpdater.on('checking-for-update', () => {
+        this.sendStatusToWindow('checking-for-update', 'Checking for update...')
+      })
 
-    autoUpdater.on('download-progress', (progressObj) => {
-      let log_message = 'Download speed: ' + progressObj.bytesPerSecond
-      log_message = log_message + ' - Downloaded ' + progressObj.percent + '%'
-      log_message = log_message + ' (' + progressObj.transferred + '/' + progressObj.total + ')'
-      this.sendStatusToWindow('download-progress', log_message)
-    })
+      autoUpdater.on('update-available', (info) => {
+        this.sendStatusToWindow('update-available', info, this.showIfNew)
+      })
 
-    autoUpdater.on('update-downloaded', (info) => {
-      this.sendStatusToWindow('update-downloaded', 'Update downloaded')
-    })
+      autoUpdater.on('update-not-available', (info) => {
+        this.sendStatusToWindow('update-not-available', info)
+      })
 
-    autoUpdater.checkForUpdatesAndNotify()
+      autoUpdater.on('error', (err, msg) => {
+        console.log('error in update ===> ', err, msg)
+        this.sendStatusToWindow('error', err, msg)
+      })
+
+      autoUpdater.on('download-progress', (progressObj) => {
+        this.sendStatusToWindow('download-progress', progressObj)
+      })
+
+      autoUpdater.on('update-downloaded', (info) => {
+        this.sendStatusToWindow('update-downloaded', info)
+      })
+
+      this._initCallback()
+      autoUpdater.checkForUpdatesAndNotify()
+    }
+
   }
+
 }
 
 const updater = new Updater()
+
+// 窗口管理
+class WindowManger {
+  windows = new Map()
+
+  /**
+   * @param {String} name 
+   * @param {*} createOptions 
+   * @param {(win: BrowserWindow)=>void} after 
+  */
+  createWindow(name, after, createOptions = { title: '', width: mainWidth, height: mainHeight }, openDevTools = false) {
+    let flag = false
+    if (!this.windows.has(name)) {
+      const win = new BrowserWindow({
+        width: createOptions.width,
+        height: createOptions.height,
+        frame: false,
+        transparent: true,
+        closable: false,
+        resizable: true,
+        maximizable: true,
+        // minWidth: mainWidth,
+        // minHeight: mainHeight,
+        alwaysOnTop: true,
+        center: true,
+        show: false,
+        autoHideMenuBar: true,
+        title: createOptions.title,
+        titleBarStyle: 'hidden',
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: true,
+          preload: join(__dirname, '../preload/index.mjs'),
+          sandbox: false
+        }
+      })
+      win.__child = true
+      this.windows.set(name, win)
+      flag = true
+    }
+    const previewWindow = this.windows.get(name)
+
+    if (is.dev) {
+      if (flag) {
+        previewWindow
+          .loadURL(process.env['ELECTRON_RENDERER_URL'])
+          .then(() => {
+            after(previewWindow)
+            previewWindow.show()
+          })
+          .catch((err) => {
+            log.error('open fail', err)
+          })
+      } else {
+        after(previewWindow)
+        previewWindow.show()
+        previewWindow.center()
+        if (openDevTools) {
+          previewWindow.openDevTools()
+        }
+      }
+    } else {
+      if (flag) {
+        previewWindow
+          .loadFile(join(__dirname, '../renderer/index.html'))
+          .then(() => {
+            after(previewWindow)
+            previewWindow.show()
+            if (openDevTools) {
+              previewWindow.openDevTools()
+            }
+          })
+          .catch((err) => {
+            log.error('open fail', err)
+          })
+      } else {
+        after(previewWindow)
+        previewWindow.show()
+        previewWindow.center()
+      }
+    }
+  }
+
+  get(name) {
+    return this.windows.get(name)
+  }
+
+  onCloseType(closeType) {
+    switch (closeType) {
+      case 2: // 图片
+        this.get('preview').hide()
+        break;
+      case 3: //日志
+        this.get('log').hide()
+        break
+      default:
+        break;
+    }
+  }
+
+  onClose() {
+    this.windows.forEach(frame => {
+      frame.close()
+    })
+  }
+
+}
+
+const manager = new WindowManger()
+
+
 
 // 日志配置
 log.transports.file.maxSize = 10 * 1024 * 1024 // 日志大小
@@ -110,66 +250,12 @@ function createWindow() {
     webSecurity = false
   }
 
-  const _windows = {
-    preview: null,
-    log: null
-  }
-
   log.transports.custom = (msg) => {
-    if (_windows.log) {
+    const logWin = manager.get('log')
+    if (logWin) {
       const s0 = log.transports.file.transforms[3](msg)
       const s1 = '[' + formatDate(msg.date) + '] ' + `[${msg.level}]  ` + s0
-      console.log('sn ...', msg.toString())
-      _windows.log.webContents.send('log-append', s1, log.transports.file.resolvePathFn())
-    }
-  }
-
-  const createOtherWindow = (name, create, after, openDevTools = false) => {
-    let flag = false
-    if (_windows[name] == null) {
-      _windows[name] = create()
-      flag = true
-    }
-    const previewWindow = _windows[name]
-
-    if (is.dev) {
-      if (flag) {
-        previewWindow
-          .loadURL(process.env['ELECTRON_RENDERER_URL'])
-          .then(() => {
-            previewWindow.show()
-            after(previewWindow)
-          })
-          .catch((err) => {
-            log.error('open fail', err)
-          })
-      } else {
-        previewWindow.show()
-        previewWindow.center()
-        if (openDevTools) {
-          previewWindow.openDevTools()
-        }
-        after(previewWindow)
-      }
-    } else {
-      if (flag) {
-        previewWindow
-          .loadFile(join(__dirname, '../renderer/index.html'))
-          .then(() => {
-            previewWindow.show()
-            if (openDevTools) {
-              previewWindow.openDevTools()
-            }
-            after(previewWindow)
-          })
-          .catch((err) => {
-            log.error('open fail', err)
-          })
-      } else {
-        previewWindow.show()
-        previewWindow.center()
-        after(previewWindow)
-      }
+      logWin.webContents.send('log-append', s1, log.transports.file.resolvePathFn())
     }
   }
 
@@ -179,7 +265,7 @@ function createWindow() {
     height: loginHeight,
     show: false,
     autoHideMenuBar: true,
-    title: '百舟打款助手',
+    title: 'payhelper',
     titleBarStyle: 'hidden',
     frame: false,
     transparent: true,
@@ -203,18 +289,9 @@ function createWindow() {
     updater.init(mainWindow)
   })
 
-  mainWindow.on('closed', () => {
-    console.log('main closed ')
-    // if (_windows.log) {
-    //   console.log('close log window',  _windows.log);
-    //   _windows.log.close()
-    //   _windows.log = null
-    // }
-    // if (_windows.preview) {
-    //   _windows.preview.close()
-    // }
-    // console.log('quit ...');
-    // app.quit()
+  mainWindow.on('close', () => {
+    manager.onClose()
+    app.quit()
   })
 
   mainWindow.on('hide', () => {
@@ -261,7 +338,7 @@ function createWindow() {
     mainWindow.setResizable(true)
 
     // TODO: 添加托盘操作
-    contextMenu.unshift({ label: data.username, click: () => {} })
+    contextMenu.unshift({ label: data.username, click: () => { } })
   })
 
   // 去登录
@@ -304,17 +381,9 @@ function createWindow() {
         } else if (data.closeType == 1) {
           win.hide()
         } else if (data.closeType == 2) {
-          if (_windows.preview === null) {
-            _windows.preview = win
-          }
-          win.setSkipTaskbar(true)
-          win.hide()
+          manager.onCloseType(data.closeType)
         } else if (data.closeType == 3) {
-          if (_windows.log === null) {
-            _windows.log = win
-          }
-          win.setSkipTaskbar(true)
-          win.hide()
+          manager.onCloseType(data.closeType)
         }
         break
       }
@@ -390,76 +459,18 @@ function createWindow() {
 
   // 图片查看
   ipcMain.on('view-images', (event, urls, index) => {
-    createOtherWindow(
-      'preview',
-      () => {
-        return new BrowserWindow({
-          icon: icon,
-          width: mainWidth,
-          height: mainHeight,
-          show: false,
-          autoHideMenuBar: true,
-          title: '图片查看',
-          titleBarStyle: 'hidden',
-          frame: false,
-          transparent: true,
-          closable: false,
-          resizable: true,
-          maximizable: true,
-          minWidth: mainWidth,
-          minHeight: mainHeight,
-          alwaysOnTop: true,
-          center: true,
-          webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: true,
-            preload: join(__dirname, '../preload/index.mjs'),
-            sandbox: false
-          }
-        })
-      },
-      (frame) => {
-        frame.webContents.send('preview-images', urls, index, Date.now())
-      }
-    )
+    manager.createWindow('preview', frame => {
+      frame.webContents.send('preview-images', urls, index, Date.now())
+    }, { title: 'preview' })
+
   })
 
   // 日志打开
   ipcMain.on('open-log', (event) => {
-    createOtherWindow(
-      'log',
-      () => {
-        return new BrowserWindow({
-          icon: icon,
-          width: mainWidth,
-          height: mainHeight,
-          show: false,
-          autoHideMenuBar: true,
-          title: '日志',
-          titleBarStyle: 'hidden',
-          frame: false,
-          transparent: true,
-          closable: false,
-          resizable: true,
-          maximizable: true,
-          minWidth: mainWidth,
-          minHeight: mainHeight,
-          alwaysOnTop: true,
-          center: true,
-          webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: true,
-            preload: join(__dirname, '../preload/index.mjs'),
-            sandbox: false
-          }
-        })
-      },
-      (frame) => {
-        const filePath = log.transports.file.resolvePathFn()
-        frame.webContents.send('log-result', '', filePath)
-      },
-      true
-    )
+    manager.createWindow('log', frame => {
+      const filePath = log.transports.file.resolvePathFn()
+      frame.webContents.send('log-result', '', filePath)
+    }, { title: 'log' })
   })
 
   // excel保存
@@ -518,6 +529,7 @@ function createWindow() {
 
   return mainWindow
 }
+
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
