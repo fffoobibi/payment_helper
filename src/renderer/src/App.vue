@@ -35,8 +35,11 @@ electron.onOpenLog((content, path) => {
   logStore.append(c)
 })
 
-electron.onOpenUpdate(() => {
+electron.onOpenUpdate(version => {
   // updateStore.canUpdate = true
+  console.log('get version ', version)
+  updateStore.canUpdate = true
+  updateStore.version = version
   router.push({ name: 'update' })
 })
 
@@ -44,16 +47,14 @@ electron.onUpdater((name, value, ...args) => {
   console.log('get ', name, value);
   switch (name) {
     case 'checking-for-update':
-      // updateStore.update_success = false
-      // updateStore.downloading = false
+      updateStore.update_err = false
       updateStore.checking = true
       break;
     case 'update-not-available':
-      // updateStore.update_success = false
-      // updateStore.canUpdate = false
-      // updateStore.downloading = false
       updateStore.checking = false
-      updateStore.update_available = false
+      updateStore.update_err = false
+      // updateStore.update_available = false
+      updateStore.canUpdate = false
       updateStore.version = value
       break
     case 'update-available':
@@ -61,9 +62,8 @@ electron.onUpdater((name, value, ...args) => {
       updateStore.canUpdate = true
       updateStore.downloading = false
       updateStore.checking = false
-      updateStore.update_available = true
+      // updateStore.update_available = true
       updateStore.version = value
-      console.log('有可用版本', args);
       if (args[0]) {
         message.success('有可用版本')
       }
@@ -79,12 +79,11 @@ electron.onUpdater((name, value, ...args) => {
       updateStore.update_success = true
       break;
     case 'error':
-      console.log('error ...', args, value);
       updateStore.update_success = false
       updateStore.downloading = false
       updateStore.checking = false
       updateStore.update_err = true
-      notification.error("更新失败: " + value)
+      // notification.error("更新失败: " + value)
       break
     default:
       break;

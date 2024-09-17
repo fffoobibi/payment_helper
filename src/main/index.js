@@ -20,16 +20,16 @@ class Updater {
 
   sendStatusToWindow(event, text, ...args) {
     this.win.webContents.send('updater-message', event, text, ...args)
-    console.log('send event updater-message ==>', event)
+    if (is.dev) {
+      console.log('send event updater-message ==>', event)
+    }
   }
 
-  _initCallback() {
+  _initMainCallback() {
     ipcMain.on('update:download', (_event) => {
       autoUpdater.downloadUpdate()
     })
-    ipcMain.on('update:cancel', (_event) => {
-
-    })
+    ipcMain.on('update:cancel', (_event) => {})
     ipcMain.on('update:checkForUpdates', (_event, showIfNew) => {
       this.showIfNew = showIfNew
       autoUpdater.checkForUpdates()
@@ -43,16 +43,25 @@ class Updater {
     // autoUpdater.setFeedURL('http://127.0.0.1/updates')
     this.win = win
     if (!this.flag) {
-      ipcMain.on('open-update', () => {
-        manager.createWindow('update', frame => {
-          frame.webContents.send('update:dialog')
-          this.win = frame
-        }, { width: 400, height: 300 }, true)
+      ipcMain.on('open-update', (event, version) => {
+        manager.createWindow(
+          'update',
+          (frame) => {
+            frame.webContents.send('update:dialog', version)
+            this.win = frame
+          },
+          { width: 400, height: 200, resizable: false }
+        )
       })
 
-      autoUpdater.forceDevUpdateConfig = true
       autoUpdater.autoDownload = false
-      autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
+      autoUpdater.logger = log
+      if (is.dev) {
+        autoUpdater.forceDevUpdateConfig = true
+        autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
+      } else {
+        
+      }
 
       autoUpdater.on('checking-for-update', () => {
         this.sendStatusToWindow('checking-for-update', 'Checking for update...')
@@ -67,7 +76,7 @@ class Updater {
       })
 
       autoUpdater.on('error', (err, msg) => {
-        console.log('error in update ===> ', err, msg)
+        log.error('error in update', err)
         this.sendStatusToWindow('error', err, msg)
       })
 
@@ -79,12 +88,10 @@ class Updater {
         this.sendStatusToWindow('update-downloaded', info)
       })
 
-      this._initCallback()
+      this._initMainCallback()
       autoUpdater.checkForUpdatesAndNotify()
     }
-
   }
-
 }
 
 const updater = new Updater()
@@ -94,34 +101,38 @@ class WindowManger {
   windows = new Map()
 
   /**
-   * @param {String} name 
-   * @param {*} createOptions 
-   * @param {(win: BrowserWindow)=>void} after 
-  */
-  createWindow(name, after, createOptions = { title: '', width: mainWidth, height: mainHeight }, openDevTools = false) {
+   * @param {String} name
+   * @param {(win: BrowserWindow)=>void} after
+   * @param {{title: String, width: Number, height: Number, resizable: Boolean}} createOptions
+   */
+  createWindow(
+    name,
+    after,
+    createOptions = { title: '', width: mainWidth, height: mainHeight, resizable: true },
+    openDevTools = false
+  ) {
     let flag = false
     if (!this.windows.has(name)) {
       const win = new BrowserWindow({
-        width: createOptions.width,
-        height: createOptions.height,
+        width: createOptions.width ?? mainWidth,
+        height: createOptions.height ?? mainHeight,
         frame: false,
         transparent: true,
-        closable: false,
-        resizable: true,
+        closable: true,
+        resizable: createOptions.resizable ?? true,
         maximizable: true,
-        // minWidth: mainWidth,
-        // minHeight: mainHeight,
         alwaysOnTop: true,
         center: true,
         show: false,
         autoHideMenuBar: true,
-        title: createOptions.title,
+        title: createOptions.title ?? '',
         titleBarStyle: 'hidden',
         webPreferences: {
           nodeIntegration: true,
           contextIsolation: true,
-          preload: join(__dirname, '../preload/index.mjs'),
-          sandbox: false
+          webSecurity: false,
+          sandbox: false,
+          preload: join(__dirname, '../preload/index.mjs')
         }
       })
       win.__child = true
@@ -137,6 +148,9 @@ class WindowManger {
           .then(() => {
             after(previewWindow)
             previewWindow.show()
+            if (openDevTools) {
+              previewWindow.webContents.openDevTools()
+            }
           })
           .catch((err) => {
             log.error('open fail', err)
@@ -146,7 +160,7 @@ class WindowManger {
         previewWindow.show()
         previewWindow.center()
         if (openDevTools) {
-          previewWindow.openDevTools()
+          previewWindow.webContents.openDevTools()
         }
       }
     } else {
@@ -157,7 +171,7 @@ class WindowManger {
             after(previewWindow)
             previewWindow.show()
             if (openDevTools) {
-              previewWindow.openDevTools()
+              previewWindow.webContents.openDevTools()
             }
           })
           .catch((err) => {
@@ -167,6 +181,9 @@ class WindowManger {
         after(previewWindow)
         previewWindow.show()
         previewWindow.center()
+        if (openDevTools) {
+          previewWindow.webContents.openDevTools()
+        }
       }
     }
   }
@@ -175,57 +192,38 @@ class WindowManger {
     return this.windows.get(name)
   }
 
+  destroy(name) {
+    this.get(name).close()
+    this.windows.delete(name)
+  }
+
   onCloseType(closeType) {
     switch (closeType) {
       case 2: // 图片
         this.get('preview').hide()
-        break;
+        break
       case 3: //日志
         this.get('log').hide()
         break
+      case 4: // 更新
+        this.destroy('update')
+        break
       default:
-        break;
+        break
     }
   }
 
   onClose() {
-    this.windows.forEach(frame => {
+    this.windows.forEach((frame) => {
       frame.close()
     })
   }
-
 }
 
 const manager = new WindowManger()
 
-
-
 // 日志配置
-log.transports.file.maxSize = 10 * 1024 * 1024 // 日志大小
-log.transports.file.level = 'debug' // level
-log.transports.console.level = false
-log.transports.file.resolvePathFn = () => {
-  const directoryPath = join(app.getPath('home'), '.payment_helper/logs')
-  try {
-    if (!fs.existsSync(directoryPath)) {
-      fs.mkdirSync(directoryPath, { recursive: true })
-    }
-  } catch (error) {
-    console.error(`Error creating directory: ${error.message}`)
-  }
-  return join(directoryPath, 'main.log')
-}
-
-// 配置文件
-const store = new Store()
-console.log('store ', store.path)
-
-const loginWidth = 320
-const loginHeight = 320
-const mainWidth = 950
-const mainHeight = 700
-
-function formatDate(date) {
+const formatDate = (date) => {
   function padZero(num) {
     return num < 10 ? '0' + num : num
   }
@@ -238,8 +236,60 @@ function formatDate(date) {
   const seconds = padZero(date.getSeconds())
   const milliseconds = date.getMilliseconds().toString().padStart(3, '0') // 确保毫秒有三位数
 
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
+const maxFiles = 5
+log.transports.custom = (msg) => {
+  const logWin = manager.get('log')
+  if (logWin) {
+    const text = log.transports.file.transforms[3](msg)
+    const data = `[${formatDate(msg.date)}] [${msg.level}] ` + text
+    logWin.webContents.send('log-append', data, log.transports.file.resolvePathFn())
+  }
+}
+log.transports.file.maxSize = 10 * 1024 * 1024 // 日志大小
+log.transports.file.level = 'debug' // level
+log.transports.console.level = false
+log.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}] [{level}] {text}'
+log.transports.file.resolvePathFn = () => {
+  const directoryPath = join(app.getPath('home'), '.payment_helper/logs')
+  const logFileName = 'payment_helper.log'
+  // 确保日志目录存在
+  try {
+    if (!fs.existsSync(directoryPath)) {
+      fs.mkdirSync(directoryPath, { recursive: true })
+    }
+  } catch (error) {
+    console.error(`Error creating directory: ${error.message}`)
+    return null // 如果无法创建目录，返回null以避免进一步的错误
+  }
+
+  const logPath = join(directoryPath, logFileName)
+
+  // 检查当前日志文件大小
+  if (fs.existsSync(logPath) && fs.statSync(logPath).size >= log.transports.file.maxSize) {
+    // 如果当前日志文件超过最大大小，轮转日志文件
+    for (let i = maxFiles - 1; i > 0; i--) {
+      const oldPath = join(directoryPath, `${logFileName}.${i}`)
+      const newPath = join(directoryPath, `${logFileName}.${i + 1}`)
+
+      if (fs.existsSync(oldPath)) {
+        fs.renameSync(oldPath, newPath)
+      }
+    }
+    fs.renameSync(logPath, join(directoryPath, `${logFileName}.1`))
+  }
+  return logPath
+}
+
+// 配置文件
+const store = new Store()
+console.log('store ', store.path)
+
+const loginWidth = 320
+const loginHeight = 320
+const mainWidth = 950
+const mainHeight = 700
 
 function createWindow() {
   // Create the browser window.
@@ -248,15 +298,6 @@ function createWindow() {
     webSecurity = true
   } else {
     webSecurity = false
-  }
-
-  log.transports.custom = (msg) => {
-    const logWin = manager.get('log')
-    if (logWin) {
-      const s0 = log.transports.file.transforms[3](msg)
-      const s1 = '[' + formatDate(msg.date) + '] ' + `[${msg.level}]  ` + s0
-      logWin.webContents.send('log-append', s1, log.transports.file.resolvePathFn())
-    }
   }
 
   const mainWindow = new BrowserWindow({
@@ -270,6 +311,7 @@ function createWindow() {
     frame: false,
     transparent: true,
     closable: true,
+    alwaysOnTop: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
@@ -338,7 +380,7 @@ function createWindow() {
     mainWindow.setResizable(true)
 
     // TODO: 添加托盘操作
-    contextMenu.unshift({ label: data.username, click: () => { } })
+    contextMenu.unshift({ label: data.username, click: () => {} })
   })
 
   // 去登录
@@ -348,13 +390,9 @@ function createWindow() {
     // mainWindow.center() // 窗口居中
     // mainWindow.setResizable(false)
     // console.log('tologin ', mainWindow.getSize());
-
     mainWindow.setResizable(true)
-    console.log('Current size:', mainWindow.getSize())
     mainWindow.setSize(320, 320)
-    mainWindow.center()
-    console.log('New size after to-login:', mainWindow.getSize())
-    // 设置窗口不可再次调整大小
+    mainWindow.center() // 设置窗口不可再次调整大小
     mainWindow.setResizable(false)
   })
 
@@ -383,6 +421,8 @@ function createWindow() {
         } else if (data.closeType == 2) {
           manager.onCloseType(data.closeType)
         } else if (data.closeType == 3) {
+          manager.onCloseType(data.closeType)
+        } else if (data.closeType == 4) {
           manager.onCloseType(data.closeType)
         }
         break
@@ -459,18 +499,25 @@ function createWindow() {
 
   // 图片查看
   ipcMain.on('view-images', (event, urls, index) => {
-    manager.createWindow('preview', frame => {
-      frame.webContents.send('preview-images', urls, index, Date.now())
-    }, { title: 'preview' })
-
+    manager.createWindow(
+      'preview',
+      (frame) => {
+        frame.webContents.send('preview-images', urls, index, Date.now())
+      },
+      { title: 'preview' }
+    )
   })
 
   // 日志打开
   ipcMain.on('open-log', (event) => {
-    manager.createWindow('log', frame => {
-      const filePath = log.transports.file.resolvePathFn()
-      frame.webContents.send('log-result', '', filePath)
-    }, { title: 'log' })
+    manager.createWindow(
+      'log',
+      (frame) => {
+        const filePath = log.transports.file.resolvePathFn()
+        frame.webContents.send('log-result', '', filePath)
+      },
+      { title: 'log' }
+    )
   })
 
   // excel保存
@@ -529,7 +576,6 @@ function createWindow() {
 
   return mainWindow
 }
-
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

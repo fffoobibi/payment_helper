@@ -24,7 +24,7 @@ const electron = {
     }
   },
   update: {
-    open: () => ipcRenderer.send('open-update'),
+    open: (version) => ipcRenderer.send('open-update', version),
     install: () => ipcRenderer.send('update:install'),
     download: () => ipcRenderer.send('update:download'),
     cancel: () => ipcRenderer.send('update:cancel'),
@@ -58,7 +58,7 @@ const electron = {
   },
   // update
   onUpdater: (callback) => ipcRenderer.on('updater-message', (event, key, msg, ...args) => callback(key, msg, ...args)),
-  onOpenUpdate: (callback) => ipcRenderer.on('update:dialog', (_event,) => callback())
+  onOpenUpdate: (callback) => ipcRenderer.on('update:dialog', (_event, version) => callback(version))
 
 }
 

@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, onMounted, onUnmounted } from 'vue'
+import { reactive, ref, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from "pinia"
 import { useUpdateStore, useUserStore } from "@/stores"
 import { useLocalConfig } from "@/stores/config"
@@ -7,6 +7,7 @@ import api from "@/api"
 import message from '../utils/message'
 import updater from "@/utils/update"
 import app_info from '../../../../package.json'
+import { computed } from 'vue'
 
 const cfgStore = useLocalConfig()
 const { autoClick, autoConfirm, formalUrl, testUrl, uploadFormalUrl, uploadTestUrl, mode } = storeToRefs(cfgStore)
@@ -85,6 +86,18 @@ const validatePassConfirm = (rule, value, callback) => {
     callback()
   }
 }
+const showDialog = computed(() => {
+  if (update.canUpdate) {
+    return true
+  } if (update.update_err) {
+    return true
+  } if (update.update_success) {
+    return true
+  } if (update.downloading) {
+    return true
+  }
+  return false
+})
 
 const show = ref(false)
 const checkUpdates = () => {
@@ -100,6 +113,11 @@ const checkUpdates = () => {
   }
   show.value = true
 }
+
+watch(showDialog, v => {
+  console.log('get ... v ', v);
+  show.value = v
+})
 
 const download = () => {
   if (update.update_success) {
@@ -232,21 +250,29 @@ const download = () => {
 
       </el-scrollbar>
 
-      <el-dialog v-model="show">
-        <div v-if="update.canUpdate">
-          <p class="bold black">发现新版本!</p>
-          <p>版本：{{ "v" + update.version.version }}</p>
-          <div style="display: flex" v-if="update.downloading || update.update_success">
-            <span style="margin-right: 0px;">进度：</span>
-            <el-progress :text-inside="true" :stroke-width="20" :percentage="update.percent" style="width:85%" />
+      <el-dialog v-model="show" style="height: 150px;">
+
+        <div v-loading="update.checking" element-loading-background="white" element-loading-text="检查更新中">
+          <div v-if="update.update_err">
+            <p class="bold red" style="text-align: center">检查失败</p>
           </div>
-          <p v-if="update.downloading">速度：<span style="font-size: 10pt;" class="black">{{ update.download_info }}</span>
-          </p>
+          <div v-else-if="update.canUpdate">
+            <p class="bold black">发现新版本!</p>
+            <p>版本：{{ "v" + update.version.version }}</p>
+            <div style="display: flex" v-if="update.downloading || update.update_success">
+              <span style="margin-right: 0px;">进度：</span>
+              <el-progress :text-inside="true" :stroke-width="20" :percentage="update.percent" style="width:85%" />
+            </div>
+            <p v-if="update.downloading">速度：<span style="font-size: 10pt;" class="black">{{ update.download_info
+                }}</span>
+            </p>
+          </div>
+          <div v-else style="text-align: center;">
+            <p class="bold black">无可用更新</p>
+          </div>
         </div>
-        <div v-else style="text-align: center;">
-          <p class="bold black">无可用更新</p>
-        </div>
-        <template #footer>
+
+        <template #footer v-if="!update.checking">
           <div v-if="update.canUpdate">
             <el-button @click="show = false">取消</el-button>
             <el-button :type="update.update_success ? 'danger' : 'primary'" :loading="update.downloading"
@@ -269,6 +295,10 @@ h4 {
 
 .bold {
   font-weight: 600;
+}
+
+.red {
+  color: red;
 }
 
 .black {

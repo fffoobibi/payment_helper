@@ -157,7 +157,7 @@ const http = (config) => {
     token: token
   }
   if (method === 'post') {
-    logger.info(`[post] ${url}`, ' data: ', {...params})
+    logger.info(`[post] ${url} data:`, {...params})
     return instance.post(url, formData, {
       headers,
       showLoading,
@@ -168,7 +168,7 @@ const http = (config) => {
       errorCallback: config.errorCallback
     })
   } else {
-    logger.info(`[get] ${url}, headers: ${headers}`)
+    logger.info(`[get] ${url}`)
     return instance.get(url, {
       headers,
       showLoading,

@@ -22,6 +22,28 @@ const version = computed(() => {
     return "v" + updateStore.version.version
   }
 })
+
+const checkMsg = computed(() => {
+  if (updateStore.update_err) {
+    return "版本检查失败"
+  }
+  if (updateStore.update_available) {
+    return "新版本: " + version.value
+  } else {
+    return app_info.version
+  }
+})
+
+const buttonLabel = computed(() => {
+  if (updateStore.checking) {
+    return "更新检查中"
+  }
+  if (updateStore.canUpdate) {
+    return "下载新版本"
+  }
+  return "登录"
+})
+
 const formData = reactive({
   username,
   password,
@@ -41,9 +63,13 @@ const formRules = reactive({
 })
 
 const onSubmit = async () => {
-  if (false) {
-    updater.open()
-  } else {
+  // if (updateStore.checking) {
+  //   return
+  // }
+  // if (updateStore.canUpdate) {
+  //   updater.open(updateStore.version)
+  // } else 
+  {
     formRef.value.validate(async valid => {
       if (!valid) {
         return false
@@ -126,25 +152,38 @@ const onSubmit = async () => {
       </el-form-item>
 
       <el-form-item>
-        <el-button type="primary" style="width: 100%;" @click="onSubmit('formData')">登录</el-button>
+        <el-button type="primary" :loading="updateStore.checking" style="width: 100%;" @click="onSubmit('formData')">
+          {{ buttonLabel }}
+        </el-button>
       </el-form-item>
     </el-form>
+    <span style="font-size: 10pt" :class="[updateStore.update_available || updateStore.update_err ? 'red' : 'trans']">{{
+      checkMsg }}</span>
 
     <div class="footer">
       <p>
         {{ configStore.mode ? '' : '测试服' }}
-        <span style="font-weight: bold">{{ app_info.version }}</span>
+        <span style="font-weight: 600">{{ "v" + app_info.version }}</span>
       </p>
-      <p v-if="updateStore.update_available" style="color: red">
-        {{ "新版本" }}
-        <span style="font-weight: bold">{{ version }}</span>
-      </p>
+
     </div>
   </div>
 </template>
 
 
 <style scoped>
+.gray {
+  color: gray
+}
+
+.trans {
+  color: transparent
+}
+
+.red {
+  color: red;
+}
+
 .login-panel {
   display: flex;
   flex-direction: column;
