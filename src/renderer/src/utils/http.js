@@ -33,7 +33,14 @@ instance.interceptors.request.use(
     }
 
     if (config.url != '/passport/login') {
-      const userId = store.user.id
+      let userId = store.user.id
+      if (!userId) {
+        const rs = localStorage.getItem('user')
+        if (rs) {
+          const user = JSON.parse(rs)
+          userId = user.id
+        }
+      }
       config.data?.set('user_id', userId)
     }
     return config
@@ -84,6 +91,10 @@ instance.interceptors.response.use(
         }
       } else {
         returned = res.response
+      }
+      console.log('mode ', cfgStore.mode)
+      if (!cfgStore.mode) {
+        logger.debug(`[${response.config?.method?.toUpperCase()}] ${response.config.url}, response\n`, JSON.stringify(returned, null, 4))
       }
       return Promise.resolve(returned || true)
     } else {
@@ -157,7 +168,9 @@ const http = (config) => {
     token: token
   }
   if (method === 'post') {
-    logger.info(`[post] ${url} data:`, {...params})
+    const logParams = { ...params }
+    logParams.user_id = store.user.id
+    logger.info(`[POST] ${url} data:`, logParams)
     return instance.post(url, formData, {
       headers,
       showLoading,
@@ -168,7 +181,7 @@ const http = (config) => {
       errorCallback: config.errorCallback
     })
   } else {
-    logger.info(`[get] ${url}`)
+    logger.info(`[GET] ${url}`)
     return instance.get(url, {
       headers,
       showLoading,

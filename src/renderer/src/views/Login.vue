@@ -1,16 +1,16 @@
 <script setup>
-import { nextTick, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { nextTick, reactive, ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from "pinia"
 import Toolbar from '@/components/Toolbar.vue'
 import api from "@/api"
 import { useUserStore, useAccountStore, useUpdateStore } from '@/stores'
 import { Keys, useLocalConfig } from "@/stores/config"
-import { computed } from 'vue'
+
 import app_info from '../../../../package.json'
 import updater from '../utils/update'
 
-const router = useRouter();
+const router = useRouter()
 const userStore = useUserStore()
 const accountStore = useAccountStore()
 const configStore = useLocalConfig()
@@ -54,7 +54,7 @@ const formRef = ref(null)
 const formRules = reactive({
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 10, message: '长度在 3 到 10 个字符', trigger: 'blur' }
+    { min: 2, max: 10, message: '长度在 2 到 10 个字符', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -90,8 +90,7 @@ const onSubmit = async () => {
           configStore.setConfig(Keys.password, null)
           configStore.setConfig(Keys.remmber, remember.value)
         }
-        await nextTick(() => formRef.value.resetFields())
-
+        // await nextTick(() => formRef.value.resetFields())
         api.getAccountList({ user_id: res.id, limit: 500 }).then(resp => {
           accountStore.setAccounts(resp.list)
         })
@@ -116,7 +115,6 @@ const onSubmit = async () => {
 
 }
 
-// console.log('vvv ', __APP_VERSION__)
 </script>
 
 

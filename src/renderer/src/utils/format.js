@@ -3,7 +3,7 @@ import Decimal from "decimal.js"
 /**
  * 将时间戳或日期转换成指定格式
  * @param {String|Date|timestamp} date
- * @param {number} type 格式：1) y年m月d日  2) yyyy-mm-dd hh:ii   3) yyyy-mm-dd  4) y年m月d日 hh:ii
+ * @param {number} type 格式：1) y年m月d日  2) yyyy-mm-dd hh:ii   3) yyyy-mm-dd  4) y年m月d日 hh:ii  5) mmddhhiiss
  * @returns
  */
 const dateTimeFmt = (date, type = 1) => {
@@ -31,21 +31,17 @@ const dateTimeFmt = (date, type = 1) => {
     let d = oriDate.getDate()
     let H = oriDate.getHours()
     let i = oriDate.getMinutes()
-
-    // just
-    if (diffSecond < 60) {
-        // within a minute
-        return '刚刚'
-    } else if (diffSecond < 3600) {
-        // within an hour
-        return `${Math.floor(diffSecond / 60)}分钟前`
-    } else if (
-        curDate.getFullYear() === Y &&
-        curDate.getMonth() + 1 === m &&
-        curDate.getDate() === d
-    )
+    let s = oriDate.getSeconds()
 
     if (type == 1) {
+        // just
+        if (diffSecond < 60) {
+            // within a minute
+            return '刚刚'
+        } else if (diffSecond < 3600) {
+            // within an hour
+            return `${Math.floor(diffSecond / 60)}分钟前`
+        }
         // yesterday
         let mewDate = new Date((curSecond - 86400) * 1000)
         if (mewDate.getFullYear() === Y && mewDate.getMonth() + 1 === m && mewDate.getDate() === d) {
@@ -59,6 +55,14 @@ const dateTimeFmt = (date, type = 1) => {
     } else if (type == 3) {
         return `${Y}-${autoZero(m)}-${autoZero(d)}`
     } else if (type == 4) {
+        // just
+        if (diffSecond < 60) {
+            // within a minute
+            return '刚刚'
+        } else if (diffSecond < 3600) {
+            // within an hour
+            return `${Math.floor(diffSecond / 60)}分钟前`
+        }
         // yesterday
         let mewDate = new Date((curSecond - 86400) * 1000)
         if (mewDate.getFullYear() === Y && mewDate.getMonth() + 1 === m && mewDate.getDate() === d) {
@@ -67,6 +71,8 @@ const dateTimeFmt = (date, type = 1) => {
             return `${m}月${d}日 ${autoZero(H)}:${autoZero(i)}`
         }
         return `${Y}年${m}月${d}日 ${autoZero(H)}:${autoZero(i)}`
+    } else if (type == 5) {
+        return `${autoZero(m)}${autoZero(d)}${autoZero(H)}${autoZero(i)}${autoZero(s)}`
     }
 }
 
@@ -79,6 +85,11 @@ const numberFmt = n => {
     if (!n) return ''
     return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
+
+const amountFormatter = value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+const amountParser = value => value.replace(/\$\s?|(,*)/g, '')
+const accountFormatter = value => `${value}`.replace(/\D/g, '').replace(/....(?!$)/g, '$& ')
+const accountParser = value => value.replace(/\s/g, '')
 
 /**
  *
@@ -169,7 +180,7 @@ const maxText = (str, length = 10) => {
         return ''
     }
     const s = str.toString().trim()
-    if (s.length >= length) {
+    if (s.length > length + 1) {
         const str = s.slice(0, length - 2) + '...'
         return str
     }
@@ -182,5 +193,9 @@ export {
     formatDate,
     subNumbers,
     addNumbers,
-    maxText
+    maxText,
+    amountFormatter,
+    amountParser,
+    accountFormatter,
+    accountParser
 }

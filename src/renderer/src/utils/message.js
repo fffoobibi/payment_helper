@@ -1,10 +1,10 @@
 import { ElMessage } from 'element-plus'
 
-const showMessage = (msg, callback, type) => {
+const showMessage = (msg, callback, type, duration = 2000) => {
   ElMessage({
     type,
     message: msg,
-    duration: 2000,
+    duration: duration,
     onClose: () => {
       callback && callback()
     }
@@ -13,7 +13,7 @@ const showMessage = (msg, callback, type) => {
 
 const message = {
   success: (msg, callback) => showMessage(msg, callback, 'success'),
-  error: (msg, callback) => showMessage(msg, callback, 'error'),
+  error: (msg, callback) => showMessage(msg, callback, 'error', 5000),
   warning: (msg, callback) => showMessage(msg, callback, 'warning'),
   info: (msg, callback) => showMessage(msg, callback, 'info')
 }

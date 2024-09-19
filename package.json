@@ -1,9 +1,9 @@
 {
   "name": "payment_helper",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "An Electron application with Vue",
   "main": "./out/main/index.js",
-  "author": "example.com",
+  "author": "https://www.baizhoucn.com",
   "homepage": "https://electron-vite.org",
   "type": "module",
   "scripts": {

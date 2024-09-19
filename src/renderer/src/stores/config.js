@@ -151,20 +151,21 @@ const useLocalConfig = defineStore('localConfig', () => {
     return { refV, update }
   }
 
-  const currentUserName = computedAsync(async () => {
+  // currentUserName
+  const { refV: currentUserName } = makeScope(null, async () => {
     const rs = await electron.config.getDefault(Keys.username)
     return _parsedResult(rs, null)
-  }, null)
+  }, Keys.username)
 
-  const currentUserPasswd = computedAsync(async () => {
+  const { refV: currentUserPasswd } = makeScope(null, async () => {
     const rs = await electron.config.getDefault(Keys.password)
     return _parsedResult(rs, null)
-  }, null)
+  }, Keys.password)
 
-  const currentUserRemeber = computedAsync(async () => {
+  const { refV: currentUserRemeber } = makeScope(null, async () => {
     const rs = await electron.config.getDefault(Keys.remmber)
     return _parsedResult(rs, null)
-  }, null)
+  }, Keys.remmber)
 
   // accountIndexs
   const accountIndexs = ref([])
@@ -178,6 +179,7 @@ const useLocalConfig = defineStore('localConfig', () => {
     fetchAccountIndexs,
     (newData) => {
       console.log('fetch local indexs ...')
+      accountIndexs.value = []
       newData.forEach((v) => {
         accountIndexs.value.push(v)
       })
@@ -186,6 +188,7 @@ const useLocalConfig = defineStore('localConfig', () => {
   )
 
   const setAccountIndexs = (value) => {
+    accountIndexs.value.slice(0, accountIndexs.value.length)
     accountIndexs.value.push(value)
     setConfig(Keys.accountIndexs, [...new Set(accountIndexs.value)])
   }
@@ -226,7 +229,7 @@ const useLocalConfig = defineStore('localConfig', () => {
   watch(
     fetchAccountMenus,
     (newData) => {
-      console.log('fetch local menus ...')
+      accountMenus.value = []
       newData.forEach((v) => {
         accountMenus.value.push(v)
       })

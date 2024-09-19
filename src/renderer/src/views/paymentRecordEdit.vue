@@ -4,6 +4,7 @@ import { Check, Close } from '@element-plus/icons-vue'
 import { useAccountStore } from '@/stores'
 import Message from '@/utils/message'
 import api from '@/api'
+import { accountFormatter, accountParser, amountFormatter, amountParser } from '@/utils/format'
 
 const props = defineProps({
   ext: Object
@@ -15,6 +16,7 @@ watch(() => props.ext, () => {
 })
 
 const accountStore = useAccountStore()
+const currencies = accountStore.currencies
 const accountItems = accountStore.accounts.map(item => Object.assign({}, {'label': item.account_name, 'value': item.id}))
 
 const form = reactive({
@@ -45,7 +47,7 @@ const rules = reactive({
     { required: true, message: '请输入支出金额', trigger: 'blur' }
   ],
   currency: [
-    { required: true, message: '请选择币种', trigger: 'blur' }
+    { required: true, message: '请选择币种', trigger: 'change' }
   ]
 })
 
@@ -63,10 +65,10 @@ const formReset = () => {
 
 const onSubmit = async (el) => {
   if (!el) return
-  await el.validate(async (valid, fields) => {
+  await el.validate(async (valid, _) => {
     if (!valid) return false
 
-    form.attachment_list = await uploadRef.value.uploadImage()
+    form.attachment_list = JSON.stringify((await uploadRef.value.uploadImage()) ?? [])
     try {
       await Promise.all([
         api.updatePaymentRecordExt(form),
@@ -90,14 +92,12 @@ const onSubmit = async (el) => {
   <!-- 信息编辑 -->
   <el-form class="form" ref="formRef" :rules="rules" :model="form" label-width="80px" style="max-width: 480px" @submit.prevent>
     <el-form-item label="付款账号" prop="account_id" required>
-      <el-select v-model="form.account_id">
+      <el-select v-model="form.account_id" filterable>
         <el-option v-for="item in accountItems" :label="item.label" :value="item.value"></el-option>
       </el-select>
     </el-form-item>
     <el-form-item label="收款账号" prop="receiving_account" required>
-      <el-input v-model="form.receiving_account"
-        :formatter="(value) => `${value}`.replace(/\D/g, '').replace(/....(?!$)/g, '$& ')"
-        :parser="(value) => value.replace(/\s/g, '')" clearable />
+      <el-input v-model="form.receiving_account" :formatter="accountFormatter" :parser="accountParser" clearable />
     </el-form-item>
     <el-form-item label="交易流水" prop="transaction_number" required>
       <el-input v-model="form.transaction_number" clearable />
@@ -105,16 +105,14 @@ const onSubmit = async (el) => {
     <el-form-item label="支出金额" required>
       <el-col :span="14">
         <el-form-item prop="origin_total_amount">
-          <el-input v-model="form.origin_total_amount" placeholder="请输入金额"
-            :formatter="(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
-            :parser="(value) => value.replace(/\$\s?|(,*)/g, '')" clearable />
+          <el-input v-model="form.origin_total_amount" placeholder="请输入金额" :formatter="amountFormatter" :parser="amountParser" clearable />
         </el-form-item>
       </el-col>
       <el-col :span="9" :offset="1">
         <el-form-item prop="currency">
-          <el-select v-model="form.currency" placeholder="币种">
-            <el-option value="USD" />
-            <el-option value="CNY" />
+          <el-select v-model="form.currency" placeholder="币种" filterable>
+            <el-option label="全部" value="" />
+            <el-option v-for="item in currencies" :value="item.code" />
           </el-select>
         </el-form-item>
       </el-col>

@@ -3,15 +3,40 @@ import { ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useRouter, useRoute } from 'vue-router'
 import { useImageStore } from '@/stores/images'
-import { useLogStore, useUpdateStore } from './stores';
+import { useLogStore, useUpdateStore, useUserStore } from './stores';
 import message from './utils/message';
-import notification from './utils/notification';
+import { useIntervalFn } from "@vueuse/core"
+import updater from "@/utils/update"
+import appInfo from '../../../package.json'
+import logger from './utils/logger';
 
+const store = useUserStore()
 const imgStore = useImageStore()
 const logStore = useLogStore()
 const updateStore = useUpdateStore()
 const router = useRouter()
 const route = useRoute()
+
+const { pause, resume, isActive } = useIntervalFn(async () => {
+  if (store.user.id) {
+    try {
+      if (store.showUpdate === false) {
+        const rs = await updater.checkUpdates(false)
+        if (rs) {
+          const remote = parseInt(rs.updateInfo.version.replaceAll('.', ''))
+          const current = parseInt(appInfo.version.replaceAll('.', ''))
+          if (current < remote) {
+            message.success('发现新版本！')
+            store.showUpdate = true
+            router.push({ name: 'setting' })
+          }
+        }
+      }
+    } catch (err) {
+      logger.error('error in check update', err)
+    }
+  }
+}, 1000 * 60 * 10)
 
 electron.onPreviewImage((urls, index, render) => {
   imgStore.index = index
@@ -21,6 +46,8 @@ electron.onPreviewImage((urls, index, render) => {
     router.push({ name: 'image' })
   }
 })
+
+electron.onNewWindow((urlname, params) => router.push({ name: urlname, params: params }))
 
 electron.onOpenLog((content, path) => {
   router.push({ name: 'log' })
@@ -36,15 +63,12 @@ electron.onOpenLog((content, path) => {
 })
 
 electron.onOpenUpdate(version => {
-  // updateStore.canUpdate = true
-  console.log('get version ', version)
   updateStore.canUpdate = true
   updateStore.version = version
   router.push({ name: 'update' })
 })
 
 electron.onUpdater((name, value, ...args) => {
-  console.log('get ', name, value);
   switch (name) {
     case 'checking-for-update':
       updateStore.update_err = false
@@ -53,7 +77,6 @@ electron.onUpdater((name, value, ...args) => {
     case 'update-not-available':
       updateStore.checking = false
       updateStore.update_err = false
-      // updateStore.update_available = false
       updateStore.canUpdate = false
       updateStore.version = value
       break
@@ -62,7 +85,6 @@ electron.onUpdater((name, value, ...args) => {
       updateStore.canUpdate = true
       updateStore.downloading = false
       updateStore.checking = false
-      // updateStore.update_available = true
       updateStore.version = value
       if (args[0]) {
         message.success('有可用版本')
@@ -83,7 +105,6 @@ electron.onUpdater((name, value, ...args) => {
       updateStore.downloading = false
       updateStore.checking = false
       updateStore.update_err = true
-      // notification.error("更新失败: " + value)
       break
     default:
       break;

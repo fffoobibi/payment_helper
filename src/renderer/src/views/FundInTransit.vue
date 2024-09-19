@@ -800,7 +800,7 @@ h4 {
 }
 
 .bold {
-  font-weight: bold
+  font-weight: 600
 }
 
 .user-black {

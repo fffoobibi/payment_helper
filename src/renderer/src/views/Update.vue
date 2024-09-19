@@ -31,17 +31,23 @@ const showBar = computed(() => {
     <div class="main">
         <div style="height: 30px; width: 100%;">
             <Toolbar :close-type="4" :only-close="true">
-                <span style="margin-left: -20px;">更新</span>
+                <span style="margin-left: -20px; font-weight: bold">版本更新</span>
             </Toolbar>
         </div>
         <div class="content">
             <div v-if="update.canUpdate" style="width: 100%;">
                 <p class="bold black" style="font-size: 14px;">发现新版本!</p>
                 <p class='label'>版本：{{ "v" + update.version.version }}</p>
+                <el-scrollbar v-if="(!update.downloading) && (!update.update_success)"
+                    :height="update.downloading ? '50px' : '140px'">
+                    <div style="font-size: 10pt; color:black" v-html="update.version.content">
+                    </div>
+                </el-scrollbar>
+
                 <div v-if="showBar" style="display: flex; width: 100%;flex-direction: row;justify-content: flex-start">
                     <p class="label">进度：</p>
-                    <el-progress :text-inside="true" :stroke-width="20" :percentage="update.percent"
-                        style="width:85%" />
+                    <el-progress :stroke-width="10" :percentage="update.percent" style="width:90%"
+                        :status="update.update_success ? 'success' : ''" />
                 </div>
                 <p class="label" v-if="update.downloading">速度：<span class="label">{{ update.download_info }}</span>
                 </p>
@@ -63,6 +69,9 @@ const showBar = computed(() => {
 </template>
 
 <style scoped>
+:deep(.el-progress__text){
+  font-size:10pt !important
+}
 .bold {
     font-weight: 600;
 }
@@ -96,6 +105,8 @@ const showBar = computed(() => {
     gap: 20px;
     width: 100%;
     padding: 10px;
+    padding-left: 15px;
+    padding-right: 15px;
     border: none !important;
 }
 

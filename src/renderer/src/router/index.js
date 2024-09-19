@@ -83,6 +83,11 @@ const router = createRouter({
                     component: () => import('@/views/Setting.vue')
                 }
             ]
+        },
+        {
+            path: '/airwallex/:id',
+            name: 'airwallex',
+            component: () => import('@/views/Airwallex.vue')
         }
     ]
 })

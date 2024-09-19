@@ -8,12 +8,20 @@ import Message from '@/utils/message'
 import { Check, Warning, Remove, QuestionFilled } from '@element-plus/icons-vue'
 
 const props = defineProps({
-  detailId: String
+  detailId: String,
 })
 
 const emit = defineEmits(['update'])
 
 const approve = ref({})
+const reasons = {
+  0: '',
+  1: '付款方式选择错误',
+  2: '顾客收款账号错误',
+  3: '打款金额错误',
+  4: '打款币种错误',
+  5: '其它',
+}
 
 const tableData = ref([])
 
@@ -22,18 +30,34 @@ const showRecordDrawer = ref(false)
 const passDialogVisible = ref(false)
 const rejectDialogVisible = ref(false)
 const rejectCommentVisible = ref(false)
+const abnormalDialogVisible = ref(false)
+const abnormalCommentVisible = ref(false)
 const dialogForm = reactive({
   status: 0,
   reasonType: '',
   comment: ''
 })
+const dialogFormReset = () => {
+  dialogForm.status = 0
+  dialogForm.reasonType = ''
+  dialogForm.comment = ''
+  passDialogVisible.value = false
+  rejectDialogVisible.value = false
+  rejectCommentVisible.value = false
+  abnormalDialogVisible.value = false
+  abnormalCommentVisible.value = false
+}
 
 watch(() => props.detailId, () => {
   fetchData()
 })
 
 watch(() => dialogForm.reasonType, () => {
-  rejectCommentVisible.value = dialogForm.reasonType == 5
+  if (dialogForm.status == 2) {
+    rejectCommentVisible.value = dialogForm.reasonType == 5
+  } else if (dialogForm.status == 3) {
+    abnormalCommentVisible.value = dialogForm.reasonType == 5
+  }
 })
 
 onBeforeMount(() => {
@@ -51,27 +75,31 @@ const fetchData = async () => {
   })
   approve.value = data.payment_detail.detail
   approve.value.cashier = data.payment_cashier.cashier
+  approve.value.payment_error_msg = data.payment_cashier.payment_error_msg
   approve.value.payment_status = data.payment_cashier.payment_status
   tableData.value = data.payment_detail.items
 }
 
-const onShowReview = status => {
+const onShowDialog = status => {
   dialogForm.status = status
-  if (status == 1) {
-    passDialogVisible.value = true
-  } else {
-    rejectDialogVisible.value = true
+  switch (status) {
+    case 1: passDialogVisible.value = true; break;
+    case 2: rejectDialogVisible.value = true; break;
+    case 3: abnormalDialogVisible.value = true; break;
+    default: passDialogVisible.value = true; break;
   }
-
-  // const data = await api.payment.batchReview({
-  //   id: props.detailId,
-  //   status
-  // })
-  // Message.success(data.msg)
-  // fetchData()
 }
 
+// 审核通过/拒绝
 const onReview = async () => {
+  if (dialogForm.status == 2) {
+    dialogForm.comment = dialogForm.reasonType == 5 ? dialogForm.comment : reasons[dialogForm.reasonType]
+    if (!dialogForm.comment) {
+      Message.error('请输入拒绝理由')
+      return
+    }
+  }
+
   if (dialogForm.status == 1) {
     passDialogVisible.value = false
   } else {
@@ -89,6 +117,29 @@ const onReview = async () => {
     fetchData()
   } catch (error) {
     Message.success('审批失败')
+  } finally {
+    dialogFormReset()
+  }
+}
+
+// 打款异常
+const onAbnoraml = async () => {
+  dialogForm.comment = dialogForm.reasonType == 5 ? dialogForm.comment : reasons[dialogForm.reasonType]
+  if (!dialogForm.comment) {
+    Message.error('请输入异常原因')
+    return
+  }
+
+  abnormalDialogVisible.value = true
+
+  try {
+    await api.abnormal({
+      purchase_number: approve.value.purchase_number,
+      payment_error_msg: dialogForm.comment.trim()
+    })
+  } catch (error) {
+  } finally {
+    dialogFormReset()
   }
 }
 
@@ -195,6 +246,12 @@ const onReview = async () => {
             <div class="item-label">备注：</div>
             <div class="item-value">{{ approve.note }}</div>
           </div>
+
+          <div class="info-item" v-if="approve.payment_error_msg">
+            <i class="item-icon iconfont icon-system-info"></i>
+            <div class="item-label">异常原因：</div>
+            <div class="item-value abnormal">{{ approve.payment_error_msg }}</div>
+          </div>
         </div>
       </section>
 
@@ -202,9 +259,9 @@ const onReview = async () => {
         <i class="item-icon iconfont icon-operate"></i>
         <div class="item-label">操作：</div>
         <div class="operates">
-          <el-button type="success" :icon="Check" @click="onShowReview(1)" plain round>通过</el-button>
-          <el-button type="danger" :icon="Remove" @click="onShowReview(2)" plain round>拒绝</el-button>
-          <el-button type="info" :icon="Warning" @click="onShowReview(3)" plain round>异常</el-button>
+          <el-button type="success" :icon="Check" @click="onShowDialog(1)" plain round>通过</el-button>
+          <el-button type="danger" :icon="Remove" @click="onShowDialog(2)" plain round>拒绝</el-button>
+          <el-button type="info" :icon="Warning" @click="onShowDialog(3)" plain round>异常</el-button>
         </div>
       </section>
 
@@ -224,12 +281,12 @@ const onReview = async () => {
     </el-scrollbar>
 
     <!-- 新增打款抽屉 -->
-    <el-drawer v-model="showAddDrawer" title="新增打款" direction="rtl" size="50%">
+    <el-drawer v-model="showAddDrawer" title="新增打款" direction="rtl" size="600" destroy-on-close>
       <PaymentAdd :approve="approve" @close="showAddDrawer = false" />
     </el-drawer>
 
     <!-- 打款记录抽屉 -->
-    <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="600" class="records">
+    <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="600" class="records" destroy-on-close>
       <PaymentRecord />
     </el-drawer>
 
@@ -238,14 +295,14 @@ const onReview = async () => {
       <div class="dialog-content"><el-icon size="20" color="#409eff"><QuestionFilled /></el-icon> 确认已完成打款了吗？</div>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="passDialogVisible = false">取消</el-button>
+          <el-button @click="dialogFormReset">取消</el-button>
           <el-button type="primary" @click="onReview">确认</el-button>
         </div>
       </template>
     </el-dialog>
 
     <!-- 打款拒绝确认弹窗 -->
-    <el-dialog v-model="rejectDialogVisible" :title="dialogForm.status == 2 ? '拒绝原因' : '异常原因'" width="320" align-center>
+    <el-dialog v-model="rejectDialogVisible" title="拒绝原因" width="320" align-center>
       <el-form :model="dialogForm">
         <el-form-item>
           <el-select v-model="dialogForm.reasonType">
@@ -258,13 +315,38 @@ const onReview = async () => {
           </el-select>
         </el-form-item>
         <el-form-item v-show="rejectCommentVisible">
-          <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因" maxlength="100" show-word-limit />
+          <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因" spellcheck="false" maxlength="100" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="rejectDialogVisible = false">取消</el-button>
+          <el-button @click="dialogFormReset">取消</el-button>
           <el-button type="primary" @click="onReview">确认</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 打款异常弹窗 -->
+    <el-dialog v-model="abnormalDialogVisible" title="异常原因" width="320" align-center>
+      <el-form :model="dialogForm">
+        <el-form-item>
+          <el-select v-model="dialogForm.reasonType">
+            <el-option label="请选择" value="" />
+            <el-option label="付款方式选择错误" value="1" />
+            <el-option label="顾客收款账号错误" value="2" />
+            <el-option label="打款金额错误" value="3" />
+            <el-option label="打款币种错误" value="4" />
+            <el-option label="其它原因" value="5" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-show="abnormalCommentVisible">
+          <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因" spellcheck="false" maxlength="100" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="dialogFormReset">取消</el-button>
+          <el-button type="primary" @click="onAbnoraml">确认</el-button>
         </div>
       </template>
     </el-dialog>
@@ -375,5 +457,8 @@ const onReview = async () => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.abnormal {
+  color: #ef8787;
 }
 </style>

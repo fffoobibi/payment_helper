@@ -1,25 +1,34 @@
 <script setup>
 import { onBeforeMount, reactive, ref, watch } from 'vue'
-import { Check, Delete, Download, Files, Warning, Remove, Search } from '@element-plus/icons-vue'
+import { Check, Delete, Files, Warning, Remove, Search, RefreshLeft } from '@element-plus/icons-vue'
 import { dateTimeFmt, numberFmt } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
 import Message from '@/utils/message'
+import { useAccountStore } from '@/stores'
+import PaymentMerge from './PaymentMerge.vue'
 
 
 const route = useRoute()
 const router = useRouter()
 
 onBeforeMount(() => {
-  onSubmit()
+  onSearch()
 })
 
 const checkAll = ref(false)
 const isIndeter = ref(false)
 const listTitle = ref('全选（0）')
 const approves = ref([])
+const mergeState = reactive({
+  currency: '',
+  total_amount: '',
+  approves: []
+})
 const passDialogVisible = ref(false)
 const rejectDialogVisible = ref(false)
+const rejectCommentVisible = ref(false)
+const mergeDialogVisible = ref(false)
 let preprocess = []
 let isLoading = false
 
@@ -28,6 +37,14 @@ const types = reactive([
   { label: '预打款', value: 'preprocess', count: 0 },
   { label: '已打款', value: 'processed', count: 0 }
 ])
+const reasons = {
+  0: '',
+  1: '付款方式选择错误',
+  2: '顾客收款账号错误',
+  3: '打款金额错误',
+  4: '打款币种错误',
+  5: '其它',
+}
 
 const form = reactive({
   type: 'pending',
@@ -39,11 +56,28 @@ const form = reactive({
 })
 const dialogForm = reactive({
   status: 0,
-  numbers: []
+  approval_number_item: [],
+  reasonType: '',
+  comment: ''
+})
+const dialogFormReset = () => {
+  dialogForm.status = 0
+  dialogForm.approval_number_item = []
+  dialogForm.reasonType = ''
+  dialogForm.comment = ''
+  passDialogVisible.value = false
+  rejectDialogVisible.value = false
+  rejectCommentVisible.value = false
+}
+
+const scrollbarRef = ref()
+
+watch(() => dialogForm.reasonType, () => {
+  rejectCommentVisible.value = dialogForm.reasonType == 5
 })
 
-const currencyList = ref(['CNY', 'USD', 'HKD', 'EUR', 'JPY', 'BRL', 'AUD', 'TWD', 'KRW', 'PLN', 'RUF', 'PHP', 'MXN'])
-
+const accountStore = useAccountStore()
+const currencies = accountStore.currencies
 
 const onAllCheck = val => {
   approves.value.forEach(item => item.isChecked = val)
@@ -74,10 +108,15 @@ const onCheck = () => {
 const onDate = val => {
   form.page = 1
   form.payment_date = val.toLocaleDateString().replaceAll('/', '-')
-  onSubmit()
+  onSearch()
 }
 
-const onSubmit = async () => {
+const onRefresh = () => {
+  form.page = 1
+  onSearch()
+}
+
+const onSearch = async () => {
   checkAll.value = false
   try {
     const data = await api.getPaymentList(form)
@@ -85,6 +124,7 @@ const onSubmit = async () => {
     if (form.page == 1) {
       approves.value = data.list
       isIndeter.value = false
+      scrollbarRef.value.setScrollTop(0)
     } else {
       approves.value = approves.value.concat(data.list)
       isIndeter.value = approves.value.some(item => item.isChecked)
@@ -121,17 +161,17 @@ const onSegmented = val => {
   form.condition = ''
   form.currency = ''
 
-  onSubmit()
+  onSearch()
 }
 
 const onScroll = options => {
   if (form.type == 'preprocess') return
   const listHeight = document.querySelector('.el-scrollbar__view').clientHeight
   const boxHeight = document.querySelector('.rows').clientHeight
-  if (options.scrollTop > 0 && options.scrollTop >= listHeight - boxHeight && !isLoading) {
+  if (options.scrollTop > 0 && options.scrollTop >= listHeight - boxHeight - 1 && !isLoading) {
     isLoading = true
     form.page ++
-    onSubmit()
+    onSearch()
   }
 }
 
@@ -152,28 +192,66 @@ const onAllRemove = () => {
   Message.success('移除成功')
 }
 
-const onExport = async () => {
-  // const data = await api.getPaymentList(form)
-  // const blob = new Blob([JSON.stringify(data.list)], { type: 'application/json' })
-  // const url = URL.createObjectURL(blob)
-  // const a = document.createElement('a')
-  // a.href = url
-  // a.download = '打款列表.json'
-  // a.click()
-}
-
-const onBatchReview = status => {
+const onShowReviewDialog = status => {
   if (preprocess.length == 0) {
     Message.warning('请选择要操作的审批')
     return
   }
   dialogForm.status = status
-  if (status == 1 || status == 2) {
-    status == 1 ? (passDialogVisible.value = true) : (rejectDialogVisible.value = true)
-    dialogForm.numbers = preprocess.map(item => item.approval_number)
-  } else {
+  dialogForm.approval_number_item = preprocess.map(item => item.approval_number)
+  status == 1 ? (passDialogVisible.value = true) : (rejectDialogVisible.value = true)
+}
+
+// 合并打款
+const onMergePayment = async () => {
+  if (preprocess.length < 2) {
+    Message.warning('请选择要合并的审批')
+    return
+  }
+  const approval_number_list = preprocess.map(item => item.approval_number)
+
+  // 校验是否能合并
+  try {
+    const res = await api.checkMergePayment({
+      approval_number_list: JSON.stringify(approval_number_list)
+    })
+    mergeState.approves = preprocess
+    mergeState.total_amount = res.origin_total_amount;
+    mergeState.currency = res.currency
+    mergeDialogVisible.value = true
+  } catch (error) {
 
   }
+}
+
+// 合并打款完成
+const onMerged = () => {
+  mergeDialogVisible.value = false
+  approves.value = []
+  preprocess = []
+  mergeState.approves = []
+}
+
+const onBatchReview = async status => {
+  if (status == 2) {
+    if (dialogForm.reasonType) {
+      dialogForm.comment = dialogForm.reasonType == 5 ? dialogForm.comment : reasons[dialogForm.reasonType]
+    }
+    if (!dialogForm.comment) {
+      Message.error('请输入拒绝理由')
+      return
+    }
+  }
+  await api.batchReview({
+    status,
+    approval_number_item: JSON.stringify(dialogForm.approval_number_item),
+    comment: dialogForm.comment
+  })
+  dialogFormReset()
+  preprocess = []
+  approves.value = []
+  types[1].count = 0
+  Message.success('提交成功')
 }
 </script>
 
@@ -192,32 +270,41 @@ const onBatchReview = status => {
     <div class="filter">
       <el-form :inline="true" :model="form" v-show="form.type != 'preprocess'" @submit.prevent>
         <el-form-item v-show="form.type != 'preprocess'">
-          <el-input v-model="form.condition" :prefix-icon="Search" placeholder="请输入关键字" @keyup.enter="onSubmit" clearable />
+          <el-input v-model="form.condition" :prefix-icon="Search" placeholder="请输入关键字" @keyup.enter="onSearch" clearable />
         </el-form-item>
         <el-form-item v-show="form.type != 'preprocess'">
-          <el-select v-model="form.currency" placeholder="币种" @change="onSubmit">
+          <el-select v-model="form.currency" placeholder="币种" @change="onSearch" filterable>
             <el-option label="全部" value="" />
-            <el-option v-for="currency in currencyList" :label="currency" :value="currency" />
+            <el-option v-for="item in currencies" :value="item.code" />
           </el-select>
         </el-form-item>
       </el-form>
       <div class="tips" v-show="form.type == 'preprocess'">
-        <el-popover placement="right-start" :width="200" trigger="hover">
-          <template #reference>
-            <el-button style="margin-right: 16px" :icon="Warning">打款说明</el-button>
-          </template>
-          <div>一次合并打款个数不超过20个</div>
-        </el-popover>
         <el-popover placement="right-start" :width="400" trigger="hover">
+          <template #reference>
+            <el-button style="margin-right: 16px" :icon="Warning">合并要求</el-button>
+          </template>
+          <div>
+            <ul class="tip-content">
+              <li>合并打款的验证条件</li>
+              <li>1、钉钉审批编号必须是系统中存在的记录；</li>
+              <li>2、钉钉审批记录数必须在2条以上；</li>
+              <li>3、合并付款的钉钉审批信息中的收款账号和币种必须相同；</li>
+              <li>4、已打款的钉钉审批不能合并重复打款；</li>
+            </ul>
+          </div>
+        </el-popover>
+        <el-popover placement="right-start" :width="500" trigger="hover">
           <template #reference>
             <el-button style="margin-right: 16px" :icon="Warning">操作提示</el-button>
           </template>
           <div>
-            <div class="tip-content">
-              <p>1. 预打款功能用于在打款前预览打款金额，并预览打款时间。</p>
-              <p>2. 预打款功能仅用于预览，打款时间将按照实际打款时间进行打款。</p>
-              <p>3. 预打款功能仅用于预览，打款时间将按照实际打款时间进行打款。</p>
-            </div>
+            <ul class="tip-content">
+              <li>操作提示：</li>
+              <li>1、合并打款操作条件，合并打款审批不能少于2条，不多于20条，打款币种和供应商收款账号需要相同，合并后的金额不能超过钉钉审批打款总金额。</li>
+              <li>2、自动点单操作说明，自动点单功能是模拟打款员在各个后台（B2，GVG，VGolds和Mediamz）完成打款单的快捷操作方式，前置条件是钉钉打款审批来自各个系统自动提交的钉钉审批，手工创建的钉钉打款审批目前无法实现自动点单操作。</li>
+              <li>3、已完成的打款单如系统未提示自动点单操作，需打款员手动点“通过”或“批量通过”操作。</li>
+            </ul>
           </div>
         </el-popover>
       </div>
@@ -229,22 +316,22 @@ const onBatchReview = status => {
           <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{ listTitle }}</el-checkbox>
         </div>
         <div class="header-btns" v-show="form.type == 'preprocess'">
-          <el-button type="success" size="small" title="通过" :icon="Check" @click="onBatchReview(1)" plain></el-button>
-          <el-button type="danger" size="small" title="拒绝" :icon="Remove" @click="onBatchReview(2)" plain></el-button>
+          <el-button type="success" size="small" title="通过" :icon="Check" @click="onShowReviewDialog(1)" plain></el-button>
+          <el-button type="danger" size="small" title="拒绝" :icon="Remove" @click="onShowReviewDialog(2)" plain></el-button>
           <el-button type="warning" size="small" title="移除" :icon="Delete" @click="onAllRemove" plain></el-button>
-          <el-button type="primary" size="small" title="合并打款" :icon="Files" @click="onBatchReview(3)" plain></el-button>
+          <el-button type="primary" size="small" title="合并打款" :icon="Files" @click="onMergePayment" plain></el-button>
         </div>
         <el-form class="header-form" :inline="true" :model="form" v-show="form.type == 'processed'" @submit.prevent>
           <el-form-item>
             <el-date-picker v-model="form.payment_date" placeholder="请选择打款日期" @change="onDate" clearable />
           </el-form-item>
           <el-form-item>
-            <el-button :icon="Download" @click="onExport">导出</el-button>
+            <el-button :icon="RefreshLeft" @click="onRefresh"></el-button>
           </el-form-item>
         </el-form>
       </div>
 
-      <el-scrollbar class="rows" @scroll="onScroll">
+      <el-scrollbar class="rows" @scroll="onScroll" ref="scrollbarRef">
         <div class="row" :class="{ active: route.path == '/payment/' + item.id, checked: item.isChecked }" v-for="(item, index) in approves" :key="item.id">
           <el-checkbox v-if="form.type == 'pending'" v-model="item.isChecked" @change="onCheck(item)"></el-checkbox>
           <el-button v-if="form.type == 'preprocess'" size="small" @click="onRemove(index)" type="warning" :icon="Delete" link></el-button>
@@ -259,6 +346,7 @@ const onBatchReview = status => {
               <div class="row-other">{{ numberFmt(item.origin_total_amount)}} <span>{{ item.currency }}</span></div>
             </div>
           </div>
+          <div class="row-abnormal" v-if="item.payment_error_msg"></div>
         </div>
         <el-empty description=" " v-if="approves.length == 0" />
         <el-backtop target=".el-scrollbar__wrap" :bottom="20" :right="0" />
@@ -268,35 +356,51 @@ const onBatchReview = status => {
 
   <!-- 批量通过确认弹窗 -->
   <el-dialog v-model="passDialogVisible" title="批量通过" width="320" align-center>
-    <div class="dialog-content">以下 {{ dialogForm.numbers.length }} 条记录将被通过</div>
+    <div class="dialog-content">以下 {{ dialogForm.approval_number_item.length }} 条记录将被通过</div>
     <el-form :model="dialogForm">
       <el-form-item>
-        <el-input :value="dialogForm.numbers.join('\n')" rows="4" autocomplete="off" type="textarea" placeholder="请输入审批编号" />
+        <el-input :value="dialogForm.approval_number_item.join('\n')" rows="4" autocomplete="off" type="textarea" placeholder="请输入审批编号" />
       </el-form-item>
     </el-form>
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="passDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="passDialogVisible = false">确认</el-button>
+        <el-button @click="dialogFormReset">取消</el-button>
+        <el-button type="primary" @click="onBatchReview(1)">确认</el-button>
       </div>
     </template>
   </el-dialog>
 
   <!-- 批量拒绝确认弹窗 -->
   <el-dialog v-model="rejectDialogVisible" title="批量拒绝" width="320" align-center>
-    <div class="dialog-content">以下 {{ dialogForm.numbers.length }} 条记录将被拒绝</div>
+    <div class="dialog-content">以下 {{ dialogForm.approval_number_item.length }} 条记录将被拒绝</div>
     <el-form :model="dialogForm">
       <el-form-item>
-        <el-input :value="dialogForm.numbers.join('\n')" rows="4" autocomplete="off" type="textarea" placeholder="请输入审批编号" />
+        <el-input :value="dialogForm.approval_number_item.join('\n')" rows="4" autocomplete="off" type="textarea" placeholder="请输入审批编号" />
+      </el-form-item>
+      <el-form-item label="拒绝原因" placeholder="请选择拒绝原因" required>
+        <el-select v-model="dialogForm.reasonType">
+          <el-option label="顾客收款账号错误" value="2" />
+          <el-option label="打款金额错误" value="3" />
+          <el-option label="打款币种错误" value="4" />
+          <el-option label="其它原因" value="5" />
+        </el-select>
+      </el-form-item>
+      <el-form-item v-show="rejectCommentVisible">
+        <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因" spellcheck="false" maxlength="100" show-word-limit />
       </el-form-item>
     </el-form>
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="rejectDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="rejectDialogVisible = false">确认</el-button>
+        <el-button @click="dialogFormReset">取消</el-button>
+        <el-button type="primary" @click="onBatchReview(2)">确认</el-button>
       </div>
     </template>
   </el-dialog>
+
+  <el-dialog v-model="mergeDialogVisible" title="合并付款" width="600" align-center>
+    <PaymentMerge :approves="mergeState.approves" :total_amount="mergeState.total_amount" :currency="mergeState.currency" @completed="onMerged" />
+  </el-dialog>
+
 </template>
 
 
@@ -343,21 +447,24 @@ const onBatchReview = status => {
 .filter {
   padding: 14px 10px 8px;
 }
-:deep(.el-form--inline) {
+.filter :deep(.el-form--inline),
+.header-form {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 6px 8px;
 }
-:deep(.el-form-item) {
+.filter :deep(.el-form-item),
+.header-form :deep(.el-form-item) {
   margin: 0;
 }
-:deep(.el-input),
-:deep(.el-date-picker) {
+.filter :deep(.el-input),
+.header-form :deep(.el-input) {
   width: 180px;
 }
-:deep(.el-select),
-.el-form :deep(.el-button) {
+.filter :deep(.el-select),
+.filter .el-form :deep(.el-button),
+.header-form :deep(.el-button) {
   width: 90px;
 }
 .tips {
@@ -413,6 +520,7 @@ const onBatchReview = status => {
 }
 .row {
   display: flex;
+  position: relative;
   padding-right: 10px;
   background-color: #fff;
 }
@@ -492,5 +600,16 @@ const onBatchReview = status => {
   font-size: 0.8em;
   color: #333;
   font-weight: bold;
+}
+ul {
+  padding-left: 0;
+}
+.row-abnormal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(45deg, transparent 50%, #ff6262 50%);
 }
 </style>

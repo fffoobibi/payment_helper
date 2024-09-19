@@ -7,6 +7,7 @@ import api from "@/api"
 import message from '../utils/message'
 import updater from "@/utils/update"
 import app_info from '../../../../package.json'
+import { useRoute } from "vue-router"
 import { computed } from 'vue'
 
 const cfgStore = useLocalConfig()
@@ -32,6 +33,7 @@ const changeForm = reactive({
   new_pws: null,
   confirm: null
 })
+
 const reset = () => {
   formalUrl.value = 'http://bdapi.baizhoucn.com:2501'
   testUrl.value = 'http://192.168.0.10:20011'
@@ -46,8 +48,6 @@ const reset = () => {
 const openLog = () => {
   electron.viewLog()
 }
-
-console.log('aaaaa')
 
 const formRef = ref(null)
 const changePwd = async () => {
@@ -86,6 +86,7 @@ const validatePassConfirm = (rule, value, callback) => {
     callback()
   }
 }
+
 const showDialog = computed(() => {
   if (update.canUpdate) {
     return true
@@ -115,13 +116,11 @@ const checkUpdates = () => {
 }
 
 watch(showDialog, v => {
-  console.log('get ... v ', v);
   show.value = v
-})
+}, {immediate: true})
 
 const download = () => {
   if (update.update_success) {
-    console.log('send install ...');
     updater.install()
   } else {
     update.downloading = true
@@ -184,14 +183,14 @@ const download = () => {
               <el-checkbox label="自动点单确认" v-model="autoConfirm" @change="v => {
                   cfgStore.updateAutoConfirm()
                 }" />
-              <el-checkbox label="关闭自动点单" v-model="autoClick" @change="v => {
+              <el-checkbox label="自动点单" v-model="autoClick" @change="v => {
                   cfgStore.updateAutoClick()
                 }" />
             </el-form-item>
           </el-form>
         </div>
 
-        <div v-if="showHidden || !cfgStore.mode" class="pannel">
+        <div v-if="showHidden" class="pannel">
           <el-space>
             <span class="black"
               style="font-size: 11pt;border-bottom: 2px solid purple; margin-bottom: 0px!important;">开发设置</span>
@@ -250,7 +249,7 @@ const download = () => {
 
       </el-scrollbar>
 
-      <el-dialog v-model="show" style="height: 150px;">
+      <el-dialog v-model="show" :close-on-click-modal="false">
 
         <div v-loading="update.checking" element-loading-background="white" element-loading-text="检查更新中">
           <div v-if="update.update_err">
@@ -259,22 +258,28 @@ const download = () => {
           <div v-else-if="update.canUpdate">
             <p class="bold black">发现新版本!</p>
             <p>版本：{{ "v" + update.version.version }}</p>
-            <div style="display: flex" v-if="update.downloading || update.update_success">
+            <el-scrollbar v-if="(!update.downloading) && (!update.update_success)"
+              :height="update.downloading ? '50px' : '140px'">
+              <div style="font-size: 10pt; color:black" v-html="update.version.content">
+              </div>
+            </el-scrollbar>
+            <div style="display: flex; width: 100%;" v-if="update.downloading || update.update_success">
               <span style="margin-right: 0px;">进度：</span>
-              <el-progress :text-inside="true" :stroke-width="20" :percentage="update.percent" style="width:85%" />
+              <el-progress :stroke-width="10" :percentage="update.percent" style="width:90%"
+                :status="update.update_success ? 'success' : ''" />
             </div>
             <p v-if="update.downloading">速度：<span style="font-size: 10pt;" class="black">{{ update.download_info
                 }}</span>
             </p>
           </div>
-          <div v-else style="text-align: center;">
+          <div v-else style="text-align: center">
             <p class="bold black">无可用更新</p>
           </div>
         </div>
 
         <template #footer v-if="!update.checking">
           <div v-if="update.canUpdate">
-            <el-button @click="show = false">取消</el-button>
+            <el-button  @click="show = false">关闭</el-button>
             <el-button :type="update.update_success ? 'danger' : 'primary'" :loading="update.downloading"
               @click="download">
               {{ update.update_success ? "退出重启" : '更新' }}
@@ -288,6 +293,10 @@ const download = () => {
 </template>
 
 <style scoped>
+:deep(.el-progress__text) {
+  font-size: 10pt !important
+}
+
 h4 {
   padding: 0 10px;
   color: #333;

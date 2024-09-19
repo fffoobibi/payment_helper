@@ -103,6 +103,9 @@ const processResponse = async (resp) => {
     v._vo_number = v.voucher_no
     v._vo_show = false
     v._vo_loading = false
+    v._vo_total = v.payment_items.reduce((x, y) => {
+      return { cny_amount: addNumbers(x.cny_amount, y.cny_amount) }
+    }, { cny_amount: '0' }).cny_amount
   })
   return resp
 }
@@ -280,17 +283,17 @@ onMounted(() => {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="创建">
+      <el-table-column label="创建" :show-overflow-tooltip="{disabled: true}">
         <template #default="{ row }">
           <div>类型：<span class="user-select">{{ row.type_name }}</span></div>
           <div>备注：
-            <el-tooltip v-if="row.account_record_note?.trim()?.length>=11" :content="row.account_record_note?.trim()" effect="dark" placement="right">
+            <el-tooltip hide-after="0" transition="none" v-if="row.account_record_note?.trim()?.length>=11" :content="row.account_record_note?.trim()" effect="dark" placement="right">
               <span class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span>
             </el-tooltip>
             <span v-else class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span>
           </div>
           <div>打款备注：
-            <el-tooltip v-if="row.account_voucher_ext_note?.trim()?.length>=11" :content="row.account_voucher_ext_note?.trim()" effect="dark" placement="right">
+            <el-tooltip hide-after="0" transition="none" v-if="row.account_voucher_ext_note?.trim()?.length>=11" :content="row.account_voucher_ext_note?.trim()" effect="dark" placement="right">
               <span class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span>
             </el-tooltip>
             <span v-else class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span>
@@ -310,7 +313,7 @@ onMounted(() => {
               }}</span></div>
         </template>
       </el-table-column>
-      <el-table-column label="凭证号">
+      <el-table-column label="凭证号" >
         <template #header>
           <el-tooltip effect="dark"  placement="right">
             <template #content>
@@ -343,23 +346,17 @@ onMounted(() => {
           <el-popover
             v-if="row.payment_items.length"
             :transition="none"
-            title="明细"
-            :width="330"
-            trigger="click"
             :hide-after="0"
+            :width="330"
+            title="明细"
+            trigger="click"
             >
               <template #reference>
                 <el-button link type="success" >明细[{{ row.payment_items.length }}]</el-button>
               </template>
               <el-scrollbar :max-height="300" :height="250">
                 <div style="border-bottom:1px solid lightgray;margin-bottom: 4px; padding-bottom: 4px;">
-                  <p>合计： <span> {{ 
-                numberFmt(
-                row.payment_items.reduce((x, y)=>{
-                    return addNumbers(x.cny_amount, y.cny_amount)
-                }, ''))
-                
-                }} </span><span class="red">{{ " " + row.payment_items[0].currency }}</span></p>
+                  <p>合计： <span> {{ numberFmt(row._vo_total)}} </span><span class="red">{{ " " + row.payment_items[0].currency }}</span></p>
                 </div>
                 <div v-for="item in row.payment_items" :key="item.item_id" style="padding-bottom: 4px; border-bottom:1px solid lightgray; margin-bottom: 4px;">
                   <p><span class="black">{{ item.account_title_parent }} - {{ item.account_title }}:</span> <span class="user-select">{{ numberFmt(item.cny_amount) }}</span><span class="red user-select">{{ " " + item.currency }}</span></p>
@@ -381,6 +378,10 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* :deep(.el-popper) {
+    max-width: 10px;
+} */
+
 .user-select {
   color: black;
   font-size: 10pt;
@@ -388,7 +389,7 @@ onMounted(() => {
 }
 
 .bold {
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .black {

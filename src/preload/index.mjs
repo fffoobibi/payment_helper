@@ -13,8 +13,9 @@ const electron = {
     getDefault: (key, defaultValue) => ipcRenderer.invoke('get-default', key, defaultValue),
     setDefault: (key, value) => ipcRenderer.invoke('set-default', key, value)
   },
-  viewImages: (urls, index = 0) => ipcRenderer.send('view-images', urls, index),
-  viewLog: () => ipcRenderer.send('open-log'),
+  viewImages: (urls, index = 0) => ipcRenderer.send('open-images', urls, index, 'image'),
+  newWindow: (urlname, params = {}, options = {}) => ipcRenderer.send('new-window', urlname, params, options),
+  viewLog: () => ipcRenderer.send('open-log', 'log'),
   files: {
     readFile: (path, callback) => {
       fs.readFile(path, 'utf8', (err, data) => {
@@ -24,15 +25,15 @@ const electron = {
     }
   },
   update: {
-    open: (version) => ipcRenderer.send('open-update', version),
-    install: () => ipcRenderer.send('update:install'),
-    download: () => ipcRenderer.send('update:download'),
-    cancel: () => ipcRenderer.send('update:cancel'),
-    checkForUpdates: (showMsgIfNew = true) => ipcRenderer.send('update:checkForUpdates', showMsgIfNew),
+    open: (version) => ipcRenderer.send('open-update', version, 'update'),
+    install: () => ipcRenderer.send('open-update:install'),
+    download: () => ipcRenderer.send('open-update:download'),
+    cancel: () => ipcRenderer.send('open-update:cancel'),
+    checkForUpdates: (showMsgIfNew = true) => ipcRenderer.invoke('open-update:checkForUpdates', showMsgIfNew),
   },
   // 主进程 -> 渲染进程的事件
   onCapture: (callback) => ipcRenderer.on('key-capture', (_event, data) => callback(data)),
-  onPreviewImage: (callback) => ipcRenderer.on('preview-images', (_event, urls, index, render) => callback(urls, index, render)),
+  onPreviewImage: (callback) => ipcRenderer.on('open-images:success', (_event, urls, index, render) => callback(urls, index, render)),
   onExportExcel: (scallback, fcallback, ccallback) => {
     ipcRenderer.on('export-excel-success', () => {
       scallback?.()
@@ -48,18 +49,18 @@ const electron = {
       ipcRenderer.send('export-excel', data, fileName)
     }
   },
+  onNewWindow: (callback) => ipcRenderer.on('load-window', (_event, urlname, params) => callback(urlname, params)),
   onOpenLog: (callback, aCallback) => {
-    ipcRenderer.on('log-result', (event, content, path) => {
+    ipcRenderer.on('open-log:success', (event, content, path) => {
       callback(content, path)
     })
-    ipcRenderer.on('log-append', (event, content, path) => {
+    ipcRenderer.on('open-log:append', (event, content, path) => {
       aCallback?.(content, path)
     })
   },
   // update
-  onUpdater: (callback) => ipcRenderer.on('updater-message', (event, key, msg, ...args) => callback(key, msg, ...args)),
-  onOpenUpdate: (callback) => ipcRenderer.on('update:dialog', (_event, version) => callback(version))
-
+  onUpdater: (callback) => ipcRenderer.on('open-update:message', (event, key, msg, ...args) => callback(key, msg, ...args)),
+  onOpenUpdate: (callback) => ipcRenderer.on('open-update:success', (_event, version) => callback(version))
 }
 
 contextBridge.exposeInMainWorld('electron', electron)

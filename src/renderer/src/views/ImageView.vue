@@ -26,7 +26,7 @@ const title = computed(() => {
 
 <template>
     <div class="main">
-        <div style="height: 30px; width: 100%;">
+        <div style="height: 30px; width: 100%; z-index: 999">
             <Toolbar :title="title" :close-type="2" :only-close="true"></Toolbar>
         </div>
         <div class="content">

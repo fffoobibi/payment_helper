@@ -1,14 +1,19 @@
 import { computed, ref, watch, watchEffect } from 'vue'
 import { defineStore } from 'pinia'
+import { get } from 'lodash'
 
 // 用户信息
 const useUserStore = defineStore('user', () => {
   const user = ref({})
+  const showUpdate = ref(false)
   const setUser = (data) => {
     user.value = data
     localStorage.setItem('user', JSON.stringify(data))
   }
-
+  const logOut = () => {
+    user.value = {}
+    showUpdate.value = false
+  }
   // 审核权限
   const canAudit = computed(() => {
     return user.value.auth_list.includes('/payment_assistant_apply_modify')
@@ -30,14 +35,13 @@ const useUserStore = defineStore('user', () => {
     return user.value.auth_list.includes('/payment_assistant_note_modify')
   })
 
-  return { user, setUser, canAudit, canModify, canCancel, canDelete, canModifyNote }
+  return { user, setUser, canAudit, canModify, canCancel, canDelete, canModifyNote, showUpdate, logOut }
 })
 
 // 银行账户下拉列表
 const useAccountStore = defineStore('accounts', () => {
   const accountObject = ref({})
   const accounts = ref([])
-
 
   const payouts = ref([])  //科目支出
   const incomes = ref([])  //科目收入
@@ -69,8 +73,42 @@ const useAccountStore = defineStore('accounts', () => {
     currencies.value = data
   }
 
-  return { accounts, payouts, incomes, currencies, setAccounts, getAccountInfo, setPayouts, setInComes, setCurrencies }
+  const getAccounts = () => {
+    if (accounts.value.length > 0) {
+      return accounts
+    }
+    const rs = localStorage.getItem('accounts')
+    if (rs) {
+      accounts.value = JSON.parse(rs)
+    }
+    return accounts
+  }
 
+  return { accounts, payouts, incomes, currencies, setAccounts, getAccountInfo, setPayouts, setInComes, setCurrencies, getAccounts }
+
+})
+
+
+const useAirwallexStore = defineStore('airwallex', () => {
+  const config = ref({})
+
+  const setConfig = data => {
+    config.value = data
+    localStorage.setItem('airwallexConfig', JSON.stringify(data))
+  }
+
+  const getConfig = () => {
+    if (config.value.length > 0) {
+      return config
+    }
+    const rs = localStorage.getItem('airwallexConfig')
+    if (rs) {
+      config.value = JSON.parse(rs)
+    }
+    return config
+  }
+
+  return { config, setConfig, getConfig }
 })
 
 const useLogStore = defineStore('logStore', () => {
@@ -98,7 +136,6 @@ const useUpdateStore = defineStore('updateStore', () => {
   }
 
   const checking = ref(false)
-  const update_available = ref(false)
   const update_err = ref(false)
   const update_success = ref(false)
   const update_info = ref({})
@@ -126,7 +163,7 @@ const useUpdateStore = defineStore('updateStore', () => {
   })
 
   return {
-    checking, update_available, update_success, update_info, update_err, version, downloading, canUpdate,
+    checking, update_success, update_info, update_err, version, downloading, canUpdate,
     percent,
     download_info
   }
@@ -135,7 +172,7 @@ const useUpdateStore = defineStore('updateStore', () => {
 export {
   useUserStore,
   useAccountStore,
+  useAirwallexStore,
   useLogStore,
   useUpdateStore
 }
-

@@ -1,7 +1,5 @@
 <script setup>
 import { reactive, ref, computed } from 'vue'
-
-import avatar from '@/assets/images/avatar-1.png?asset'
 import { useRouter } from 'vue-router'
 import { useUserStore } from "@/stores/index"
 import { useLocalConfig } from "@/stores/config"
@@ -22,15 +20,16 @@ const optionItems = computed(() => {
   } else {
     return [
       {
-        icon: 'debug', text: '当前为调试服', name: 'jietu'
+        icon: 'debug', text: '当前为调试服', name: 'debug'
       },
       { icon: 'setting', text: '设置', name: 'setting' }
     ]
   }
 }
 )
-const switchAccount = ()=>{
-  router.push({name: 'login'})
+const switchAccount = () => {
+  store.logOut()
+  router.push({ name: 'login' })
   electron.toLogin()
 }
 
@@ -38,9 +37,7 @@ const currItem = ref(menuItems[0])
 
 const onMenu = (item) => {
   currItem.value = item
-  if (item.name == 'jietu') {
-    // 调用electron的截图功能
-    // window.electron.ipcRenderer.send('jietu')
+  if (item.name == 'debug') {
   } else {
     router.push({ name: item.name })
   }
@@ -52,24 +49,20 @@ const onMenu = (item) => {
 <template>
   <div class="win">
     <div class="sider">
-      <el-popover placement="right-start" :title="store.user.username" :width="200" trigger="hover" >
+      <el-popover placement="right-start" :title="store.user.username" :width="200" trigger="hover">
         <template #reference>
           <el-avatar :size="34">
             {{ store.user.username[0] }}
           </el-avatar>
-          <!-- <div class="avatar">
-            <img :src="avatar" alt="">
-            </img>
-          </div> -->
         </template>
-        <el-space direction="vertical"> 
+        <el-space direction="vertical">
           <el-button link type="primary" @click="switchAccount">切换账号</el-button>
         </el-space>
       </el-popover>
 
       <ul class="menu">
-        <li :class="['menu-item', { active: item.name == currItem.name }]" v-for="item in menuItems">
-          <el-tooltip :content="item.text" hide-after="0" effect="dark" transition="none" placement="right-start">
+        <li :class="['menu-item', { active: item.name == currItem.name }]" v-for="item in menuItems" :key="item.name">
+          <el-tooltip :content="item.text" :hide-after="0" effect="dark" transition="none" placement="right-start">
             <el-button @click="onMenu(item)" text>
               <el-icon :class="['iconfont', 'icon-' + item.icon]"></el-icon>
             </el-button>
@@ -78,8 +71,8 @@ const onMenu = (item) => {
       </ul>
 
       <ul class="options">
-        <li :class="['menu-item', { active: item.name == currItem.name }]" v-for="item in optionItems">
-          <el-tooltip :content="item.text" hide-after="0" effect="dark" transition="none" placement="right-start">
+        <li :class="['menu-item', { active: item.name == currItem.name }]" v-for="item in optionItems" :key="item.name">
+          <el-tooltip :content="item.text" :hide-after="0" effect="dark" transition="none" placement="right-start">
             <el-button @click="onMenu(item)" text>
               <el-icon :class="['iconfont', 'icon-' + item.icon]"></el-icon>
             </el-button>
@@ -118,6 +111,9 @@ const onMenu = (item) => {
   height: 100%;
   padding: 27px 0 20px;
   background-color: #2e3238;
+}
+.el-avatar {
+  background: #5ba3ed;
 }
 
 .avatar {

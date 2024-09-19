@@ -1,9 +1,10 @@
 import { toRaw } from 'vue'
 import notification from './notification'
 
+const isDev = import.meta.env.PROD
+
 const viewImages = (urls, index = 0) => {
   const r = toRaw(urls)
-  console.log('view images', urls)
   electron.viewImages(r, index)
 }
 
@@ -54,4 +55,24 @@ const setUpCapture = (callback) => {
   return crop
 }
 
-export { viewImages, getIndexFromArray, setUpExportToExcel, setUpCapture }
+/**
+ * 根据索引获取Excel列字母
+ * @param {*} index 索引（从1开始）
+ * @returns A-Z, AA-ZZ, AAA...
+ */
+const getExcelColumnLetter = (index) => {
+  if (index < 0) {
+    throw new Error('Index must be non-negative')
+  }
+
+  let columnLetter = ''
+  while (index > 0) {
+    index--
+    let remainder = index % 26
+    columnLetter = String.fromCharCode(65 + remainder) + columnLetter
+    index = Math.floor(index / 26)
+  }
+  return columnLetter
+}
+
+export { viewImages, getIndexFromArray, setUpExportToExcel, setUpCapture, getExcelColumnLetter, isDev }

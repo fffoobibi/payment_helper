@@ -528,14 +528,15 @@ const submitPanZhang = async () => {
       if (valid) {
         const uploads = await uploadRef.value.uploadImage()
         const data = { ...form.panzhangPost }
+        console.log('盘账数据: ', data)
         data.attachment_list = JSON.stringify(uploads)
         message.success('盘账已完成!')
+        await api.bank_account.inventory(data)
         form.panzhangShow = false
         onSearch(1, null)
       }
     } catch (err) {
-      logger.error('盘账失败', err
-      )
+      logger.error('盘账失败', err)
     }
   })
 }

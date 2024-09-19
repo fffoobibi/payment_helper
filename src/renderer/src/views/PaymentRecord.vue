@@ -5,6 +5,8 @@ import { DocumentDelete, Edit, Picture } from '@element-plus/icons-vue'
 import Message from '@/utils/message'
 import { dateTimeFmt, numberFmt } from '@/utils/format'
 import PaymentRecordEdit from './paymentRecordEdit.vue'
+import * as XLSX from "xlsx"
+import { getExcelColumnLetter } from '@/utils/tools'
 
 const form = reactive({
   condition: '1',
@@ -24,6 +26,13 @@ const paymentTypes = {
   3: '外币银行支付',
   4: '外币PayPal支付',
   5: '财务盘账'
+}
+
+const feePlayerTypes = {
+  0: '',
+  1: '我方',
+  2: '顾客',
+  3: '双方平摊',
 }
 
 const onLimitChange = val => {
@@ -51,15 +60,55 @@ const onInputChange = val => {
 }
 
 const onExport = async () => {
-  // try {
-  //   const data = await api.getPaymentRecordList(form)
-  //   const workbook = XLSX.utils.book_new()
-  //   const worksheet = XLSX.utils.json_to_sheet(data.list)
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1')
-  //   XLSX.writeFile(workbook, '打款记录.xlsx')
-  // } catch (error) {
-  //   console.log(error)
-  // }
+  try {
+    const data = await api.exportPaymentRecordList(form)
+    // 筛选字段
+    const fields = ['sn', 'payment_type', 'type_name', 'creator', 'department_name', 'create_time', 'origin_total_amount', 'currency', 'payment_creator', 'payment_department_name', 'fee_payer', 'account_name', 'receiving_account', 'transaction_number', 'note', 'system_code', 'purchase_number']
+    const labels = ['打款流水号', '打款类型', '支付类型', '打款员', '打款员部门', '打款时间', '打款金额', '币种', '申请人', '申请人部门', '手续费承担方', '打款银行账号', '收款人账号', '交易流水号', '打款备注', '系统名称', '采购单/流水号']
+
+    // 使用获取指定字段的数据
+    data.list = data.list.map(v => {
+      const obj = {}
+      fields.forEach(field => {
+        if (field == 'payment_type') {
+          obj[field] = paymentTypes[v[field]]
+        } else if (field == 'create_time' || field == 'update_time') {
+          obj[field] = dateTimeFmt(v[field], 2)
+        } else if (field == 'origin_total_amount') {
+          obj[field] = numberFmt(v[field])
+        } else if (field == 'fee_payer') {
+          obj[field] = feePlayerTypes[v[field]]
+        } else {
+          // 多层级取值
+          // const parts = field.split('.')
+          // let value = v
+          // for (let i = 0; i < parts.length; i++) {
+          //   if (value && typeof value === 'object') {
+          //     value = value[parts[i]]
+          //   } else {
+          //     value = undefined
+          //     break
+          //   }
+          // }
+          // obj[field] = value
+          obj[field] = v[field]
+        }
+      })
+      return obj
+    })
+
+    const workbook = XLSX.utils.book_new()
+    const worksheet = XLSX.utils.json_to_sheet(data.list)
+    // 设置表头
+    for (let i = 0; i < labels.length; i++) {
+      XLSX.utils.sheet_add_aoa(worksheet, [[labels[i]]], { origin: getExcelColumnLetter(i + 1) + '1' })
+    }
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1')
+    XLSX.writeFile(workbook, `百舟打款助手打款记录_${dateTimeFmt(new Date(), 5)}.xlsx`)
+  } catch (error) {
+    console.log(error)
+  }
 }
 
 const onCopy = async text => {
@@ -155,6 +204,7 @@ onBeforeMount(() => {
                   :min-scale="0.2"
                   :preview-src-list="ext.attachment_list.map(item => item.path)"
                   fit="cover"
+                  v-if="ext.attachment_list.length > 0"
                 >
                 <template #error>
                   <div class="image-slot">
@@ -189,7 +239,7 @@ onBeforeMount(() => {
     <el-table-column label="打款信息">
       <template #default="scope">
         <div class="item">
-          <span class="item-label">流水编号：</span>
+          <span class="item-label">打款序号：</span>
           <span class="item-value">{{ scope.row.sn }}</span>
           <el-button @click="onCopy(scope.row.sn)" link><i class="iconfont icon-copy"></i></el-button>
         </div>

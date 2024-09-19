@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: payment_helper
+appId: com.baizhoucn.app
+productName: 打款助手
 directories:
   buildResources: build
 files:
@@ -12,7 +12,10 @@ asarUnpack:
   - resources/**
 win:
   executableName: payment_helper
+  icon: resources/icon.png
 nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}

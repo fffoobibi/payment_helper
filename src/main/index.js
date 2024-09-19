@@ -12,6 +12,10 @@ import * as XLSX from 'xlsx'
 import _ from 'electron-updater'
 const autoUpdater = _.autoUpdater
 
+// 配置文件
+const store = new Store()
+console.log(store.path)
+
 // 更新管理
 class Updater {
   win = null
@@ -19,38 +23,42 @@ class Updater {
   flag = false
 
   sendStatusToWindow(event, text, ...args) {
-    this.win.webContents.send('updater-message', event, text, ...args)
-    if (is.dev) {
-      console.log('send event updater-message ==>', event)
+    try {
+      this.win.webContents.send('open-update:message', event, text, ...args)
+      if (is.dev) {
+        console.log('open-update:message ==>', event)
+      }
+    } catch (err) {
+
     }
   }
 
   _initMainCallback() {
-    ipcMain.on('update:download', (_event) => {
+    ipcMain.on('open-update:download', (_event) => {
       autoUpdater.downloadUpdate()
     })
-    ipcMain.on('update:cancel', (_event) => {})
-    ipcMain.on('update:checkForUpdates', (_event, showIfNew) => {
+    ipcMain.on('open-update:cancel', (_event) => { })
+    ipcMain.handle('open-update:checkForUpdates', async (_event, showIfNew) => {
       this.showIfNew = showIfNew
-      autoUpdater.checkForUpdates()
+      const rs = await autoUpdater.checkForUpdates()
+      return rs
     })
-    ipcMain.on('update:install', (_event) => {
+    ipcMain.on('open-update:install', (_event) => {
       autoUpdater.quitAndInstall(false, true)
     })
   }
 
   init(win) {
-    // autoUpdater.setFeedURL('http://127.0.0.1/updates')
     this.win = win
     if (!this.flag) {
-      ipcMain.on('open-update', (event, version) => {
+      ipcMain.on('open-update', (event, version, hash) => {
         manager.createWindow(
           'update',
           (frame) => {
-            frame.webContents.send('update:dialog', version)
+            frame.webContents.send('open-update:success', version)
             this.win = frame
           },
-          { width: 400, height: 200, resizable: false }
+          { width: 600, height: 300, resizable: false, hash }
         )
       })
 
@@ -60,7 +68,7 @@ class Updater {
         autoUpdater.forceDevUpdateConfig = true
         autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
       } else {
-        
+        autoUpdater.setFeedURL(store.get('update_url', 'http://36.32.174.26:5018/updates'))
       }
 
       autoUpdater.on('checking-for-update', () => {
@@ -76,7 +84,6 @@ class Updater {
       })
 
       autoUpdater.on('error', (err, msg) => {
-        log.error('error in update', err)
         this.sendStatusToWindow('error', err, msg)
       })
 
@@ -89,7 +96,9 @@ class Updater {
       })
 
       this._initMainCallback()
-      autoUpdater.checkForUpdatesAndNotify()
+      autoUpdater.checkForUpdatesAndNotify().then(info => {
+        // console.log('info ', info)
+      })
     }
   }
 }
@@ -103,12 +112,12 @@ class WindowManger {
   /**
    * @param {String} name
    * @param {(win: BrowserWindow)=>void} after
-   * @param {{title: String, width: Number, height: Number, resizable: Boolean}} createOptions
+   * @param {{title: String, width: Number, height: Number, resizable: Boolean, hash: String}} createOptions
    */
   createWindow(
     name,
     after,
-    createOptions = { title: '', width: mainWidth, height: mainHeight, resizable: true },
+    createOptions = { title: '', width: mainWidth, height: mainHeight, resizable: true, hash },
     openDevTools = false
   ) {
     let flag = false
@@ -128,7 +137,7 @@ class WindowManger {
         title: createOptions.title ?? '',
         titleBarStyle: 'hidden',
         webPreferences: {
-          nodeIntegration: true,
+          nodeIntegration: false,
           contextIsolation: true,
           webSecurity: false,
           sandbox: false,
@@ -166,13 +175,10 @@ class WindowManger {
     } else {
       if (flag) {
         previewWindow
-          .loadFile(join(__dirname, '../renderer/index.html'))
+          .loadFile(join(__dirname, '../renderer/index.html'), { hash: hash.toString() })
           .then(() => {
             after(previewWindow)
             previewWindow.show()
-            if (openDevTools) {
-              previewWindow.webContents.openDevTools()
-            }
           })
           .catch((err) => {
             log.error('open fail', err)
@@ -181,9 +187,6 @@ class WindowManger {
         after(previewWindow)
         previewWindow.show()
         previewWindow.center()
-        if (openDevTools) {
-          previewWindow.webContents.openDevTools()
-        }
       }
     }
   }
@@ -244,7 +247,7 @@ log.transports.custom = (msg) => {
   if (logWin) {
     const text = log.transports.file.transforms[3](msg)
     const data = `[${formatDate(msg.date)}] [${msg.level}] ` + text
-    logWin.webContents.send('log-append', data, log.transports.file.resolvePathFn())
+    logWin.webContents.send('open-log:append', data, log.transports.file.resolvePathFn())
   }
 }
 log.transports.file.maxSize = 10 * 1024 * 1024 // 日志大小
@@ -253,7 +256,7 @@ log.transports.console.level = false
 log.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}] [{level}] {text}'
 log.transports.file.resolvePathFn = () => {
   const directoryPath = join(app.getPath('home'), '.payment_helper/logs')
-  const logFileName = 'payment_helper.log'
+  const logFileName = is.dev ? 'payment_helper_dev.log' : 'payment_helper.log'
   // 确保日志目录存在
   try {
     if (!fs.existsSync(directoryPath)) {
@@ -261,7 +264,7 @@ log.transports.file.resolvePathFn = () => {
     }
   } catch (error) {
     console.error(`Error creating directory: ${error.message}`)
-    return null // 如果无法创建目录，返回null以避免进一步的错误
+    return null
   }
 
   const logPath = join(directoryPath, logFileName)
@@ -282,10 +285,6 @@ log.transports.file.resolvePathFn = () => {
   return logPath
 }
 
-// 配置文件
-const store = new Store()
-console.log('store ', store.path)
-
 const loginWidth = 320
 const loginHeight = 320
 const mainWidth = 950
@@ -293,13 +292,6 @@ const mainHeight = 700
 
 function createWindow() {
   // Create the browser window.
-  let webSecurity
-  if (is.dev) {
-    webSecurity = true
-  } else {
-    webSecurity = false
-  }
-
   const mainWindow = new BrowserWindow({
     icon: icon,
     width: loginWidth,
@@ -313,11 +305,12 @@ function createWindow() {
     closable: true,
     alwaysOnTop: true,
     webPreferences: {
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: true,
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
-      webSecurity: webSecurity
+      webSecurity: is.dev ? true : false,
+      devTools: is.dev ? true : false
     }
   })
 
@@ -326,9 +319,8 @@ function createWindow() {
   }
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-    //
     updater.init(mainWindow)
+    mainWindow.show()
   })
 
   mainWindow.on('close', () => {
@@ -380,7 +372,7 @@ function createWindow() {
     mainWindow.setResizable(true)
 
     // TODO: 添加托盘操作
-    contextMenu.unshift({ label: data.username, click: () => {} })
+    contextMenu.unshift({ label: data.username, click: () => { } })
   })
 
   // 去登录
@@ -440,6 +432,7 @@ function createWindow() {
   globalShortcut.register('ctrl+q', () => {
     screenshots.startCapture()
   })
+
   // 点击确定按钮回调事件
   screenshots.on('ok', (e, buffer, bounds) => {
     // const src = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
@@ -464,7 +457,6 @@ function createWindow() {
   })
 
   ipcMain.handle('set-config', (event, key, value) => {
-    // console.log('set ', key, value)
     if (value !== undefined) {
       store.set(key, value)
     }
@@ -472,7 +464,6 @@ function createWindow() {
 
   ipcMain.handle('get-config', (event, key, defaultValue) => {
     const rs = store.get(key, defaultValue)
-    // console.log('get ', key, rs, defaultValue)
     return rs
   })
 
@@ -483,7 +474,6 @@ function createWindow() {
     }
     const field = `${v}.${key}`
     const rs = store.get(field, defaultValue)
-    // console.log('get default ===> ', key, v, defaultValue)
     return rs
   })
 
@@ -494,29 +484,28 @@ function createWindow() {
     }
     const field = `${v}.${key}`
     store.set(field, value)
-    // console.log('set default ===> ', key, v)
   })
 
-  // 图片查看
-  ipcMain.on('view-images', (event, urls, index) => {
+  // 图片
+  ipcMain.on('open-images', (event, urls, index, hash) => {
     manager.createWindow(
       'preview',
       (frame) => {
-        frame.webContents.send('preview-images', urls, index, Date.now())
+        frame.webContents.send('open-images:success', urls, index, Date.now())
       },
-      { title: 'preview' }
+      { title: 'preview', hash }
     )
   })
 
-  // 日志打开
-  ipcMain.on('open-log', (event) => {
+  // 日志
+  ipcMain.on('open-log', (event, hash) => {
     manager.createWindow(
       'log',
       (frame) => {
         const filePath = log.transports.file.resolvePathFn()
-        frame.webContents.send('log-result', '', filePath)
+        frame.webContents.send('open-log:success', '', filePath)
       },
-      { title: 'log' }
+      { title: 'log', hash }
     )
   })
 
@@ -572,6 +561,35 @@ function createWindow() {
       default:
         break
     }
+  })
+
+  ipcMain.on('new-window', (event, urlname, params, options) => {
+    const newWin = new BrowserWindow({
+      icon: icon,
+      width: mainWidth,
+      height: mainHeight,
+      show: false,
+      autoHideMenuBar: true,
+      title: options.title ?? '新窗口',
+      titleBarStyle: 'hidden',
+      frame: false,
+      transparent: true,
+      closable: false,
+      maximizable: true,
+      alwaysOnTop: true,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: true,
+        preload: join(__dirname, '../preload/index.mjs'),
+        sandbox: false
+      }
+    })
+
+    newWin.loadURL(process.env['ELECTRON_RENDERER_URL']).then(() => {
+      newWin.show()
+      newWin.center()
+      newWin.webContents.send('load-window', urlname, params)
+    })
   })
 
   return mainWindow

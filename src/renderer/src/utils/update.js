@@ -1,12 +1,7 @@
 import { toRaw } from 'vue'
 class Update {
-  checkUpdates(showMsg) {
-    electron.update.checkForUpdates(showMsg)
-    // update: {
-    //     download: () => ipcRenderer.send('update:download'),
-    //     cancel: () => ipcRenderer.send('update:cancel'),
-    //     checkForUpdates: () => ipcRenderer.send('update:checkForUpdates'),
-    //   },
+  async checkUpdates(showMsg) {
+    return await electron.update.checkForUpdates(showMsg)
   }
   download() {
     electron.update.download()
