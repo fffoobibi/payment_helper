@@ -19,6 +19,7 @@ const Keys = {
   testUrl: 'testUrl',
   autoClick: 'autoClick',
   autoConfirm: 'autoConfirm',
+  excelColors: 'excelColors',
   uploadFormalUrl: 'uploadFormalUrl',
   uploadTestUrl: 'uploadTestUrl',
 }
@@ -246,6 +247,55 @@ const useLocalConfig = defineStore('localConfig', () => {
     return await getConfig(Keys.pinned)
   }, Keys.pinned)
 
+  // excel 
+  const { refV: excelColors, update: updateExcelColors } = makeScope({
+    dingding: {},
+    bank: {},
+    recive_account: {},
+    trade_number: {},
+    note: {},
+    currency: {},
+    //   {
+    //     label: '设置该列为钉钉编号',
+    //     color: '#5B9BD5',
+    //     name: "钉钉编号"
+    // },
+    // {
+    //     label: '设置该列为银行账号',
+    //     color: '#FFC000',
+    //     name: "银行账号"
+    // },
+    // {
+    //     label: '设置该列为收款账号',
+    //     color: '#92D050',
+    //     name: "收款账号"
+
+    // },
+    // {
+    //     label: '设置该列为交易流水号',
+    //     color: '#8497B0',
+    //     name: "交易流水号"
+    // },
+    // {
+    //     label: '设置该列为备注',
+    //     color: '#F4B084',
+    //     name: "备注"
+
+    // },
+    // {
+    //     label: '设置该列为币种',
+    //     color: 'red',
+    //     name: "币种"
+    // },
+    // {
+    //     label: '设置该列为金额',
+    //     color: 'blue',
+    //     name: "金额"
+    // },
+  }, async () => {
+    return await getConfig(Keys.excelColors)
+  }, Keys.excelColors)
+
   // 自动点单确认
   const { refV: autoConfirm, update: updateAutoConfirm } = makeScope(true, async () => {
     return await getConfig(Keys.autoConfirm)
@@ -279,6 +329,8 @@ const useLocalConfig = defineStore('localConfig', () => {
   const { refV: mode, update: updateMode } = makeGlobal(true, async () => {
     return await getGlobalConfig(Globals.pro)
   }, Globals.pro, { autoSave: true })
+
+
 
 
   // prod
@@ -319,8 +371,12 @@ const useLocalConfig = defineStore('localConfig', () => {
     currentUserPasswd,
     currentUserRemeber,
 
+    excelColors,
+    updateExcelColors,
+
     autoConfirm,
     updateAutoConfirm,
+
     autoClick,
     updateAutoClick,
 

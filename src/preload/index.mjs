@@ -31,6 +31,16 @@ const electron = {
     cancel: () => ipcRenderer.send('open-update:cancel'),
     checkForUpdates: (showMsgIfNew = true) => ipcRenderer.invoke('open-update:checkForUpdates', showMsgIfNew),
   },
+  sql: {
+    query: (sql, params) => ipcRenderer.invoke('sql-query', sql, params),
+    insert: (table, data) => ipcRenderer.invoke('sql-insert', table, data),
+    update: (table, data, where) => ipcRenderer.invoke('sql-update', table, data, where),
+    delete: (table, where) => ipcRenderer.invoke('sql-delete', table, where),
+  },
+  // excel
+  openExcel: (user) => ipcRenderer.send('open-excel', user, 'excel',),
+  onOpenExcel: (callback) => ipcRenderer.on('open-excel:success', (_event, user, file, data) => callback(user, file, data)),
+
   // 主进程 -> 渲染进程的事件
   onCapture: (callback) => ipcRenderer.on('key-capture', (_event, data) => callback(data)),
   onPreviewImage: (callback) => ipcRenderer.on('open-images:success', (_event, urls, index, render) => callback(urls, index, render)),

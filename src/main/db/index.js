@@ -1,8 +1,15 @@
+import fs from "fs"
+import sqlite3 from "sqlite3"
+import os from "os"
+
 class Database {
   constructor() {
-    const fs = require('fs')
-    const sqlite3 = require('sqlite3').verbose()
-    const os = require('os')
+    // const fs = require('fs')
+    // const sqlite3 = require('sqlite3').verbose()
+    // const os = require('os')
+
+    const sqlite3 = sqlite3.verbose()
+
     const dbDir = os.homedir() + import.meta.env.VITE_DB_DIR
 
     let is_init = fs.existsSync(dbDir)

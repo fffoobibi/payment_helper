@@ -123,11 +123,11 @@ const onSubmit = async (el) => {
     <el-form-item label="修改原因">
       <el-input v-model="form.application_reason" type="textarea" spellcheck="false" />
     </el-form-item>
-    <el-form-item label="附件">
+    <el-form-item label="附件" class="mb">
       <Upload action="upload" ref="uploadRef" v-model="form.attachment_list" :limit="10" dir="payment" :size="66">
       </Upload>
     </el-form-item>
-    <el-form-item>
+    <el-form-item class="mb">
       <el-button type="primary" :icon="Check" @click="onSubmit(formRef)">提交</el-button>
       <el-button :icon="Close" @click="emit('close')">取消</el-button>
     </el-form-item>
@@ -144,5 +144,12 @@ const onSubmit = async (el) => {
 .item-value {
   color: #353549;
   font-size: 13px;
+}
+
+.el-form-item:not(.mb) {
+  margin-bottom: 20px;
+}
+.el-col .el-form-item {
+  margin-bottom: 0;
 }
 </style>

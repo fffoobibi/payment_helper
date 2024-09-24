@@ -10,7 +10,7 @@ const payment = {
   mergePayment: data => http({ url: '/voucher/saveMergePayment', params: data }),
   getAccountDetail: data => http({ url: '/account/getAccountDetail', params: data }),
   getAirwallexConfig: data => http({ url: '/airwallex/getConfig', params: data }),
-  getAirwallexData: data => http({ url: '/airwallex/getList', params: data }),
+  getAirwallexData: data => http({ url: '/airwallex/getList', params: data, showLoading: false }),
   addPaymentRecord: data => http({ url: '/voucher/uploadVoucher', params: data }),
   getPaymentRecordList: data => http({ url: '/voucher/getVoucherHistoryList', params: data }),
   exportPaymentRecordList: data => http({ url: '/voucher/exportHistoryList', params: data }),
@@ -19,6 +19,8 @@ const payment = {
   updatePaymentRecordExt: data => http({ url: '/voucher/modifyVoucher', params: data }),
   updatePaymentAttachments: data => http({ url: '/voucher/replenishVoucher', params: data, showLoading: false }),
   autoComplete: data => http({ url: '/paymentCashier/autoCompletePuchasement', params: data }),
+  cancelModify: data => http({ url: '/voucher/cancelModifyVoucher', params: data }),
+  auditModify: data => http({ url: '/voucher/auditModifyVoucher', params: data }),
 }
 
 export default payment

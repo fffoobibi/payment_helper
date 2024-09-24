@@ -7,6 +7,7 @@ import icon from '../../resources/icon.png?asset'
 import trayIcon from '../../resources/favicon.ico?asset'
 import log from 'electron-log'
 import fs from 'fs'
+import db from './db.js'
 import * as XLSX from 'xlsx'
 
 import _ from 'electron-updater'
@@ -39,9 +40,14 @@ class Updater {
     })
     ipcMain.on('open-update:cancel', (_event) => { })
     ipcMain.handle('open-update:checkForUpdates', async (_event, showIfNew) => {
-      this.showIfNew = showIfNew
-      const rs = await autoUpdater.checkForUpdates()
-      return rs
+      try {
+        this.showIfNew = showIfNew
+        const rs = await autoUpdater.checkForUpdates()
+        return rs
+      } catch (err) {
+        console.error('error in check ', err)
+      }
+
     })
     ipcMain.on('open-update:install', (_event) => {
       autoUpdater.quitAndInstall(false, true)
@@ -210,6 +216,9 @@ class WindowManger {
         break
       case 4: // 更新
         this.destroy('update')
+        break
+      case 5: // 更新
+        this.destroy('excel')
         break
       default:
         break
@@ -417,6 +426,9 @@ function createWindow() {
         } else if (data.closeType == 4) {
           manager.onCloseType(data.closeType)
         }
+        else if (data.closeType == 5) {
+          manager.onCloseType(data.closeType)
+        }
         break
       }
     }
@@ -544,6 +556,91 @@ function createWindow() {
       })
   })
 
+  // excel窗口
+
+  const stox = (wb) => {
+    var out = [];
+    wb.SheetNames.forEach((name) => {
+      var o = { name: name, rows: {}, merges: [] };
+      var ws = wb.Sheets[name];
+      var aoa = XLSX.utils.sheet_to_json(ws, { raw: false, header: 1 });
+      aoa.forEach((r, i) => {
+        var cells = {};
+        r.forEach((c, j) => {
+          cells[j] = { text: c, style: 0 };
+          // console.log('ccc ', cells[j]);
+        });
+        o.rows[i] = { cells: cells };
+      });
+      o.styles = [{ color: 'red' }]
+
+      ///
+      console.log(`ws`, ws);
+      // 设置合并单元格
+      if (ws["!merges"]) {
+        ws["!merges"].forEach((merge) => {
+          /** merge = {
+           *  s: {c: 0, r: 15}
+           *  e: {c: 15, r: 15}
+           * }
+           */
+          // 修改 cell 中 merge [合并行数,合并列数]
+          let cell = o.rows[merge.s.r].cells[merge.s.c];
+
+          //无内容单元格处理
+          if (!cell) {
+            cell = { text: "" };
+          }
+          cell.merge = [merge.e.r - merge.s.r, merge.e.c - merge.s.c];
+          o.rows[merge.s.r].cells[merge.s.c] = cell;
+
+          // 修改 merges
+          o.merges.push(XLSX.utils.encode_range(merge));
+        });
+      }
+      out.push(o);
+    });
+    return out;
+  }
+
+  ipcMain.on('open-excel', (event, user, hash) => {
+    dialog.showOpenDialog({
+      title: '打开Excel文件',
+      defaultPath: app.getPath('desktop'),
+      filters: [{ name: 'Excel files', extensions: ['xlsx', 'xls'] }],
+      properties: ['openFile']
+    }).then((result) => {
+      if (!result.canceled && result.filePaths.length) {
+        try {
+          const fileBuffer = fs.readFileSync(result.filePaths[0]);
+          const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+          // const sheetName = workbook.SheetNames[0];
+          // const sheet = workbook.Sheets[sheetName];
+          // const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          // const excelData = { name: sheetName, rows: convertToSpreadsheetFormat(data) }
+          const excelData = stox(workbook)
+          console.log('rs ', excelData)
+          manager.createWindow(
+            'excel',
+            (frame) => {
+              frame.webContents.send('open-excel:success', user, result.filePaths[0], excelData)
+            },
+            { title: 'excel', hash }, true
+          )
+        } catch (error) {
+          log.error('打开excel失败', error)
+          console.log('errr ', error)
+          event.reply('open-excel:error', error.message) // 发送错误消息
+        }
+      } else {
+        event.reply('open-excel:cancel')
+      }
+    })
+      .catch((err) => {
+        log.error('保存excel失败', err)
+      })
+  })
+
   ipcMain.on('log-event', (event, level, ...args) => {
     switch (level) {
       case 'info':
@@ -592,7 +689,26 @@ function createWindow() {
     })
   })
 
-  return mainWindow
+  // sql
+  ipcMain.handle('sql-query', async (event, sql, params) => {
+    const result = await db.query(sql, params)
+    if (result) return result
+  })
+
+  ipcMain.handle('sql-insert', async (event, table, data) => {
+    const result = await db.insert(table, data)
+    if (result) return result
+  })
+
+  ipcMain.handle('sql-update', async (event, table, data, where) => {
+    const result = await db.update(table, data, where)
+    if (result) return result
+  })
+
+  ipcMain.handle('sql-delete', async (event, table, where) => {
+    const result = await db.delete(table, where)
+    if (result) return result
+  })
 }
 
 // This method will be called when Electron has finished
@@ -626,6 +742,3 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
-
-// In this file you can include the rest of your app"s specific main process
-// code. You can also put them in separate files and require them here.

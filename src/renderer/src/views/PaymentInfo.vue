@@ -6,6 +6,7 @@ import api from '@/api'
 import { numberFmt } from '@/utils/format'
 import Message from '@/utils/message'
 import { Check, Warning, Remove, QuestionFilled } from '@element-plus/icons-vue'
+import BankTransferAdd from './BankTransferAdd.vue'
 
 const props = defineProps({
   detailId: String,
@@ -22,8 +23,11 @@ const reasons = {
   4: '打款币种错误',
   5: '其它',
 }
+const bankAccountTitleIds = [181, 197]
+const isBankTransfer = ref(false)
 
 const tableData = ref([])
+const firstItem = ref(null)
 
 const showAddDrawer = ref(false)
 const showRecordDrawer = ref(false)
@@ -77,7 +81,14 @@ const fetchData = async () => {
   approve.value.cashier = data.payment_cashier.cashier
   approve.value.payment_error_msg = data.payment_cashier.payment_error_msg
   approve.value.payment_status = data.payment_cashier.payment_status
+
   tableData.value = data.payment_detail.items
+  if (data.payment_detail.items.length > 0) {
+    firstItem.value = data.payment_detail.items[0]
+    if (bankAccountTitleIds.includes(firstItem.value.account_title_id)) {
+      isBankTransfer.value = true
+    }
+  }
 }
 
 const onShowDialog = status => {
@@ -154,12 +165,16 @@ const onAbnoraml = async () => {
       </template>
 
       <template #option>
-        <el-button size="small" class="option-btn" @click="showAddDrawer = true" title="新增打款" link>
-          <i class="iconfont icon-edit"></i>
-        </el-button>
-        <el-button size="small" class="option-btn" @click="showRecordDrawer = true" title="打款记录" link>
-          <i class="iconfont icon-history-record"></i>
-        </el-button>
+        <el-tooltip content="新增打款/转账" placement="left">
+          <el-button size="small" class="option-btn" @click="showAddDrawer = true" link>
+            <i class="iconfont icon-edit"></i>
+          </el-button>
+        </el-tooltip>
+        <el-tooltip content="打款记录" placement="bottom-end">
+          <el-button size="small" class="option-btn" @click="showRecordDrawer = true" link>
+            <i class="iconfont icon-history-record"></i>
+          </el-button>
+        </el-tooltip>
       </template>
     </Header>
 
@@ -170,7 +185,9 @@ const onAbnoraml = async () => {
             <i class="item-icon iconfont icon-approve"></i>
             <div class="item-label">钉钉编号：</div>
             <div class="item-value">{{ approve.approval_number }}</div>
-            <el-button @click="onCopy(approve.approval_number)" link><i class="iconfont icon-copy"></i></el-button>
+            <el-tooltip content="复制" placement="right">
+              <el-button @click="onCopy(approve.approval_number)" link><i class="iconfont icon-copy"></i></el-button>
+            </el-tooltip>
           </div>
         </div>
 
@@ -281,8 +298,9 @@ const onAbnoraml = async () => {
     </el-scrollbar>
 
     <!-- 新增打款抽屉 -->
-    <el-drawer v-model="showAddDrawer" title="新增打款" direction="rtl" size="600" destroy-on-close>
-      <PaymentAdd :approve="approve" @close="showAddDrawer = false" />
+    <el-drawer v-model="showAddDrawer" :title="isBankTransfer ? '新增银行转账' : '新增打款'" direction="rtl" size="600" destroy-on-close>
+      <BankTransferAdd :item="firstItem" @close="showAddDrawer = false" v-if="isBankTransfer" />
+      <PaymentAdd :approve="approve" @close="showAddDrawer = false" v-else />
     </el-drawer>
 
     <!-- 打款记录抽屉 -->
@@ -393,7 +411,7 @@ const onAbnoraml = async () => {
 .table-box {
   background-color: #fff;
   border-radius: 6px;
-  box-shadow: 0 2px 10px 0 #d9dbe1;
+  box-shadow: 1px 1px 0 0 #dcdee5;
   color: #353535;
   overflow: hidden;
 }

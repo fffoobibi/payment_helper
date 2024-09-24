@@ -1,12 +1,16 @@
 <script setup>
 import { onBeforeMount, reactive } from 'vue'
 import api from '@/api'
-import { DocumentDelete, Edit, Picture } from '@element-plus/icons-vue'
+import { Check, DocumentDelete, Edit, Picture, RefreshLeft } from '@element-plus/icons-vue'
 import Message from '@/utils/message'
 import { dateTimeFmt, numberFmt } from '@/utils/format'
 import PaymentRecordEdit from './paymentRecordEdit.vue'
 import * as XLSX from "xlsx"
 import { getExcelColumnLetter } from '@/utils/tools'
+import { useUserStore } from "@/stores/index"
+
+
+const store = useUserStore()
 
 const form = reactive({
   condition: '1',
@@ -121,21 +125,58 @@ const onExpandRow = async (row, _) => {
   try {
     const data = await api.getPaymentRecordExtList({voucher_id: row.voucher_id})
     row.voucher_ext_list = data.list
-  } catch (error) {
-    console.log(error)
   } finally {
     row.isLoading = false
   }
 }
 
 const dialog = reactive({
-  visible: false,
+  editVisible: false,
+  cancelVisible: false,
+  auditVisible: false,
   ext: null
 })
 const onEditExt = (index, subIndex) => {
   const ext = table.data[index].voucher_ext_list[subIndex]
   dialog.ext = ext
-  dialog.visible = true
+  dialog.editVisible = true
+}
+const onShowAudit = (index, subIndex) => {
+  const ext = table.data[index].voucher_ext_list[subIndex]
+  dialog.ext = ext
+  dialog.auditVisible = true
+}
+const onShowCancel = (index, subIndex) => {
+  const ext = table.data[index].voucher_ext_list[subIndex]
+  dialog.ext = ext
+  dialog.cancelVisible = true
+}
+
+const onCancel = async  () => {
+  try {
+    await api.cancelModify({
+      account_id: dialog.ext.account_id,
+      voucher_ext_id: dialog.ext.voucher_ext_id
+    })
+    Message.success("撤销成功")
+    onSubmit()
+  } finally {
+    dialog.cancelVisible = false
+    onSubmit()
+  }
+}
+
+const onAudit = async () => {
+  try {
+    await api.auditModify({
+      account_id: dialog.ext.account_id,
+      voucher_ext_id: dialog.ext.voucher_ext_id
+    })
+    Message.success("审核成功")
+  } finally {
+    dialog.auditVisible = false
+    onSubmit()
+  }
 }
 
 onBeforeMount(() => {
@@ -217,7 +258,17 @@ onBeforeMount(() => {
 
             <!-- 操作 -->
             <div class="options" v-show="ext.is_audit == 0">
-              <el-button type="primary" :icon="Edit" class="wrap-edit" @click="onEditExt(props.$index, subIndex)" link></el-button>
+              <el-tooltip content="编辑" placement="left">
+                <el-button type="primary" :icon="Edit" class="wrap-edit" @click="onEditExt(props.$index, subIndex)" link></el-button>
+              </el-tooltip>
+            </div>
+            <div class="options" v-show="ext.is_audit == 1">
+              <el-tooltip content="撤销" placement="left">
+                <el-button type="danger" :icon="RefreshLeft" class="wrap-edit" v-if="store.canCancel" @click="onShowCancel(props.$index, subIndex)" link></el-button>
+              </el-tooltip>
+              <el-tooltip content="审核" placement="left">
+                <el-button type="success" :icon="Check" class="wrap-edit" v-if="store.canAudit" @click="onShowAudit(props.$index, subIndex)" link></el-button>
+              </el-tooltip>
             </div>
           </div>
 
@@ -239,7 +290,7 @@ onBeforeMount(() => {
     <el-table-column label="打款信息">
       <template #default="scope">
         <div class="item">
-          <span class="item-label">打款序号：</span>
+          <span class="item-label">钉钉编号：</span>
           <span class="item-value">{{ scope.row.sn }}</span>
           <el-button @click="onCopy(scope.row.sn)" link><i class="iconfont icon-copy"></i></el-button>
         </div>
@@ -290,8 +341,41 @@ onBeforeMount(() => {
     @current-change="onPageChange"
   />
 
-  <el-dialog v-model="dialog.visible" title="修改打款记录" width="540px" :close-on-click-modal="false" :close-on-press-escape="false">
-    <PaymentRecordEdit :ext="dialog.ext" @close="dialog.visible = false" />
+  <el-dialog v-model="dialog.editVisible" title="修改打款记录" width="540" :close-on-click-modal="false" :close-on-press-escape="false" align-center>
+    <PaymentRecordEdit :ext="dialog.ext" @close="dialog.editVisible = false" />
+  </el-dialog>
+
+  <el-dialog v-model="dialog.cancelVisible" title="撤销提示" width="400" :close-on-click-modal="false" :close-on-press-escape="false">
+    <span>确定要撤销修改审核吗？</span>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="dialog.cancelVisible = false">关闭</el-button>
+        <el-button type="primary" @click="onCancel">确定</el-button>
+      </div>
+    </template>
+  </el-dialog>
+
+  <el-dialog v-model="dialog.auditVisible" title="审核提示" width="400" :close-on-click-modal="false" :close-on-press-escape="false">
+    <div class="dialog-content">
+      <div class="item">
+        <div class="item-label">修改人：</div>
+        <div class="item-value">{{ dialog.ext.applicant }}</div>
+      </div>
+      <div class="item">
+        <div class="item-label">修改时间：</div>
+        <div class="item-value">{{ dialog.ext.application_time }}</div>
+      </div>
+      <div class="item">
+        <div class="item-label">修改原因：</div>
+        <div class="item-value">{{ dialog.ext.application_reason }}</div>
+      </div>
+    </div>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="dialog.auditVisible = false">关闭</el-button>
+        <el-button type="primary" @click="onAudit">确定</el-button>
+      </div>
+    </template>
   </el-dialog>
 </template>
 
@@ -374,7 +458,7 @@ onBeforeMount(() => {
 :deep(.el-table__cell.el-table__expanded-cell) {
   padding: 8px 12px !important;
   background: #f5f7fa;
-  box-shadow: inset 2px 2px 10px 0 #abaeb4;
+  box-shadow: inset 1px 1px 4px 0 #b0bbd1;
 }
 :deep(.el-table__expanded-cell:hover) {
   background-color: #f5f7fa !important;

@@ -169,10 +169,20 @@ const useUpdateStore = defineStore('updateStore', () => {
   }
 })
 
+const useWindowStore = defineStore('windowStore', () => {
+  const user = ref({})
+  const excelFile = ref(null)
+  const excelData = ref(null)
+  return {
+    user, excelFile, excelData
+  }
+})
+
 export {
   useUserStore,
   useAccountStore,
   useAirwallexStore,
   useLogStore,
-  useUpdateStore
+  useUpdateStore,
+  useWindowStore
 }

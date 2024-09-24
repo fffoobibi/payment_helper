@@ -1,16 +1,20 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch } from 'vue'
+import { onBeforeMount, reactive, ref, watch, toRaw } from 'vue'
 import { Check, Delete, Files, Warning, Remove, Search, RefreshLeft } from '@element-plus/icons-vue'
 import { dateTimeFmt, numberFmt } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
 import Message from '@/utils/message'
-import { useAccountStore } from '@/stores'
+import { useAccountStore, useUserStore } from '@/stores'
 import PaymentMerge from './PaymentMerge.vue'
-
 
 const route = useRoute()
 const router = useRouter()
+const store = useUserStore()
+
+const openExcel = () => {
+  electron.openExcel(toRaw(store.user))
+}
 
 onBeforeMount(() => {
   onSearch()
@@ -54,6 +58,9 @@ const form = reactive({
   page: 1,
   limit: 20
 })
+
+const noMore = ref(false)
+
 const dialogForm = reactive({
   status: 0,
   approval_number_item: [],
@@ -128,6 +135,9 @@ const onSearch = async () => {
     } else {
       approves.value = approves.value.concat(data.list)
       isIndeter.value = approves.value.some(item => item.isChecked)
+      if (data.list.length < form.limit) {
+        noMore.value = true
+      }
     }
     if (form.type == 'pending') {
       const checks = preprocess.map(item => item.id)
@@ -139,19 +149,18 @@ const onSearch = async () => {
       checkAll.value = checks.length == approves.value.length
       types[0].count = data.count
     }
-  } catch (error) {
-    console.log(error)
   } finally {
     isLoading = false
   }
 }
 
 const onDetail = id => {
-  router.push({ name: 'paymentInfo', params: { id }})
+  router.push({ name: 'paymentInfo', params: { id } })
 }
 
 const onSegmented = val => {
   router.push({ name: 'blank' })
+  noMore.value = false
   if (val == 'preprocess') {
     approves.value = preprocess
     return
@@ -165,12 +174,12 @@ const onSegmented = val => {
 }
 
 const onScroll = options => {
-  if (form.type == 'preprocess') return
+  if (form.type == 'preprocess' || noMore.value) return
   const listHeight = document.querySelector('.el-scrollbar__view').clientHeight
   const boxHeight = document.querySelector('.rows').clientHeight
   if (options.scrollTop > 0 && options.scrollTop >= listHeight - boxHeight - 1 && !isLoading) {
     isLoading = true
-    form.page ++
+    form.page++
     onSearch()
   }
 }
@@ -270,7 +279,8 @@ const onBatchReview = async status => {
     <div class="filter">
       <el-form :inline="true" :model="form" v-show="form.type != 'preprocess'" @submit.prevent>
         <el-form-item v-show="form.type != 'preprocess'">
-          <el-input v-model="form.condition" :prefix-icon="Search" placeholder="请输入关键字" @keyup.enter="onSearch" clearable />
+          <el-input v-model="form.condition" :prefix-icon="Search" placeholder="请输入关键字" @keyup.enter="onSearch"
+            clearable />
         </el-form-item>
         <el-form-item v-show="form.type != 'preprocess'">
           <el-select v-model="form.currency" placeholder="币种" @change="onSearch" filterable>
@@ -302,7 +312,9 @@ const onBatchReview = async status => {
             <ul class="tip-content">
               <li>操作提示：</li>
               <li>1、合并打款操作条件，合并打款审批不能少于2条，不多于20条，打款币种和供应商收款账号需要相同，合并后的金额不能超过钉钉审批打款总金额。</li>
-              <li>2、自动点单操作说明，自动点单功能是模拟打款员在各个后台（B2，GVG，VGolds和Mediamz）完成打款单的快捷操作方式，前置条件是钉钉打款审批来自各个系统自动提交的钉钉审批，手工创建的钉钉打款审批目前无法实现自动点单操作。</li>
+              <li>
+                2、自动点单操作说明，自动点单功能是模拟打款员在各个后台（B2，GVG，VGolds和Mediamz）完成打款单的快捷操作方式，前置条件是钉钉打款审批来自各个系统自动提交的钉钉审批，手工创建的钉钉打款审批目前无法实现自动点单操作。
+              </li>
               <li>3、已完成的打款单如系统未提示自动点单操作，需打款员手动点“通过”或“批量通过”操作。</li>
             </ul>
           </div>
@@ -313,13 +325,24 @@ const onBatchReview = async status => {
     <div class="list">
       <div class="list-header">
         <div class="header-checkbox" v-show="form.type == 'pending'">
-          <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{ listTitle }}</el-checkbox>
+          <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{
+      listTitle
+    }}</el-checkbox>
+          <el-button link @click="openExcel"><el-icon class="iconfont icon-Excel" :size="17"></el-icon>批量打款</el-button>
         </div>
         <div class="header-btns" v-show="form.type == 'preprocess'">
-          <el-button type="success" size="small" title="通过" :icon="Check" @click="onShowReviewDialog(1)" plain></el-button>
-          <el-button type="danger" size="small" title="拒绝" :icon="Remove" @click="onShowReviewDialog(2)" plain></el-button>
-          <el-button type="warning" size="small" title="移除" :icon="Delete" @click="onAllRemove" plain></el-button>
-          <el-button type="primary" size="small" title="合并打款" :icon="Files" @click="onMergePayment" plain></el-button>
+          <el-tooltip content="通过" placement="top">
+            <el-button type="success" size="small" :icon="Check" @click="onShowReviewDialog(1)" plain></el-button>
+          </el-tooltip>
+          <el-tooltip content="拒绝" placement="top">
+            <el-button type="danger" size="small" :icon="Remove" @click="onShowReviewDialog(2)" plain></el-button>
+          </el-tooltip>
+          <el-tooltip content="移除" placement="top">
+            <el-button type="warning" size="small" :icon="Delete" @click="onAllRemove" plain></el-button>
+          </el-tooltip>
+          <el-tooltip content="合并打款" placement="top">
+            <el-button type="primary" size="small" :icon="Files" @click="onMergePayment" plain></el-button>
+          </el-tooltip>
         </div>
         <el-form class="header-form" :inline="true" :model="form" v-show="form.type == 'processed'" @submit.prevent>
           <el-form-item>
@@ -332,9 +355,11 @@ const onBatchReview = async status => {
       </div>
 
       <el-scrollbar class="rows" @scroll="onScroll" ref="scrollbarRef">
-        <div class="row" :class="{ active: route.path == '/payment/' + item.id, checked: item.isChecked }" v-for="(item, index) in approves" :key="item.id">
+        <div class="row" :class="{ active: route.path == '/payment/' + item.id, checked: item.isChecked }"
+          v-for="(item, index) in approves" :key="item.id">
           <el-checkbox v-if="form.type == 'pending'" v-model="item.isChecked" @change="onCheck(item)"></el-checkbox>
-          <el-button v-if="form.type == 'preprocess'" size="small" @click="onRemove(index)" type="warning" :icon="Delete" link></el-button>
+          <el-button v-if="form.type == 'preprocess'" size="small" @click="onRemove(index)" type="warning"
+            :icon="Delete" link></el-button>
           <div class="space" v-if="form.type == 'processed'"></div>
           <div class="row-content" @click="onDetail(item.id)">
             <div class="row-top">
@@ -343,11 +368,12 @@ const onBatchReview = async status => {
             </div>
             <div class="row-bottom">
               <div class="row-subtitle">{{ item.approval_number }}</div>
-              <div class="row-other">{{ numberFmt(item.origin_total_amount)}} <span>{{ item.currency }}</span></div>
+              <div class="row-other">{{ numberFmt(item.origin_total_amount) }} <span>{{ item.currency }}</span></div>
             </div>
           </div>
           <div class="row-abnormal" v-if="item.payment_error_msg"></div>
         </div>
+        <div class="no-more" v-show="noMore">~ 到底啦 ~</div>
         <el-empty description=" " v-if="approves.length == 0" />
         <el-backtop target=".el-scrollbar__wrap" :bottom="20" :right="0" />
       </el-scrollbar>
@@ -359,7 +385,8 @@ const onBatchReview = async status => {
     <div class="dialog-content">以下 {{ dialogForm.approval_number_item.length }} 条记录将被通过</div>
     <el-form :model="dialogForm">
       <el-form-item>
-        <el-input :value="dialogForm.approval_number_item.join('\n')" rows="4" autocomplete="off" type="textarea" placeholder="请输入审批编号" />
+        <el-input :value="dialogForm.approval_number_item.join('\n')" rows="4" autocomplete="off" type="textarea"
+          placeholder="请输入审批编号" />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -375,7 +402,8 @@ const onBatchReview = async status => {
     <div class="dialog-content">以下 {{ dialogForm.approval_number_item.length }} 条记录将被拒绝</div>
     <el-form :model="dialogForm">
       <el-form-item>
-        <el-input :value="dialogForm.approval_number_item.join('\n')" rows="4" autocomplete="off" type="textarea" placeholder="请输入审批编号" />
+        <el-input :value="dialogForm.approval_number_item.join('\n')" rows="4" autocomplete="off" type="textarea"
+          placeholder="请输入审批编号" />
       </el-form-item>
       <el-form-item label="拒绝原因" placeholder="请选择拒绝原因" required>
         <el-select v-model="dialogForm.reasonType">
@@ -386,7 +414,8 @@ const onBatchReview = async status => {
         </el-select>
       </el-form-item>
       <el-form-item v-show="rejectCommentVisible">
-        <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因" spellcheck="false" maxlength="100" show-word-limit />
+        <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因"
+          spellcheck="false" maxlength="100" show-word-limit />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -398,7 +427,8 @@ const onBatchReview = async status => {
   </el-dialog>
 
   <el-dialog v-model="mergeDialogVisible" title="合并付款" width="600" align-center>
-    <PaymentMerge :approves="mergeState.approves" :total_amount="mergeState.total_amount" :currency="mergeState.currency" @completed="onMerged" />
+    <PaymentMerge :approves="mergeState.approves" :total_amount="mergeState.total_amount"
+      :currency="mergeState.currency" @completed="onMerged" />
   </el-dialog>
 
 </template>
@@ -418,15 +448,18 @@ const onBatchReview = async status => {
 :deep(.el-segmented__item-label) {
   font-size: 0.9em;
 }
+
 :deep(.el-segmented__group) {
   background-color: #fff;
   border: none;
   border-radius: 8px;
   overflow: hidden;
 }
+
 :deep(.el-segmented__item) {
   position: relative;
 }
+
 .badge {
   display: inline-block;
   position: absolute;
@@ -447,6 +480,7 @@ const onBatchReview = async status => {
 .filter {
   padding: 14px 10px 8px;
 }
+
 .filter :deep(.el-form--inline),
 .header-form {
   display: flex;
@@ -454,19 +488,23 @@ const onBatchReview = async status => {
   justify-content: space-between;
   gap: 6px 8px;
 }
+
 .filter :deep(.el-form-item),
 .header-form :deep(.el-form-item) {
   margin: 0;
 }
+
 .filter :deep(.el-input),
 .header-form :deep(.el-input) {
   width: 180px;
 }
+
 .filter :deep(.el-select),
 .filter .el-form :deep(.el-button),
 .header-form :deep(.el-button) {
   width: 90px;
 }
+
 .tips {
   display: flex;
   justify-content: space-evenly;
@@ -475,9 +513,11 @@ const onBatchReview = async status => {
   line-height: 32px;
   padding: 0 10px;
 }
+
 .tips :deep(.el-button) {
   margin: 0 !important;
 }
+
 .tips :deep(.el-icon) {
   font-size: 1.2em;
 }
@@ -486,25 +526,30 @@ const onBatchReview = async status => {
 .list {
   height: calc(100% - 114px);
 }
+
 .header-checkbox {
   display: flex;
   align-items: center;
   padding: 10px;
 }
+
 .list-title {
   width: 100%;
   height: 20px;
 }
+
 .header-btns {
   display: flex;
   justify-content: space-evenly;
   align-items: center;
   padding: 6px 10px 10px;
 }
+
 .header-btns :deep(.el-button) {
   font-size: 1em;
   margin: 0;
 }
+
 .header-form {
   padding: 0 10px 8px;
 }
@@ -514,19 +559,23 @@ const onBatchReview = async status => {
   border-top: 1px solid #e5e9ed;
   overflow-y: auto;
 }
+
 .rows :deep(.el-backtop) {
   position: fixed;
   left: 290px;
 }
+
 .row {
   display: flex;
   position: relative;
   padding-right: 10px;
   background-color: #fff;
 }
+
 .row.checked {
   background-color: #eff7ff;
 }
+
 .row.active,
 .row:hover {
   background-color: #f1f1f1;
@@ -541,12 +590,14 @@ const onBatchReview = async status => {
   height: 38px;
   padding: 10px;
 }
+
 .row :deep(.el-button) {
   width: 34px;
   height: 38px;
   padding: 10px;
   font-size: 1em;
 }
+
 .row .space {
   width: 10px;
   height: 10px;
@@ -560,16 +611,19 @@ const onBatchReview = async status => {
   padding: 8px 0 8px 0;
   color: #333;
 }
+
 .row-top,
 .row-bottom {
   display: flex;
   justify-items: center;
   gap: 8px;
 }
+
 .row-title,
 .row-subtitle {
   flex: 1;
 }
+
 .row-title {
   font-size: 0.85em;
   font-weight: 500;
@@ -578,32 +632,39 @@ const onBatchReview = async status => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .row-subtitle {
   font-size: 0.8em;
   color: #979b9d;
 }
+
 .row-time,
 .row-other {
   min-width: 50px;
   text-align: right;
 }
+
 .row-time {
   font-size: 0.75em;
   color: #9d9d9d;
 }
+
 .row-other {
   font-size: 0.8em;
   color: #675757;
   text-wrap: nowrap;
 }
+
 .row-other span {
   font-size: 0.8em;
   color: #333;
   font-weight: bold;
 }
+
 ul {
   padding-left: 0;
 }
+
 .row-abnormal {
   position: absolute;
   top: 0;
@@ -611,5 +672,12 @@ ul {
   width: 8px;
   height: 8px;
   background: linear-gradient(45deg, transparent 50%, #ff6262 50%);
+}
+.no-more {
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  color: #b0b7cc;
+  font-size: 0.8em;
 }
 </style>

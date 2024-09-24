@@ -13,7 +13,7 @@
     "dev": "electron-vite dev",
     "test": "electron-vite build --mode test",
     "build": "electron-vite build --mode production",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "npm run build && electron-builder --mac",
@@ -33,9 +33,11 @@
     "element-plus": "^2.8.0",
     "lodash": "^4.17.21",
     "monaco-editor": "^0.51.0",
+    "node-gyp": "^10.2.0",
     "pinia": "^2.2.2",
     "sqlite3": "^5.1.7",
     "vue-router": "^4.4.3",
+    "x-data-spreadsheet": "^1.1.9",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -48,6 +50,7 @@
     "electron-vite": "^2.3.0",
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.26.0",
+    "less": "^4.2.0",
     "prettier": "^3.3.2",
     "vite": "^5.3.1",
     "vue": "^3.4.30"

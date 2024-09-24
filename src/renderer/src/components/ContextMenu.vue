@@ -28,7 +28,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, toRefs } from 'vue';
+import { ref, onMounted, onUnmounted, watch, toRefs, isRef } from 'vue';
 const props = defineProps({
   targetElement: {
     type: Object,
@@ -54,11 +54,12 @@ const trigger = () => {
 const data = ref([])
 
 const handleContextMenu = (event) => {
-  if (isTargetElementOrChild(event.target, props.targetElement.$el)) {
+  const rf = isRef(props.targetElement) ? props.targetElement.$el : props.targetElement
+  if (isTargetElementOrChild(event.target, rf)) {
     event.preventDefault();
     x.value = event.clientX;
     y.value = event.clientY;
-    const targetRect = props.targetElement.$el.getBoundingClientRect();
+    const targetRect = rf.getBoundingClientRect();
     const relativeX = x.value - targetRect.left;
     const relativeY = y.value - targetRect.top;
     emit('judge-show', x.value, y.value, relativeX, relativeY, trigger)

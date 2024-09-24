@@ -29,6 +29,11 @@ const router = createRouter({
             component: ()=> import('@/views/Update.vue')
         },
         {
+            path: '/excel',
+            name: 'excel',
+            component: ()=> import('@/views/Excel.vue')
+        },
+        {
             path: '/home',
             name: 'home',
             redirect: { name: 'payment' },

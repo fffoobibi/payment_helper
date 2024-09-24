@@ -1,6 +1,6 @@
 <script setup>
 import { onBeforeMount, reactive, ref, watch } from 'vue'
-import { useAccountStore, useAirwallexStore } from '@/stores'
+import { useUserStore, useAccountStore, useAirwallexStore } from '@/stores'
 import { useLocalConfig } from "@/stores/config"
 import { storeToRefs } from "pinia"
 import api from '@/api'
@@ -19,25 +19,43 @@ const cfgStore = useLocalConfig()
 const { autoClick, autoConfirm} = storeToRefs(cfgStore)
 
 watch(() => props.approve, () => {
-  form.approval_number = props.approve.approval_number
-  form.origin_total_amount = props.approve.origin_total_amount
-  form.currency = props.approve.currency
-  form.transaction_number = props.approve.purchase_number || ''
-  form.receiving_account = props.approve.bank_account || ''
+  form.approval_number = props.approve?.approval_number || ''
+  form.origin_total_amount = props.approve?.origin_total_amount || ''
+  form.currency = props.approve?.currency || ''
+  form.transaction_number = props.approve?.purchase_number || ''
+  form.receiving_account = props.approve?.bank_account || ''
 })
 
 const form = reactive({
-  approval_number: props.approve.approval_number,
+  approval_number: props.approve?.approval_number || '',
   account_id: '',
-  pay_type: '',
-  receiving_account: props.approve.bank_account || '',
-  origin_total_amount: props.approve.origin_total_amount,
-  currency: props.approve.currency,
+  pay_type: 1,
+  receiving_account: props.approve?.bank_account || '',
+  origin_total_amount: props.approve?.origin_total_amount,
+  currency: props.approve?.currency || '',
   commission: '',
-  transaction_number: props.approve.purchase_number || '',
-  note: props.approve.note,
-  attachment_list: []
+  transaction_number: props.approve?.purchase_number || '',
+  note: props.approve?.note || '',
+  transaction_number_airwallex: '',
+  airwallex_status: '',
+  attachment_list: [],
+  is_binding: false
 })
+const formReset = () => {
+  form.approval_number = props.approve?.approval_number || ''
+  form.account_id = ''
+  form.pay_type = 1
+  form.receiving_account = props.approve?.bank_account || ''
+  form.origin_total_amount = props.approve?.origin_total_amount || ''
+  form.currency = props.approve?.currency || ''
+  form.commission = ''
+  form.transaction_number = props.approve?.purchase_number || ''
+  form.note = props.approve?.note || ''
+  form.transaction_number_airwallex = ''
+  form.airwallex_status = ''
+  form.attachment_list = []
+  form.is_binding = false
+}
 
 const airwallexVisible = ref(false)
 const uploadRef = ref(null)
@@ -52,6 +70,8 @@ const rules = reactive({
 })
 
 const confirmDialogVisible = ref(false)
+
+const store = useUserStore()
 
 const accountStore = useAccountStore()
 const currencies = accountStore.currencies
@@ -88,16 +108,42 @@ const onSubmit = async el => {
           account_id: form.account_id,
           receiving_account: form.receiving_account,
           transaction_number: form.transaction_number,
-          note: form.note,
+          note: form.note
         }
       ],
     }
     data.attachment_list = JSON.stringify((await uploadRef.value.uploadImage()) ?? [])
+    if (form.transaction_number_airwallex) {
+      data.account_items[0].transaction_number_airwallex = form.transaction_number_airwallex
+      data.account_items[0].airwallex_status = form.airwallex_status
+    }
     data.account_items = JSON.stringify(data.account_items)
     try {
       await api.addPaymentRecord(data)
       Message.success("打款提交成功")
-      el.resetFields()
+
+      if (form.transaction_number_airwallex) {
+        if (form.is_binding) {  // 更新本地airwallex记录
+          electron.sql.update('dingtalk_submit_log', {
+            bind_approval_number: form.approval_number,
+            bind_type: '2',
+            update_time: Math.round(new Date().getTime() / 1000),
+          }, {
+            transaction_number_airwallex: form.transaction_number_airwallex
+          })
+        } else {  // 插入airwallex新记录
+          electron.sql.insert('dingtalk_submit_log', {
+            bind_approval_number: form.approval_number,
+            bind_type: '1',
+            creator: store.user.username,
+            create_time: Math.round(new Date().getTime() / 1000),
+            update_time: Math.round(new Date().getTime() / 1000),
+            transaction_number_airwallex: form.transaction_number_airwallex,
+          })
+        }
+      }
+
+      formReset()
       // 是否自动点单
       if (autoClick.value) {
         // 是否需要确认
@@ -110,7 +156,6 @@ const onSubmit = async el => {
         emit('close')
       }
     } catch (error) {
-      console.log(error)
     }
   })
 }
@@ -137,6 +182,13 @@ const onRelateAirwallex = () => {
   airwallexVisible.value = true
 }
 
+const onSelectAirwallex = (row, isBinding) => {
+  airwallexVisible.value = false
+  form.transaction_number_airwallex = row.transaction_number_airwallex
+  form.airwallex_status = row.airwallex_status
+  form.is_binding = isBinding
+}
+
 onBeforeMount(() => {
   getAirwallexConfig()
 })
@@ -148,7 +200,7 @@ onBeforeMount(() => {
     <el-form-item label="钉钉编号" prop="approval_number" required>
       <el-input v-model="form.approval_number" />
     </el-form-item>
-    <el-form-item label="打款账号" prop="account_id" required>
+    <el-form-item label="付款账号" prop="account_id" required>
       <el-select v-model="form.account_id" filterable>
         <el-option v-for="item in accounts" :label="item.label" :value="item.value"></el-option>
       </el-select>
@@ -164,6 +216,9 @@ onBeforeMount(() => {
           <el-button type="primary" @click="onRelateAirwallex">关联Airwallex</el-button>
         </el-form-item>
       </el-col>
+    </el-form-item>
+    <el-form-item label=" " v-if="form.transaction_number_airwallex" size="small">
+      <el-text type="primary">已关联：{{ form.transaction_number_airwallex }}</el-text>
     </el-form-item>
     <el-form-item label="顾客收款账号" prop="receiving_account" required>
       <el-input v-model="form.receiving_account" :formatter="accountFormatter" :parser="accountParser" clearable />
@@ -198,8 +253,8 @@ onBeforeMount(() => {
       <Upload action="upload" ref="uploadRef" v-model="form.attachment_list" :limit="10" dir="payment" :size="66">
       </Upload>
     </el-form-item>
-    <el-form-item label=" ">
-      <span class="form-tips">提示：CTRL + Q 快速截图</span>
+    <el-form-item label=" " size="small">
+      <el-text type="primary">提示：Ctrl + Q 快速截图</el-text>
     </el-form-item>
     <el-form-item label=" ">
       <el-button type="primary" :icon="Check" @click="onSubmit(formRef)">提交</el-button>
@@ -207,8 +262,8 @@ onBeforeMount(() => {
     </el-form-item>
   </el-form>
 
-  <el-dialog title="关联Airwallex" v-model="airwallexVisible" width="94%" :close-on-click-modal="false" destroy-on-close>
-    <Airwallex :account-id="form.account_id" :accounts="accounts" />
+  <el-dialog title="关联Airwallex" v-model="airwallexVisible" width="88%" :close-on-click-modal="false" destroy-on-close>
+    <Airwallex :account-id="form.account_id" :accounts="accounts" @submit="onSelectAirwallex" @cancel="airwallexVisible = false" />
   </el-dialog>
 
   <el-dialog title="自动点单确认" v-model="confirmDialogVisible" width="400" :close-on-click-modal="false" destroy-on-close align-center>
@@ -224,11 +279,10 @@ onBeforeMount(() => {
 
 
 <style scoped>
-h4 {
-  padding: 0 10px;
-  color: #333;
+.el-form-item {
+  margin-bottom: 20px;
 }
-.form-tips {
-  color: #409eff;
+.el-col .el-form-item {
+  margin-bottom: 0;
 }
 </style>

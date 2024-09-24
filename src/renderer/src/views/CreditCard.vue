@@ -8,6 +8,7 @@ import { computedAsync } from "@vueuse/core"
 import api from "@/api"
 import { computed } from 'vue'
 import message from '@/utils/message'
+import CreditCardWriteOff from './CreditCardWriteOff.vue'
 const store = useUserStore()
 const { height, width } = useClient()
 
@@ -25,6 +26,12 @@ const accounts = computedAsync(async () => {
         return []
     }
 }, [], accountsLoading)
+
+const selectable = row => row.is_review == 0
+const checkRows = ref([])
+const dialog = reactive({
+    visible: false,
+})
 
 watch(accountsLoading, () => {
     onSearch(1, null)
@@ -132,9 +139,9 @@ const tableHeight = computed(
             width.value + 1
             let th
             if (h > 60) {
-                th = 234
+                th = 270
             } else {
-                th = 184
+                th = 220
             }
             if (queryForm.page.totalCount == 0) {
                 return height.value - th
@@ -149,6 +156,24 @@ const tableHeight = computed(
 onActivated(() => {
     tableHeight.value = 1
 })
+
+const onWriteOff = () => {
+    if (checkRows.value.length == 0) {
+        message.warning('请选择要核销的记录')
+        return
+    }
+    dialog.visible = true
+}
+
+const onTableCheck = val => {
+    checkRows.value = val
+    console.log(val)
+}
+
+const onClose = () => {
+    dialog.visible = false
+    onSearch()
+}
 </script>
 
 <template>
@@ -165,31 +190,25 @@ onActivated(() => {
                         <span class="red" style="font-size: 10pt;padding-left: 10px;margin-right: 10px;"> *注:
                             每月5号之前核销上月消费金额</span>
                     </el-space>
-                    <!-- <el-button size="small" class="option-btn" link>
-                        <i class="iconfont icon-setting"></i>
-                    </el-button> -->
                 </template>
             </Header>
 
             <div class="pannel">
                 <el-form :inline="true" :model="queryForm.search" class="query-form-inline" ref="queryFormRef">
                     <el-form-item label="账户" v-loading="accountsLoading">
-                        <el-select v-model="queryForm.search.account_id" placeholder="请选择" style="width: 130px"
-                            default-first-option>
-                            <el-option v-for="(item, index) in accounts" :key="index" :label="item.account_name"
-                                :value="item.account_id"></el-option>
+                        <el-select v-model="queryForm.search.account_id" placeholder="请选择" default-first-option>
+                            <el-option v-for="(item, index) in accounts" :key="index" :label="item.account_name" :value="item.account_id"></el-option>
                         </el-select>
                     </el-form-item>
                     <el-form-item>
-                        <el-date-picker style="width: 130px;" v-model="queryForm.search.year_month" type="month"
+                        <el-date-picker v-model="queryForm.search.year_month" type="month"
                             placeholder="选择月份" />
                     </el-form-item>
                     <el-form-item>
-                        <el-input v-model="queryForm.search.content" placeholder="钉钉编号/采购单号" style="width: 160px"
-                            clearable></el-input>
+                        <el-input v-model="queryForm.search.content" placeholder="钉钉编号/采购单号" style="width: 180px" clearable></el-input>
                     </el-form-item>
                     <el-form-item>
-                        <el-select v-model="queryForm.search.is_review">
+                        <el-select v-model="queryForm.search.is_review" style="width: 120px">
                             <el-option label="全部" value=" "></el-option>
                             <el-option label="待核销" value="0"></el-option>
                             <el-option label="已核销" value="1"></el-option>
@@ -198,7 +217,9 @@ onActivated(() => {
                     <el-form-item>
                         <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
                         <el-button type="success" :loading="exportLoading" @click="exportToExcel">
-                            <el-icon class="iconfont icon-Excel" :size="17"></el-icon>导出</el-button>
+                            <el-icon class="iconfont icon-Excel" :size="17"></el-icon>导出
+                        </el-button>
+                        <el-button type="warning" @click="onWriteOff">核销</el-button>
                     </el-form-item>
                     <el-form-item>
                         <div v-show="!queryForm.searching">
@@ -216,16 +237,11 @@ onActivated(() => {
                 </el-form>
 
                 <el-table :data="queryForm.tableData" :height="tableHeight" highlight-current-row
-                    :show-header="queryForm.page.totalCount > 0">
+                    :show-header="queryForm.page.totalCount > 0" @selection-change="onTableCheck" row-key="id">
                     <template #empty>
                         <el-empty :image-size="200" />
                     </template>
-                    <el-table-column label="序号" width="60">
-                        <template #default="scope">
-                            <div>{{ scope.$index + 1 + (queryForm.page.currentPage - 1) * queryForm.page.pageSize }}
-                            </div>
-                        </template>
-                    </el-table-column>
+                    <el-table-column type="selection" :selectable="selectable" width="40" />
                     <el-table-column label="摘要信息" width="240">
                         <template #default="{ row }">
                             <div>
@@ -272,15 +288,15 @@ onActivated(() => {
 
         </template>
     </Layout>
+
+    <el-dialog title="信用卡核销明细" v-model="dialog.visible" width="90%" destroy-on-close>
+        <CreditCardWriteOff :rows="checkRows" @close="onClose" />
+    </el-dialog>
+
 </template>
 
 
 <style scoped>
-/* :deep(){
-    --el-table-bg-color: transparent !important
-} */
-
-
 h4 {
     padding: 0 10px;
     color: #333;
@@ -290,13 +306,14 @@ h4 {
 .pannel {
     padding: 10px;
 }
-
-.query-form-inline .el-input {
-    --el-input-width: 220px;
+.el-form--inline .el-form-item {
+    margin: 0 8px 8px 0;
 }
-
-.query-form-inline .el-select {
-    --el-select-width: 100px;
+:deep(.el-date-editor) {
+    width: 120px;
+}
+.el-form--inline .el-select {
+    width: 150px;
 }
 
 .option-add {

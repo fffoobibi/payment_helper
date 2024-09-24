@@ -1,14 +1,55 @@
 <script setup>
-import Blank from '@/components/Blank.vue';
+import { ref } from 'vue'
+import Blank from '@/components/Blank.vue'
+import PaymentAdd from './PaymentAdd.vue'
+import PaymentRecord from './PaymentRecord.vue'
+
+const showAddDrawer = ref(false)
+const showRecordDrawer = ref(false)
+
 </script>
 
 
 <template>
-  <Blank class="empty-page" />
+  <div class="wrapper">
+    <Header>
+      <template #title>
+        <h4></h4>
+      </template>
+
+      <template #option>
+        <el-tooltip content="新增打款" placement="left">
+          <el-button size="small" class="option-btn" @click="showAddDrawer = true" link>
+            <i class="iconfont icon-edit"></i>
+          </el-button>
+        </el-tooltip>
+        <el-tooltip content="打款记录" placement="bottom-end">
+          <el-button size="small" class="option-btn" @click="showRecordDrawer = true" link>
+            <i class="iconfont icon-history-record"></i>
+          </el-button>
+        </el-tooltip>
+      </template>
+    </Header>
+
+    <Blank class="empty-page" />
+
+    <!-- 新增打款抽屉 -->
+    <el-drawer v-model="showAddDrawer" title="新增打款" direction="rtl" size="600" destroy-on-close>
+      <PaymentAdd @close="showAddDrawer = false" />
+    </el-drawer>
+
+    <!-- 打款记录抽屉 -->
+    <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="600" class="records" destroy-on-close>
+      <PaymentRecord />
+    </el-drawer>
+  </div>
 </template>
 
 
 <style scoped>
+.wrapper {
+  height: 100%;
+}
 header {
   display: flex;
   width: 100%;
@@ -20,12 +61,6 @@ header {
 
 .header-title {
   flex: 1;
-}
-
-.header-title h4 {
-  line-height: 30px;
-  color: #353535;
-  font-size: 15px;
 }
 
 .empty-page {

@@ -15,7 +15,7 @@ const dateTimeFmt = (date, type = 1) => {
     if (typeof date === 'String') {
         oriSecond = strToTimestamp(date)
     } else if (date instanceof Date) {
-        oriSecond = date.getTime() / 1000
+        oriSecond = Math.round(date.getTime() / 1000)
     }
     if (oriSecond > 9999999999) {
         oriSecond /= 1000
@@ -40,7 +40,7 @@ const dateTimeFmt = (date, type = 1) => {
             return '刚刚'
         } else if (diffSecond < 3600) {
             // within an hour
-            return `${Math.floor(diffSecond / 60)}分钟前`
+            return `${Math.round(diffSecond / 60)}分钟前`
         }
         // yesterday
         let mewDate = new Date((curSecond - 86400) * 1000)
@@ -61,7 +61,7 @@ const dateTimeFmt = (date, type = 1) => {
             return '刚刚'
         } else if (diffSecond < 3600) {
             // within an hour
-            return `${Math.floor(diffSecond / 60)}分钟前`
+            return `${Math.round(diffSecond / 60)}分钟前`
         }
         // yesterday
         let mewDate = new Date((curSecond - 86400) * 1000)
@@ -86,8 +86,8 @@ const numberFmt = n => {
     return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-const amountFormatter = value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-const amountParser = value => value.replace(/\$\s?|(,*)/g, '')
+const amountFormatter = value => `${value}`.replace(/[^\-?\d.]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+const amountParser = value => value.replace(/[^\-?\d.]/g, '')
 const accountFormatter = value => `${value}`.replace(/\D/g, '').replace(/....(?!$)/g, '$& ')
 const accountParser = value => value.replace(/\s/g, '')
 

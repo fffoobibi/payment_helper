@@ -38,7 +38,18 @@ monaco.languages.setMonarchTokensProvider('log', {
             [/".*?"/, 'custom-string'], // 匹配双引号内的字符串
             [/'[^']*'/, 'custom-string'], // 匹配单引号内的字符串
             [/\d+/, 'custom-number'], // 匹配单引号内的字符串
-        ]
+            // [/, response/, {token: 'json-start', next: '@jsonContent',  nextEmbedded: 'json'}],
+             // 捕获 JSON 开始的标记
+            //  [/^\[\d{4}.*, response/, {token:'custom-marker', next: '@jsonMode',  nextEmbedded: 'json'}],
+            //     // 默认文本
+            //     [/./, 'text']
+        ],
+        // jsonMode: [
+        //     // 捕获 JSON 结束的标记
+        //     [/^\[\d{4}/, 'custom-marker', '@pop'],
+        //     // 剩余的文本在这个状态被视为 JSON
+        //     [/./, 'json']
+        // ]
     }
 })
 // 主题

@@ -3,7 +3,7 @@ import { ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useRouter, useRoute } from 'vue-router'
 import { useImageStore } from '@/stores/images'
-import { useLogStore, useUpdateStore, useUserStore } from './stores';
+import { useLogStore, useUpdateStore, useUserStore, useWindowStore } from './stores';
 import message from './utils/message';
 import { useIntervalFn } from "@vueuse/core"
 import updater from "@/utils/update"
@@ -13,6 +13,7 @@ import logger from './utils/logger';
 const store = useUserStore()
 const imgStore = useImageStore()
 const logStore = useLogStore()
+const wStore = useWindowStore()
 const updateStore = useUpdateStore()
 const router = useRouter()
 const route = useRoute()
@@ -66,6 +67,14 @@ electron.onOpenUpdate(version => {
   updateStore.canUpdate = true
   updateStore.version = version
   router.push({ name: 'update' })
+})
+
+electron.onOpenExcel((user, filePath, data) => {
+  wStore.user = user
+  wStore.excelFile = filePath
+  wStore.excelData = data
+  console.log('excel data', data);
+  router.push({ name: 'excel' })
 })
 
 electron.onUpdater((name, value, ...args) => {
