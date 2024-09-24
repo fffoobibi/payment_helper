@@ -34,7 +34,7 @@ export default ({ mode }) => {
           '/api': {
             target: env.VITE_API_DOMAIN,
             changeOrigin: true,
-            rewrite: (path) =>  path.replace(/^\/api/, ''), //path
+            rewrite: (path) =>  path, // path.replace(/^\/api/, ''), //path
             configure: (proxy, options) => {
               // 使用自定义的代理逻辑
               const originalWeb = proxy.web

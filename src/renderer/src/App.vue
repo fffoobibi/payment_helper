@@ -70,6 +70,7 @@ electron.onOpenUpdate(version => {
 })
 
 electron.onOpenExcel((user, filePath, data) => {
+  store.setUser(user)
   wStore.user = user
   wStore.excelFile = filePath
   wStore.excelData = data

@@ -1,12 +1,19 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 import Blank from '@/components/Blank.vue'
 import PaymentAdd from './PaymentAdd.vue'
 import PaymentRecord from './PaymentRecord.vue'
+import { useUserStore } from '@/stores'
+import { useLocalConfig } from '@/stores/config'
 
 const showAddDrawer = ref(false)
 const showRecordDrawer = ref(false)
+const store = useUserStore()
+const cfgStore = useLocalConfig()
 
+const openExcel = () => {
+  electron.openExcel(toRaw(store.user), toRaw(cfgStore.excelColors))
+}
 </script>
 
 
@@ -18,7 +25,12 @@ const showRecordDrawer = ref(false)
       </template>
 
       <template #option>
-        <el-tooltip content="新增打款" placement="left">
+        <el-tooltip content="批量打款" placement="bottom-end">
+          <el-button size="small" class="option-btn" @click="openExcel" link>
+            <i class="iconfont icon-Excel" :size="17"></i>
+          </el-button>
+        </el-tooltip>
+        <el-tooltip content="新增打款" placement="bottom-end">
           <el-button size="small" class="option-btn" @click="showAddDrawer = true" link>
             <i class="iconfont icon-edit"></i>
           </el-button>
@@ -50,6 +62,7 @@ const showRecordDrawer = ref(false)
 .wrapper {
   height: 100%;
 }
+
 header {
   display: flex;
   width: 100%;

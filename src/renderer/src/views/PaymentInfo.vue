@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch } from 'vue'
+import { onBeforeMount, reactive, ref, watch, toRaw } from 'vue'
 import PaymentAdd from './PaymentAdd.vue'
 import PaymentRecord from './PaymentRecord.vue'
 import api from '@/api'
@@ -7,6 +7,15 @@ import { numberFmt } from '@/utils/format'
 import Message from '@/utils/message'
 import { Check, Warning, Remove, QuestionFilled } from '@element-plus/icons-vue'
 import BankTransferAdd from './BankTransferAdd.vue'
+import { useUserStore } from "@/stores/index"
+import { useLocalConfig } from '@/stores/config'
+
+const store = useUserStore()
+const cfgStore = useLocalConfig()
+
+const openExcel = () => {
+  electron.openExcel(toRaw(store.user), toRaw(cfgStore.excelColors))
+}
 
 const props = defineProps({
   detailId: String,
@@ -165,7 +174,12 @@ const onAbnoraml = async () => {
       </template>
 
       <template #option>
-        <el-tooltip content="新增打款/转账" placement="left">
+        <el-tooltip content="批量打款" placement="left">
+          <el-button size="small" class="option-btn" @click="openExcel" link>
+            <i class="iconfont icon-Excel" :size="17"></i>
+          </el-button>
+        </el-tooltip>
+        <el-tooltip content="新增打款/转账" placement="bottom-end">
           <el-button size="small" class="option-btn" @click="showAddDrawer = true" link>
             <i class="iconfont icon-edit"></i>
           </el-button>
@@ -298,7 +312,8 @@ const onAbnoraml = async () => {
     </el-scrollbar>
 
     <!-- 新增打款抽屉 -->
-    <el-drawer v-model="showAddDrawer" :title="isBankTransfer ? '新增银行转账' : '新增打款'" direction="rtl" size="600" destroy-on-close>
+    <el-drawer v-model="showAddDrawer" :title="isBankTransfer ? '新增银行转账' : '新增打款'" direction="rtl" size="600"
+      destroy-on-close>
       <BankTransferAdd :item="firstItem" @close="showAddDrawer = false" v-if="isBankTransfer" />
       <PaymentAdd :approve="approve" @close="showAddDrawer = false" v-else />
     </el-drawer>
@@ -310,7 +325,9 @@ const onAbnoraml = async () => {
 
     <!-- 打款通过确认弹窗 -->
     <el-dialog v-model="passDialogVisible" width="320" align-center>
-      <div class="dialog-content"><el-icon size="20" color="#409eff"><QuestionFilled /></el-icon> 确认已完成打款了吗？</div>
+      <div class="dialog-content"><el-icon size="20" color="#409eff">
+          <QuestionFilled />
+        </el-icon> 确认已完成打款了吗？</div>
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialogFormReset">取消</el-button>
@@ -333,7 +350,8 @@ const onAbnoraml = async () => {
           </el-select>
         </el-form-item>
         <el-form-item v-show="rejectCommentVisible">
-          <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因" spellcheck="false" maxlength="100" show-word-limit />
+          <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因"
+            spellcheck="false" maxlength="100" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -358,7 +376,8 @@ const onAbnoraml = async () => {
           </el-select>
         </el-form-item>
         <el-form-item v-show="abnormalCommentVisible">
-          <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因" spellcheck="false" maxlength="100" show-word-limit />
+          <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因"
+            spellcheck="false" maxlength="100" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -376,6 +395,7 @@ const onAbnoraml = async () => {
 .wrapper {
   height: 100%;
 }
+
 .info-box {
   width: 100%;
   height: calc(100% - 66px);
@@ -422,10 +442,12 @@ const onAbnoraml = async () => {
   margin: 12px 12px 0;
   padding: 8px;
 }
+
 .operates {
   display: flex;
   flex: 1;
 }
+
 .operates :deep(.el-icon) {
   font-size: 1.2em;
 }
@@ -471,11 +493,13 @@ const onAbnoraml = async () => {
   font-size: 1.3em;
   color: #888;
 }
+
 .dialog-content {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
 .abnormal {
   color: #ef8787;
 }

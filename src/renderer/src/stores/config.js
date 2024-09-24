@@ -67,16 +67,16 @@ const useLocalConfig = defineStore('localConfig', () => {
   }
 
 
-  const getConfig = async (key, defaultValue = null) => {
+  const getConfig = async (key, defaultValue = undefined) => {
     const field = `${store.user.id}.${key}`
     const rs = await electron.config.get(field)
     return _parsedResult(rs, defaultValue)
   }
 
-  const makeScope = (initValue, fetch, key, options = { debounced: false, depends: null, autoSave: false }) => {
+  const makeScope = (initValue, fetch, key, options = { debounced: false, depends: null, autoSave: false, debug: false }) => {
     const refV = ref(initValue)
     const fetChRef = computedAsync(fetch)
-    const dep = [...(options.depends || []), store.user.id]
+    const dep = [...(options.depends || []), store.user?.id]
 
     watch(fetChRef, v => {
       refV.value = v
@@ -249,51 +249,17 @@ const useLocalConfig = defineStore('localConfig', () => {
 
   // excel 
   const { refV: excelColors, update: updateExcelColors } = makeScope({
-    dingding: {},
-    bank: {},
-    recive_account: {},
-    trade_number: {},
-    note: {},
-    currency: {},
-    //   {
-    //     label: '设置该列为钉钉编号',
-    //     color: '#5B9BD5',
-    //     name: "钉钉编号"
-    // },
-    // {
-    //     label: '设置该列为银行账号',
-    //     color: '#FFC000',
-    //     name: "银行账号"
-    // },
-    // {
-    //     label: '设置该列为收款账号',
-    //     color: '#92D050',
-    //     name: "收款账号"
-
-    // },
-    // {
-    //     label: '设置该列为交易流水号',
-    //     color: '#8497B0',
-    //     name: "交易流水号"
-    // },
-    // {
-    //     label: '设置该列为备注',
-    //     color: '#F4B084',
-    //     name: "备注"
-
-    // },
-    // {
-    //     label: '设置该列为币种',
-    //     color: 'red',
-    //     name: "币种"
-    // },
-    // {
-    //     label: '设置该列为金额',
-    //     color: 'blue',
-    //     name: "金额"
-    // },
+    approval_number: {color: '#5B9BD5'},
+    account_id: {color: '#FFC000'},
+    receiving_account: {color: '#92D050'},
+    transaction_number: {color: '#8497B0'},
+    note: {color: '#F4B084'},
+    currency: {color: 'red'},
+    origin_total_amount: {color: 'blue'}
   }, async () => {
-    return await getConfig(Keys.excelColors)
+    const r = await getConfig(Keys.excelColors)
+    console.log('fetch excel ', r);
+    return r
   }, Keys.excelColors)
 
   // 自动点单确认

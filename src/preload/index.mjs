@@ -38,7 +38,7 @@ const electron = {
     delete: (table, where) => ipcRenderer.invoke('sql-delete', table, where),
   },
   // excel
-  openExcel: (user) => ipcRenderer.send('open-excel', user, 'excel',),
+  openExcel: (user, config) => ipcRenderer.send('open-excel', user, config, 'excel',),
   onOpenExcel: (callback) => ipcRenderer.on('open-excel:success', (_event, user, file, data) => callback(user, file, data)),
 
   // 主进程 -> 渲染进程的事件

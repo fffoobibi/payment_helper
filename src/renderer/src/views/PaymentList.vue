@@ -7,13 +7,15 @@ import api from '@/api'
 import Message from '@/utils/message'
 import { useAccountStore, useUserStore } from '@/stores'
 import PaymentMerge from './PaymentMerge.vue'
+import { useLocalConfig } from '@/stores/config'
 
 const route = useRoute()
 const router = useRouter()
 const store = useUserStore()
+const cfgStore = useLocalConfig()
 
 const openExcel = () => {
-  electron.openExcel(toRaw(store.user))
+  electron.openExcel(toRaw(store.user), toRaw(cfgStore.excelColors))
 }
 
 onBeforeMount(() => {
@@ -328,7 +330,7 @@ const onBatchReview = async status => {
           <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{
       listTitle
     }}</el-checkbox>
-          <el-button link @click="openExcel"><el-icon class="iconfont icon-Excel" :size="17"></el-icon>批量打款</el-button>
+          <!-- <el-button link @click="openExcel"><el-icon class="iconfont icon-Excel" :size="17"></el-icon>批量打款</el-button> -->
         </div>
         <div class="header-btns" v-show="form.type == 'preprocess'">
           <el-tooltip content="通过" placement="top">
@@ -673,6 +675,7 @@ ul {
   height: 8px;
   background: linear-gradient(45deg, transparent 50%, #ff6262 50%);
 }
+
 .no-more {
   height: 30px;
   line-height: 30px;
