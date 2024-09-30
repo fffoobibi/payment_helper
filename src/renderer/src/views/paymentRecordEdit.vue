@@ -24,7 +24,7 @@ const form = reactive({
   account_id: props.ext.account_id,
   receiving_account: props.ext.receiving_account,
   transaction_number: props.ext.transaction_number,
-  origin_total_amount: props.ext.origin_total_amount,
+  origin_amount: props.ext.origin_amount,
   currency: props.ext.currency,
   note: props.ext.note,
   attachment_list: JSON.parse(JSON.stringify(props.ext.attachment_list).replace(/path/g, 'url')),
@@ -43,7 +43,7 @@ const rules = reactive({
   transaction_number: [
     { required: true, message: '请输入交易流水', trigger: 'blur' }
   ],
-  origin_total_amount: [
+  origin_amount: [
     { required: true, message: '请输入支出金额', trigger: 'blur' }
   ],
   currency: [
@@ -56,7 +56,7 @@ const formReset = () => {
   form.account_id = props.ext.account_id
   form.receiving_account = props.ext.receiving_account
   form.transaction_number = props.ext.transaction_number
-  form.origin_total_amount = props.ext.origin_total_amount
+  form.origin_amount = props.ext.origin_amount
   form.currency = props.ext.currency
   form.note = props.ext.note
   form.attachment_list = JSON.parse(JSON.stringify(props.ext.attachment_list).replace(/path/g, 'url'))
@@ -102,10 +102,10 @@ const onSubmit = async (el) => {
     <el-form-item label="交易流水" prop="transaction_number" required>
       <el-input v-model="form.transaction_number" clearable />
     </el-form-item>
-    <el-form-item label="支出金额" required>
+    <el-form-item label="打款金额" required>
       <el-col :span="14">
-        <el-form-item prop="origin_total_amount">
-          <el-input v-model="form.origin_total_amount" placeholder="请输入金额" :formatter="amountFormatter" :parser="amountParser" clearable />
+        <el-form-item prop="origin_amount">
+          <el-input v-model="form.origin_amount" placeholder="请输入金额" :formatter="amountFormatter" :parser="amountParser" clearable />
         </el-form-item>
       </el-col>
       <el-col :span="9" :offset="1">

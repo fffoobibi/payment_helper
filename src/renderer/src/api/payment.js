@@ -1,4 +1,5 @@
 import http from '@/utils/http'
+import logger from '../utils/logger'
 
 const payment = {
   getPaymentList: data => http({ url: '/paymentCashier/getPaymentList', params: data }),
@@ -18,9 +19,13 @@ const payment = {
   getPaymentRecordItemList: data => http({ url: '/voucher/getPaymentItemsList', params: data, showLoading: false }),
   updatePaymentRecordExt: data => http({ url: '/voucher/modifyVoucher', params: data }),
   updatePaymentAttachments: data => http({ url: '/voucher/replenishVoucher', params: data, showLoading: false }),
-  autoComplete: data => http({ url: '/paymentCashier/autoCompletePuchasement', params: data }),
+  autoComplete: (data, showError = true) => {
+    logger.info('自动点单数据', data)
+    return http({ url: '/paymentCashier/autoCompletePuchasement', params: data, showError })
+  },
   cancelModify: data => http({ url: '/voucher/cancelModifyVoucher', params: data }),
   auditModify: data => http({ url: '/voucher/auditModifyVoucher', params: data }),
+  getAccountVoucherInfo: data => http({ url: '/voucher/getAccountVoucherInfo', params: data, showLoading: false })
 }
 
 export default payment

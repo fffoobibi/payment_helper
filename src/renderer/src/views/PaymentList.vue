@@ -1,269 +1,265 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch, toRaw } from 'vue'
-import { Check, Delete, Files, Warning, Remove, Search, RefreshLeft } from '@element-plus/icons-vue'
-import { dateTimeFmt, numberFmt } from '@/utils/format'
-import { useRoute, useRouter } from 'vue-router'
-import api from '@/api'
-import Message from '@/utils/message'
-import { useAccountStore, useUserStore } from '@/stores'
-import PaymentMerge from './PaymentMerge.vue'
-import { useLocalConfig } from '@/stores/config'
+  import { onBeforeMount, reactive, ref, watch } from 'vue'
+  import { Check, Delete, Files, Warning, Remove, Search, RefreshLeft } from '@element-plus/icons-vue'
+  import { dateTimeFmt, numberFmt } from '@/utils/format'
+  import { useRoute, useRouter } from 'vue-router'
+  import api from '@/api'
+  import Message from '@/utils/message'
+  import { useAccountStore, useExcelStore } from '@/stores'
+  import PaymentMerge from './PaymentMerge.vue'
+  import { useLocalConfig } from "@/stores/config"
 
-const route = useRoute()
-const router = useRouter()
-const store = useUserStore()
-const cfgStore = useLocalConfig()
+  const route = useRoute()
+  const router = useRouter()
+  const cfg = useLocalConfig()
 
-const openExcel = () => {
-  electron.openExcel(toRaw(store.user), toRaw(cfgStore.excelColors))
-}
+  onBeforeMount(() => {
+    onSearch()
+  })
 
-onBeforeMount(() => {
-  onSearch()
-})
+  const checkAll = ref(false)
+  const isIndeter = ref(false)
+  const listTitle = ref('全选（0）')
+  const approves = ref([])
+  const mergeState = reactive({
+    currency: '',
+    total_amount: '',
+    approves: []
+  })
+  const passDialogVisible = ref(false)
+  const rejectDialogVisible = ref(false)
+  const rejectCommentVisible = ref(false)
+  const mergeDialogVisible = ref(false)
+  let preprocess = []
+  let isLoading = false
 
-const checkAll = ref(false)
-const isIndeter = ref(false)
-const listTitle = ref('全选（0）')
-const approves = ref([])
-const mergeState = reactive({
-  currency: '',
-  total_amount: '',
-  approves: []
-})
-const passDialogVisible = ref(false)
-const rejectDialogVisible = ref(false)
-const rejectCommentVisible = ref(false)
-const mergeDialogVisible = ref(false)
-let preprocess = []
-let isLoading = false
-
-const types = reactive([
-  { label: '待打款', value: 'pending', count: 0 },
-  { label: '预打款', value: 'preprocess', count: 0 },
-  { label: '已打款', value: 'processed', count: 0 }
-])
-const reasons = {
-  0: '',
-  1: '付款方式选择错误',
-  2: '顾客收款账号错误',
-  3: '打款金额错误',
-  4: '打款币种错误',
-  5: '其它',
-}
-
-const form = reactive({
-  type: 'pending',
-  condition: '',
-  currency: '',
-  payment_date: '',
-  page: 1,
-  limit: 20
-})
-
-const noMore = ref(false)
-
-const dialogForm = reactive({
-  status: 0,
-  approval_number_item: [],
-  reasonType: '',
-  comment: ''
-})
-const dialogFormReset = () => {
-  dialogForm.status = 0
-  dialogForm.approval_number_item = []
-  dialogForm.reasonType = ''
-  dialogForm.comment = ''
-  passDialogVisible.value = false
-  rejectDialogVisible.value = false
-  rejectCommentVisible.value = false
-}
-
-const scrollbarRef = ref()
-
-watch(() => dialogForm.reasonType, () => {
-  rejectCommentVisible.value = dialogForm.reasonType == 5
-})
-
-const accountStore = useAccountStore()
-const currencies = accountStore.currencies
-
-const onAllCheck = val => {
-  approves.value.forEach(item => item.isChecked = val)
-  preprocess = val ? approves.value : []
-  types[1].count = preprocess.length
-  isIndeter.value = false
-  listTitle.value = val ? `已选 ${approves.value.length} 个` : `全选（${approves.value.length}）`
-}
-
-const onCheck = () => {
-  const checks = approves.value.filter(item => item.isChecked)
-  if (checks.length == approves.value.length) {
-    isIndeter.value = false
-    checkAll.value = true
-    listTitle.value = `已选 ${checks.length} 个`
-  } else if (checks.length == 0) {
-    isIndeter.value = false
-    checkAll.value = false
-    listTitle.value = `全选（${approves.value.length}）`
-  } else {
-    isIndeter.value = true
-    listTitle.value = `已选 ${checks.length} 个`
+  const types = reactive([
+    { label: '待打款', value: 'pending', count: 0 },
+    { label: '预打款', value: 'preprocess', count: 0 },
+    { label: '已打款', value: 'processed', count: 0 }
+  ])
+  const reasons = {
+    0: '',
+    1: '付款方式选择错误',
+    2: '顾客收款账号错误',
+    3: '打款金额错误',
+    4: '打款币种错误',
+    5: '其它',
   }
-  preprocess = checks
-  types[1].count = preprocess.length
-}
 
-const onDate = val => {
-  form.page = 1
-  form.payment_date = val.toLocaleDateString().replaceAll('/', '-')
-  onSearch()
-}
+  const form = reactive({
+    type: 'pending',
+    condition: '',
+    currency: '',
+    payment_date: '',
+    page: 1,
+    limit: 20
+  })
 
-const onRefresh = () => {
-  form.page = 1
-  onSearch()
-}
+  const noMore = ref(false)
 
-const onSearch = async () => {
-  checkAll.value = false
-  try {
-    const data = await api.getPaymentList(form)
-    data.list.forEach(item => item.isChecked = false)
-    if (form.page == 1) {
-      approves.value = data.list
+  const dialogForm = reactive({
+    status: 0,
+    approval_number_item: [],
+    reasonType: '',
+    comment: ''
+  })
+  const dialogFormReset = () => {
+    dialogForm.status = 0
+    dialogForm.approval_number_item = []
+    dialogForm.reasonType = ''
+    dialogForm.comment = ''
+    passDialogVisible.value = false
+    rejectDialogVisible.value = false
+    rejectCommentVisible.value = false
+  }
+
+  const scrollbarRef = ref()
+
+  watch(() => dialogForm.reasonType, () => {
+    rejectCommentVisible.value = dialogForm.reasonType == 5
+  })
+
+  const accountStore = useAccountStore()
+  const currencies = accountStore.currencies
+
+  const onAllCheck = val => {
+    approves.value.forEach(item => item.isChecked = val)
+    preprocess = val ? approves.value : []
+    types[1].count = preprocess.length
+    isIndeter.value = false
+    listTitle.value = val ? `已选 ${approves.value.length} 个` : `全选（${approves.value.length}）`
+  }
+
+  const onCheck = () => {
+    const checks = approves.value.filter(item => item.isChecked)
+    if (checks.length == approves.value.length) {
       isIndeter.value = false
-      scrollbarRef.value.setScrollTop(0)
+      checkAll.value = true
+      listTitle.value = `已选 ${checks.length} 个`
+    } else if (checks.length == 0) {
+      isIndeter.value = false
+      checkAll.value = false
+      listTitle.value = `全选（${approves.value.length}）`
     } else {
-      approves.value = approves.value.concat(data.list)
-      isIndeter.value = approves.value.some(item => item.isChecked)
-      if (data.list.length < form.limit) {
-        noMore.value = true
-      }
+      isIndeter.value = true
+      listTitle.value = `已选 ${checks.length} 个`
     }
-    if (form.type == 'pending') {
-      const checks = preprocess.map(item => item.id)
-      approves.value.forEach(item => {
-        item.isChecked = checks.includes(item.id)
-      })
-      listTitle.value = checks.length ? `已选 ${checks.length} 个` : `全选（${approves.value.length}）`
-      isIndeter.value = checks.length > 0 && checks.length != approves.value.length
-      checkAll.value = checks.length == approves.value.length
-      types[0].count = data.count
-    }
-  } finally {
-    isLoading = false
+    preprocess = checks
+    types[1].count = preprocess.length
   }
-}
 
-const onDetail = id => {
-  router.push({ name: 'paymentInfo', params: { id } })
-}
-
-const onSegmented = val => {
-  router.push({ name: 'blank' })
-  noMore.value = false
-  if (val == 'preprocess') {
-    approves.value = preprocess
-    return
-  }
-  form.page = 1
-  form.payment_date = ''
-  form.condition = ''
-  form.currency = ''
-
-  onSearch()
-}
-
-const onScroll = options => {
-  if (form.type == 'preprocess' || noMore.value) return
-  const listHeight = document.querySelector('.el-scrollbar__view').clientHeight
-  const boxHeight = document.querySelector('.rows').clientHeight
-  if (options.scrollTop > 0 && options.scrollTop >= listHeight - boxHeight - 1 && !isLoading) {
-    isLoading = true
-    form.page++
+  const onDate = val => {
+    form.page = 1
+    form.payment_date = val.toLocaleDateString().replaceAll('/', '-')
     onSearch()
   }
-}
 
-const onRemove = index => {
-  approves.value.splice(index, 1)
-  preprocess = approves.value
-  types[1].count = preprocess.length
-  Message.success('移除成功')
-}
-
-const onAllRemove = () => {
-  if (preprocess.length == 0) {
-    Message.warning('请选择要操作的审批')
-    return
+  const onRefresh = () => {
+    form.page = 1
+    onSearch()
   }
-  preprocess = approves.value = []
-  types[1].count = 0
-  Message.success('移除成功')
-}
 
-const onShowReviewDialog = status => {
-  if (preprocess.length == 0) {
-    Message.warning('请选择要操作的审批')
-    return
-  }
-  dialogForm.status = status
-  dialogForm.approval_number_item = preprocess.map(item => item.approval_number)
-  status == 1 ? (passDialogVisible.value = true) : (rejectDialogVisible.value = true)
-}
-
-// 合并打款
-const onMergePayment = async () => {
-  if (preprocess.length < 2) {
-    Message.warning('请选择要合并的审批')
-    return
-  }
-  const approval_number_list = preprocess.map(item => item.approval_number)
-
-  // 校验是否能合并
-  try {
-    const res = await api.checkMergePayment({
-      approval_number_list: JSON.stringify(approval_number_list)
-    })
-    mergeState.approves = preprocess
-    mergeState.total_amount = res.origin_total_amount;
-    mergeState.currency = res.currency
-    mergeDialogVisible.value = true
-  } catch (error) {
-
-  }
-}
-
-// 合并打款完成
-const onMerged = () => {
-  mergeDialogVisible.value = false
-  approves.value = []
-  preprocess = []
-  mergeState.approves = []
-}
-
-const onBatchReview = async status => {
-  if (status == 2) {
-    if (dialogForm.reasonType) {
-      dialogForm.comment = dialogForm.reasonType == 5 ? dialogForm.comment : reasons[dialogForm.reasonType]
+  const onSearch = async () => {
+    checkAll.value = false
+    try {
+      const data = await api.getPaymentList(form)
+      data.list.forEach(item => item.isChecked = false)
+      if (form.page == 1) {
+        approves.value = data.list
+        isIndeter.value = false
+        scrollbarRef.value.setScrollTop(0)
+      } else {
+        approves.value = approves.value.concat(data.list)
+        isIndeter.value = approves.value.some(item => item.isChecked)
+        if (data.list.length < form.limit) {
+          noMore.value = true
+        }
+      }
+      if (form.type == 'pending') {
+        const checks = preprocess.map(item => item.id)
+        approves.value.forEach(item => {
+          item.isChecked = checks.includes(item.id)
+        })
+        listTitle.value = checks.length ? `已选 ${checks.length} 个` : `全选（${approves.value.length}）`
+        isIndeter.value = checks.length > 0 && checks.length != approves.value.length
+        checkAll.value = checks.length == approves.value.length
+        types[0].count = data.count
+      }
+    } finally {
+      isLoading = false
     }
-    if (!dialogForm.comment) {
-      Message.error('请输入拒绝理由')
+  }
+
+  const onDetail = id => {
+    router.push({ name: 'paymentInfo', params: { id }, query: { type: form.type } })
+  }
+
+  const onSegmented = val => {
+    router.push({ name: 'blank', query: { type: val } })
+    noMore.value = false
+    if (val == 'preprocess') {
+      approves.value = preprocess
       return
     }
+    form.page = 1
+    form.payment_date = ''
+    form.condition = ''
+    form.currency = ''
+
+    onSearch()
   }
-  await api.batchReview({
-    status,
-    approval_number_item: JSON.stringify(dialogForm.approval_number_item),
-    comment: dialogForm.comment
-  })
-  dialogFormReset()
-  preprocess = []
-  approves.value = []
-  types[1].count = 0
-  Message.success('提交成功')
-}
+
+  const onScroll = options => {
+    if (form.type == 'preprocess' || noMore.value) return
+    const listHeight = document.querySelector('.el-scrollbar__view').clientHeight
+    const boxHeight = document.querySelector('.rows').clientHeight
+    if (options.scrollTop > 0 && options.scrollTop >= listHeight - boxHeight - 1 && !isLoading) {
+      isLoading = true
+      form.page++
+      onSearch()
+    }
+  }
+
+  const onRemove = index => {
+    approves.value.splice(index, 1)
+    preprocess = approves.value
+    types[1].count = preprocess.length
+    Message.success('移除成功')
+  }
+
+  const onAllRemove = () => {
+    if (preprocess.length == 0) {
+      Message.warning('请选择要操作的审批')
+      return
+    }
+    preprocess = approves.value = []
+    types[1].count = 0
+    Message.success('移除成功')
+  }
+
+  const onShowReviewDialog = status => {
+    if (preprocess.length == 0) {
+      Message.warning('请选择要操作的审批')
+      return
+    }
+    dialogForm.status = status
+    dialogForm.approval_number_item = preprocess.map(item => item.approval_number)
+    status == 1 ? (passDialogVisible.value = true) : (rejectDialogVisible.value = true)
+  }
+
+  // 合并打款
+  const onMergePayment = async () => {
+    if (preprocess.length < 2) {
+      Message.warning('请选择要合并的审批')
+      return
+    }
+    const approval_number_list = preprocess.map(item => item.approval_number)
+
+    // 校验是否能合并
+    try {
+      const res = await api.checkMergePayment({
+        approval_number_list: JSON.stringify(approval_number_list)
+      })
+      mergeState.approves = preprocess
+      mergeState.total_amount = res.origin_total_amount;
+      mergeState.currency = res.currency
+      mergeDialogVisible.value = true
+    } catch (error) {
+
+    }
+  }
+
+  // 合并打款完成
+  const onMerged = () => {
+    mergeDialogVisible.value = false
+    approves.value = []
+    preprocess = []
+    mergeState.approves = []
+    types[1].count=0
+  }
+
+  const onBatchReview = async status => {
+    if (status == 2) {
+      if (dialogForm.reasonType) {
+        dialogForm.comment = dialogForm.reasonType == 5 ? dialogForm.comment : reasons[dialogForm.reasonType]
+      }
+      if (!dialogForm.comment) {
+        Message.error('请输入拒绝理由')
+        return
+      }
+    }
+    await api.batchReview({
+      status,
+      approval_number_item: JSON.stringify(dialogForm.approval_number_item),
+      comment: dialogForm.comment
+    })
+    dialogFormReset()
+    preprocess = []
+    approves.value = []
+    types[1].count = 0
+    Message.success('提交成功')
+  }
 </script>
 
 
@@ -327,10 +323,19 @@ const onBatchReview = async status => {
     <div class="list">
       <div class="list-header">
         <div class="header-checkbox" v-show="form.type == 'pending'">
-          <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{
-      listTitle
-    }}</el-checkbox>
-          <!-- <el-button link @click="openExcel"><el-icon class="iconfont icon-Excel" :size="17"></el-icon>批量打款</el-button> -->
+          <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{ listTitle }}</el-checkbox>
+          <el-tooltip content="布局" placement="top" hide-after="0" transition="none">
+            <div class="custom-style">
+              <el-segmented v-model="cfg.layout" size="small" :options="[
+                { label: 'iconfont icon-buju-1x1', value: false, color: 'gray' },
+                { label: 'iconfont icon-buju3', value: true, color: 'gray' }]">
+                <template #default="{ item }">
+                  <el-icon :color="item.color" :class="item.label">
+                  </el-icon>
+                </template>
+              </el-segmented>
+            </div>
+          </el-tooltip>
         </div>
         <div class="header-btns" v-show="form.type == 'preprocess'">
           <el-tooltip content="通过" placement="top">
@@ -369,9 +374,20 @@ const onBatchReview = async status => {
               <div class="row-time">{{ dateTimeFmt(item.create_time) }}</div>
             </div>
             <div class="row-bottom">
-              <div class="row-subtitle">{{ item.approval_number }}</div>
+              <div class="row-subtitle user-select">{{ item.approval_number }}</div>
               <div class="row-other">{{ numberFmt(item.origin_total_amount) }} <span>{{ item.currency }}</span></div>
             </div>
+
+            <el-space direction="vertical" alignment="start" :size="0" v-if="cfg.layout">
+              <span class="user-select more gray"><span class="gray">银行账号：</span>{{ item.bank_account || "--" }}</span>
+              <span class="user-select more gray"><span class="gray">采购单号：</span>{{ item.purchase_number || "--"
+                }}</span>
+              <span class="user-select more gray"><span class="gray">支付对象/方式：</span>{{ item.payment_object || '--' + " / " }}
+                <span class="more" style="color:#5BA3ED">{{ item.payment_method }}</span></span>
+              <span class="user-select more error" v-if="item.payment_error_msg"><span class="error">审批异常：</span>{{
+                item.payment_error_msg }}</span>
+            </el-space>
+
           </div>
           <div class="row-abnormal" v-if="item.payment_error_msg"></div>
         </div>
@@ -428,7 +444,7 @@ const onBatchReview = async status => {
     </template>
   </el-dialog>
 
-  <el-dialog v-model="mergeDialogVisible" title="合并付款" width="600" align-center>
+  <el-dialog v-model="mergeDialogVisible" title="合并付款" width="600" align-center destroy-on-close>
     <PaymentMerge :approves="mergeState.approves" :total_amount="mergeState.total_amount"
       :currency="mergeState.currency" @completed="onMerged" />
   </el-dialog>
@@ -437,250 +453,280 @@ const onBatchReview = async status => {
 
 
 <style scoped>
-.wrapper {
-  height: 100%;
-}
+  :deep(.custom-style .el-segmented) {
+    --el-segmented-item-selected-color: var(--el-text-color-primary);
+    --el-segmented-item-selected-bg-color: rgb(212, 212, 212);
+    --el-border-radius-base: 0px;
+    border: 1px solid rgb(239, 238, 238);
+    padding: 0px;
+  }
 
-/* 选项卡 */
-.segments {
-  padding: 0 10px;
-  min-height: 30px;
-}
+  :deep(.custom-style .el-segmented__group) {
+    border-radius: 0px;
+  }
 
-:deep(.el-segmented__item-label) {
-  font-size: 0.9em;
-}
+  .wrapper {
+    height: 100%;
+  }
 
-:deep(.el-segmented__group) {
-  background-color: #fff;
-  border: none;
-  border-radius: 8px;
-  overflow: hidden;
-}
+  .user-select {
+    user-select: text
+  }
 
-:deep(.el-segmented__item) {
-  position: relative;
-}
+  .more {
+    font-size: 9pt;
+  }
 
-.badge {
-  display: inline-block;
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 16px;
-  height: 16px;
-  line-height: 16px;
-  padding: 0 5px;
-  background-color: #ff6262;
-  box-shadow: 1px 1px 1px 0 #ff4545;
-  color: #fff;
-  font-size: 11px;
-  border-radius: 8px;
-}
+  .gray {
+    color: gray
+  }
 
-/* 筛选表单 */
-.filter {
-  padding: 14px 10px 8px;
-}
+  .error {
+    color: #ef8787;
+    color: rgb(236, 60, 60);
+  }
 
-.filter :deep(.el-form--inline),
-.header-form {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 6px 8px;
-}
+  /* 选项卡 */
+  .segments {
+    padding: 0 10px;
+    min-height: 30px;
+  }
 
-.filter :deep(.el-form-item),
-.header-form :deep(.el-form-item) {
-  margin: 0;
-}
+  :deep(.el-segmented__item-label) {
+    font-size: 0.9em;
+  }
 
-.filter :deep(.el-input),
-.header-form :deep(.el-input) {
-  width: 180px;
-}
+  :deep(.el-segmented__group) {
+    background-color: #fff;
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+  }
 
-.filter :deep(.el-select),
-.filter .el-form :deep(.el-button),
-.header-form :deep(.el-button) {
-  width: 90px;
-}
+  :deep(.el-segmented__item) {
+    position: relative;
+  }
 
-.tips {
-  display: flex;
-  justify-content: space-evenly;
-  align-items: center;
-  gap: 5px;
-  line-height: 32px;
-  padding: 0 10px;
-}
+  .badge {
+    display: inline-block;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+    padding: 0 5px;
+    background-color: #ff6262;
+    box-shadow: 1px 1px 1px 0 #ff4545;
+    color: #fff;
+    font-size: 11px;
+    border-radius: 8px;
+  }
 
-.tips :deep(.el-button) {
-  margin: 0 !important;
-}
+  /* 筛选表单 */
+  .filter {
+    padding: 14px 10px 8px;
+  }
 
-.tips :deep(.el-icon) {
-  font-size: 1.2em;
-}
+  .filter :deep(.el-form--inline),
+  .header-form {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 8px;
+  }
 
-/* 列表 */
-.list {
-  height: calc(100% - 114px);
-}
+  .filter :deep(.el-form-item),
+  .header-form :deep(.el-form-item) {
+    margin: 0;
+  }
 
-.header-checkbox {
-  display: flex;
-  align-items: center;
-  padding: 10px;
-}
+  .filter :deep(.el-input),
+  .header-form :deep(.el-input) {
+    width: 180px;
+  }
 
-.list-title {
-  width: 100%;
-  height: 20px;
-}
+  .filter :deep(.el-select),
+  .filter .el-form :deep(.el-button),
+  .header-form :deep(.el-button) {
+    width: 90px;
+  }
 
-.header-btns {
-  display: flex;
-  justify-content: space-evenly;
-  align-items: center;
-  padding: 6px 10px 10px;
-}
+  .tips {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    gap: 5px;
+    line-height: 32px;
+    padding: 0 10px;
+  }
 
-.header-btns :deep(.el-button) {
-  font-size: 1em;
-  margin: 0;
-}
+  .tips :deep(.el-button) {
+    margin: 0 !important;
+  }
 
-.header-form {
-  padding: 0 10px 8px;
-}
+  .tips :deep(.el-icon) {
+    font-size: 1.2em;
+  }
 
-.rows {
-  height: calc(100% - 40px);
-  border-top: 1px solid #e5e9ed;
-  overflow-y: auto;
-}
+  /* 列表 */
+  .list {
+    height: calc(100% - 114px);
+  }
 
-.rows :deep(.el-backtop) {
-  position: fixed;
-  left: 290px;
-}
+  .header-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+  }
 
-.row {
-  display: flex;
-  position: relative;
-  padding-right: 10px;
-  background-color: #fff;
-}
+  .list-title {
+    width: 100%;
+    height: 20px;
+  }
 
-.row.checked {
-  background-color: #eff7ff;
-}
+  .header-btns {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    padding: 6px 10px 10px;
+  }
 
-.row.active,
-.row:hover {
-  background-color: #f1f1f1;
-}
+  .header-btns :deep(.el-button) {
+    font-size: 1em;
+    margin: 0;
+  }
 
-.row.active.checked {
-  background-color: #e0edf9;
-}
+  .header-form {
+    padding: 0 10px 8px;
+  }
 
-.row :deep(.el-checkbox) {
-  width: 34px;
-  height: 38px;
-  padding: 10px;
-}
+  .rows {
+    height: calc(100% - 40px);
+    border-top: 1px solid #e7e7e7;
+    overflow-y: auto;
+  }
 
-.row :deep(.el-button) {
-  width: 34px;
-  height: 38px;
-  padding: 10px;
-  font-size: 1em;
-}
+  .rows :deep(.el-backtop) {
+    position: fixed;
+    left: 290px;
+  }
 
-.row .space {
-  width: 10px;
-  height: 10px;
-}
+  .row {
+    display: flex;
+    position: relative;
+    padding-right: 10px;
+    background-color: #fff;
+    border-bottom: 1px solid rgb(234, 234, 234);
+  }
 
-.row-content {
-  display: flex;
-  flex-direction: column;
-  width: calc(100% - 52px);
-  flex: 1;
-  padding: 8px 0 8px 0;
-  color: #333;
-}
+  .row.checked {
+    background-color: #eff7ff;
+  }
 
-.row-top,
-.row-bottom {
-  display: flex;
-  justify-items: center;
-  gap: 8px;
-}
+  .row.active,
+  .row:hover {
+    background-color: #f1f1f1;
+  }
 
-.row-title,
-.row-subtitle {
-  flex: 1;
-}
+  .row.active.checked {
+    background-color: #e0edf9;
+  }
 
-.row-title {
-  font-size: 0.85em;
-  font-weight: 500;
-  color: #383a3d;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  .row :deep(.el-checkbox) {
+    width: 34px;
+    height: 38px;
+    padding: 10px;
+  }
 
-.row-subtitle {
-  font-size: 0.8em;
-  color: #979b9d;
-}
+  .row :deep(.el-button) {
+    width: 34px;
+    height: 38px;
+    padding: 10px;
+    font-size: 1em;
+  }
 
-.row-time,
-.row-other {
-  min-width: 50px;
-  text-align: right;
-}
+  .row .space {
+    width: 10px;
+    height: 10px;
+  }
 
-.row-time {
-  font-size: 0.75em;
-  color: #9d9d9d;
-}
+  .row-content {
+    display: flex;
+    flex-direction: column;
+    width: calc(100% - 52px);
+    flex: 1;
+    padding: 8px 0 8px 0;
+    color: #333;
+  }
 
-.row-other {
-  font-size: 0.8em;
-  color: #675757;
-  text-wrap: nowrap;
-}
+  .row-top,
+  .row-bottom {
+    display: flex;
+    justify-items: center;
+    gap: 8px;
+  }
 
-.row-other span {
-  font-size: 0.8em;
-  color: #333;
-  font-weight: bold;
-}
+  .row-title,
+  .row-subtitle {
+    flex: 1;
+  }
 
-ul {
-  padding-left: 0;
-}
+  .row-title {
+    font-size: 0.85em;
+    font-weight: 500;
+    color: #383a3d;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-.row-abnormal {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 8px;
-  height: 8px;
-  background: linear-gradient(45deg, transparent 50%, #ff6262 50%);
-}
+  .row-subtitle {
+    font-size: 0.8em;
+    color: #979b9d;
+  }
 
-.no-more {
-  height: 30px;
-  line-height: 30px;
-  text-align: center;
-  color: #b0b7cc;
-  font-size: 0.8em;
-}
+  .row-time,
+  .row-other {
+    min-width: 50px;
+    text-align: right;
+  }
+
+  .row-time {
+    font-size: 0.75em;
+    color: #9d9d9d;
+  }
+
+  .row-other {
+    font-size: 0.8em;
+    color: #675757;
+    text-wrap: nowrap;
+  }
+
+  .row-other span {
+    font-size: 0.8em;
+    color: #333;
+    font-weight: bold;
+  }
+
+  ul {
+    padding-left: 0;
+  }
+
+  .row-abnormal {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 8px;
+    height: 8px;
+    background: linear-gradient(45deg, transparent 50%, #ff6262 50%);
+  }
+
+  .no-more {
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    color: #b0b7cc;
+    font-size: 0.8em;
+  }
 </style>

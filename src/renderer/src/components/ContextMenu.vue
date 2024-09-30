@@ -54,7 +54,7 @@ const trigger = () => {
 const data = ref([])
 
 const handleContextMenu = (event) => {
-  const rf = isRef(props.targetElement) ? props.targetElement.$el : props.targetElement
+  const rf = props.targetElement.$el ?? props.targetElement
   if (isTargetElementOrChild(event.target, rf)) {
     event.preventDefault();
     x.value = event.clientX;

@@ -1,8 +1,8 @@
 @font-face {
   font-family: "iconfont"; /* Project id 4661782 */
-  src: url('iconfont.woff2?t=1726795552884') format('woff2'),
-       url('iconfont.woff?t=1726795552884') format('woff'),
-       url('iconfont.ttf?t=1726795552884') format('truetype');
+  src: url('iconfont.woff2?t=1727581616507') format('woff2'),
+       url('iconfont.woff?t=1727581616507') format('woff'),
+       url('iconfont.ttf?t=1727581616507') format('truetype');
 }
 
 .iconfont {
@@ -13,12 +13,52 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-user:before {
+  content: "\e679";
+}
+
+.icon-password:before {
+  content: "\e69f";
+}
+
+.icon-Excelxieru-xuanzhong:before {
+  content: "\e754";
+}
+
+.icon-buju-1x1:before {
+  content: "\e603";
+}
+
+.icon-buju-2x2:before {
+  content: "\e604";
+}
+
+.icon-buju3:before {
+  content: "\ed0e";
+}
+
+.icon-huifumorenbuju:before {
+  content: "\e673";
+}
+
+.icon-buju-1x2:before {
+  content: "\e600";
+}
+
+.icon-buju-1x3:before {
+  content: "\e601";
+}
+
 .icon-radio-fill:before {
   content: "\e71e";
 }
 
 .icon-radio:before {
   content: "\e72f";
+}
+
+.icon-debug-gray:before {
+  content: "\ed0f";
 }
 
 .icon-debug:before {

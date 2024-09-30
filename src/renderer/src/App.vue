@@ -3,22 +3,34 @@ import { ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useRouter, useRoute } from 'vue-router'
 import { useImageStore } from '@/stores/images'
-import { useLogStore, useUpdateStore, useUserStore, useWindowStore } from './stores';
+import { useLogStore, useUpdateStore, useUserStore, useExcelStore, useScreenShortStore } from './stores';
 import message from './utils/message';
 import { useIntervalFn } from "@vueuse/core"
 import updater from "@/utils/update"
 import appInfo from '../../../package.json'
-import logger from './utils/logger';
+import logger from './utils/logger'
+import { ref } from "vue"
 
+const shortStore = useScreenShortStore()
 const store = useUserStore()
 const imgStore = useImageStore()
 const logStore = useLogStore()
-const wStore = useWindowStore()
+const wStore = useExcelStore()
 const updateStore = useUpdateStore()
 const router = useRouter()
 const route = useRoute()
 
-const { pause, resume, isActive } = useIntervalFn(async () => {
+const show = ref(false)
+const download = () => {
+  if (updateStore.update_success) {
+    updater.install()
+  } else {
+    updateStore.downloading = true
+    updater.download()
+  }
+}
+
+useIntervalFn(async () => {
   if (store.user.id) {
     try {
       if (store.showUpdate === false) {
@@ -29,7 +41,8 @@ const { pause, resume, isActive } = useIntervalFn(async () => {
           if (current < remote) {
             message.success('发现新版本！')
             store.showUpdate = true
-            router.push({ name: 'setting' })
+            show.value = true
+            // router.push({ name: 'setting' })
           }
         }
       }
@@ -69,14 +82,17 @@ electron.onOpenUpdate(version => {
   router.push({ name: 'update' })
 })
 
-electron.onOpenExcel((user, filePath, data) => {
-  store.setUser(user)
-  wStore.user = user
-  wStore.excelFile = filePath
-  wStore.excelData = data
-  console.log('excel data', data);
-  router.push({ name: 'excel' })
-})
+electron.onOpenExcel(
+  (user, filePath, data) => {
+    store.setUser(user)
+    wStore.user = user
+    wStore.excelFile = filePath
+    wStore.excelData = data
+    router.push({ name: 'excel' })
+  },
+  () => {
+    wStore.excelLoading = false
+  })
 
 electron.onUpdater((name, value, ...args) => {
   switch (name) {
@@ -121,10 +137,57 @@ electron.onUpdater((name, value, ...args) => {
   }
 })
 
+electron.onShortCutCapture(async src => {
+  shortStore.image = src
+})
+
+
+
 </script>
 
 <template>
   <el-config-provider :locale="zhCn">
     <RouterView />
   </el-config-provider>
+
+  <el-dialog v-model="show" :close-on-click-modal="false" :close-on-press-escape="false" :show-close="false"
+    :append-to-body="true">
+
+    <div v-loading="updateStore.checking" element-loading-background="white" element-loading-text="检查更新中">
+      <div v-if="updateStore.update_err">
+        <p class="bold red" style="text-align: center">检查失败</p>
+      </div>
+      <div v-else-if="updateStore.canUpdate">
+        <p class="bold black">发现新版本!</p>
+        <p>版本：{{ "v" + updateStore.version.version }}</p>
+        <el-scrollbar v-if="(!updateStore.downloading) && (!updateStore.update_success)"
+          :height="updateStore.downloading ? '50px' : '140px'">
+          <div style="font-size: 10pt; color:black" v-html="updateStore.version.content">
+          </div>
+        </el-scrollbar>
+        <div style="display: flex; width: 100%;" v-if="updateStore.downloading || updateStore.update_success">
+          <span style="margin-right: 0px;">进度：</span>
+          <el-progress :stroke-width="10" :percentage="updateStore.percent" style="width:90%"
+            :status="updateStore.update_success ? 'success' : ''" />
+        </div>
+        <p v-if="updateStore.downloading">速度：<span style="font-size: 10pt;" class="black">{{ updateStore.download_info
+            }}</span>
+        </p>
+      </div>
+      <div v-else style="text-align: center">
+        <p class="bold black">无可用更新</p>
+      </div>
+    </div>
+
+    <template #footer v-if="!updateStore.checking">
+      <div v-if="updateStore.canUpdate">
+        <el-button :type="updateStore.update_success ? 'danger' : 'primary'" :loading="updateStore.downloading"
+          @click="download">
+          {{ updateStore.update_success ? "退出重启" : '更新' }}
+        </el-button>
+      </div>
+
+    </template>
+  </el-dialog>
+
 </template>

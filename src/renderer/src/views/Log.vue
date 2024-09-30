@@ -49,6 +49,9 @@ const reload = () => {
 </template>
 
 <style scoped>
+:global(#app){
+    border: 1px solid rgb(199, 199, 199);
+}
 .bold {
     font-weight: 600;
 }

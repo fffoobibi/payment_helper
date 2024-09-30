@@ -39,6 +39,10 @@ const title = computed(() => {
 </template>
 
 <style scoped>
+:global(#app) {
+    border: 1px solid rgb(216, 216, 216);
+}
+
 .main {
     width: 100%;
     height: 100%;

@@ -19,9 +19,9 @@ const optionItems = computed(() => {
     return [{ icon: 'setting', text: '设置', name: 'setting' }]
   } else {
     return [
-      {
-        icon: 'debug', text: '当前为调试服', name: 'debug'
-      },
+      // {
+      //   icon: 'debug', text: '当前为调试服', name: 'debug'
+      // },
       { icon: 'setting', text: '设置', name: 'setting' }
     ]
   }
@@ -51,7 +51,7 @@ const onMenu = (item) => {
     <div class="sider">
       <el-popover placement="right-start" :title="store.user.username" :width="200" trigger="hover">
         <template #reference>
-          <el-avatar :size="34">
+          <el-avatar :size="34" v-if="store.user.username">
             {{ store.user.username[0] }}
           </el-avatar>
         </template>

@@ -16,22 +16,22 @@ const router = createRouter({
         {
             path: '/image',
             name: 'image',
-            component: ()=> import('@/views/ImageView.vue')
+            component: () => import('@/views/ImageView.vue')
         },
         {
             path: '/log',
             name: 'log',
-            component: ()=> import('@/views/Log.vue')
+            component: () => import('@/views/Log.vue')
         },
         {
             path: '/update',
             name: 'update',
-            component: ()=> import('@/views/Update.vue')
+            component: () => import('@/views/Update.vue')
         },
         {
             path: '/excel',
             name: 'excel',
-            component: ()=> import('@/views/Excel.vue')
+            component: () => import('@/views/Excel.vue')
         },
         {
             path: '/home',
@@ -48,7 +48,8 @@ const router = createRouter({
                         {
                             path: '/payment/blank',
                             name: 'blank',
-                            component: () => import('@/views/BlankPage.vue')
+                            component: () => import('@/views/BlankPage.vue'),
+                            props: route => ({ type: route.query?.type })
                         },
                         {
                             path: '/payment/:id',

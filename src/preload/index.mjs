@@ -39,10 +39,28 @@ const electron = {
   },
   // excel
   openExcel: (user, config) => ipcRenderer.send('open-excel', user, config, 'excel',),
-  onOpenExcel: (callback) => ipcRenderer.on('open-excel:success', (_event, user, file, data) => callback(user, file, data)),
+  onOpenExcel: (callback, statusCallback) => {
+    ipcRenderer.on('open-excel:success', (_event, user, file, data) => {
+      callback(user, file, data)
+    })
+    ipcRenderer.on('open-excel:ok', (event) => {
+      statusCallback()
+    })
+    ipcRenderer.on('open-excel:error', (event) => {
+      statusCallback()
+    })
+    ipcRenderer.on('open-excel:cancel', (event) => {
+      statusCallback()
+    })
+  },
+  sendSelectData: (data) => ipcRenderer.send('open-excel:data', data),
+  onExcelData: (callback) => ipcRenderer.on('open-excel:batch-select-excel-data', (event, data) => callback(data)),
+  sendExcelColorData: (data) => ipcRenderer.send('open-excel:excelColor-change', data),
+  onNewExcelColor: (callback) => ipcRenderer.on('open-excel:excelColor-new', (event, data) => callback(data)),
 
   // 主进程 -> 渲染进程的事件
   onCapture: (callback) => ipcRenderer.on('key-capture', (_event, data) => callback(data)),
+  onShortCutCapture: callback => ipcRenderer.on('shortcut-key-capture', (_event, data) => callback(data)),
   onPreviewImage: (callback) => ipcRenderer.on('open-images:success', (_event, urls, index, render) => callback(urls, index, render)),
   onExportExcel: (scallback, fcallback, ccallback) => {
     ipcRenderer.on('export-excel-success', () => {

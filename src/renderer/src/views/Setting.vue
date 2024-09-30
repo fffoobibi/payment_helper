@@ -7,18 +7,21 @@ import api from "@/api"
 import message from '../utils/message'
 import updater from "@/utils/update"
 import app_info from '../../../../package.json'
-import { useRoute } from "vue-router"
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 
 const cfgStore = useLocalConfig()
-const { autoClick, autoConfirm, formalUrl, testUrl, uploadFormalUrl, uploadTestUrl, mode } = storeToRefs(cfgStore)
+const { autoClick, autoConfirm, formalUrl, testUrl, uploadFormalUrl, uploadTestUrl, mode, versionFormalUrl, versionTestUrl } = storeToRefs(cfgStore)
 const store = useUserStore()
 const update = useUpdateStore()
 
 const showHidden = ref(false)
+const showKeys = ['keyQ', 'KeyW', 'KeyE', 'KeyR']
 const handleCtrlShiftQ = event => {
-  if (event.ctrlKey && event.shiftKey && event.code === 'KeyQ') {
+  if (event.ctrlKey && event.shiftKey && showKeys.includes(event.code)) {
     showHidden.value = true
+    nextTick(() => {
+      scrollRef.value.setScrollTop(5000)
+    })
   }
 }
 onMounted(() => {
@@ -38,7 +41,7 @@ const reset = () => {
   formalUrl.value = 'http://bdapi.baizhoucn.com:2501'
   testUrl.value = 'http://192.168.0.10:20011'
   uploadFormalUrl.value = 'http://bdupload.baizhoucn.com'
-  uploadTestUrl.value = 'http://192.168.0.10/index.php'
+  uploadTestUrl.value = 'http://bduploadtest.baizhoucn.com/index.php'
   cfgStore.updateFormalUrl()
   cfgStore.updateTestUrl()
   cfgStore.updateUploadFormal()
@@ -48,7 +51,7 @@ const reset = () => {
 const openLog = () => {
   electron.viewLog()
 }
-
+const scrollRef = ref(null)
 const formRef = ref(null)
 const changePwd = async () => {
   formRef.value.validate().then(async valid => {
@@ -117,7 +120,7 @@ const checkUpdates = () => {
 
 watch(showDialog, v => {
   show.value = v
-}, {immediate: true})
+}, { immediate: true })
 
 const download = () => {
   if (update.update_success) {
@@ -139,7 +142,7 @@ const download = () => {
           <h4>设置</h4>
         </template>
       </Header>
-      <el-scrollbar>
+      <el-scrollbar ref="scrollRef">
 
         <div class="pannel">
           <span class="black" style="font-size: 11pt;border-bottom: 2px solid purple;">版本信息</span>
@@ -242,6 +245,19 @@ const download = () => {
               </el-input>
             </el-form-item>
 
+            <el-form-item label='更新'>
+              <el-input style="width: 45%; margin-right: 10px;" placeholder="正式服" v-model="versionFormalUrl" clearable
+                disabled>
+                <template #prefix>
+                  <i class="iconfont icon-xianshang" />
+                </template></el-input>
+              <el-input style="width: 45%;" placeholder="测试服" v-model="versionTestUrl" clearable disabled>
+                <template #prefix>
+                  <i class="iconfont icon-debug" />
+                </template>
+              </el-input>
+            </el-form-item>
+
 
           </el-form>
         </div>
@@ -279,7 +295,7 @@ const download = () => {
 
         <template #footer v-if="!update.checking">
           <div v-if="update.canUpdate">
-            <el-button  @click="show = false">关闭</el-button>
+            <el-button @click="show = false">关闭</el-button>
             <el-button :type="update.update_success ? 'danger' : 'primary'" :loading="update.downloading"
               @click="download">
               {{ update.update_success ? "退出重启" : '更新' }}
@@ -295,6 +311,10 @@ const download = () => {
 <style scoped>
 :deep(.el-progress__text) {
   font-size: 10pt !important
+}
+
+.el-scrollbar {
+  height: calc(100vh - 66px) !important
 }
 
 h4 {

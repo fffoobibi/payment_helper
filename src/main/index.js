@@ -11,6 +11,7 @@ import db from './db.js'
 import * as XLSX from 'xlsx'
 
 import _ from 'electron-updater'
+import { hash } from 'crypto'
 const autoUpdater = _.autoUpdater
 
 // 配置文件
@@ -29,21 +30,21 @@ class Updater {
       if (is.dev) {
         console.log('open-update:message ==>', event)
       }
-    } catch (err) {}
+    } catch (err) { }
   }
 
   _initMainCallback() {
     ipcMain.on('open-update:download', (_event) => {
       autoUpdater.downloadUpdate()
     })
-    ipcMain.on('open-update:cancel', (_event) => {})
+    ipcMain.on('open-update:cancel', (_event) => { })
     ipcMain.handle('open-update:checkForUpdates', async (_event, showIfNew) => {
       try {
         this.showIfNew = showIfNew
         const rs = await autoUpdater.checkForUpdates()
         return rs
       } catch (err) {
-        console.error('error in check ', err)
+        console.error('error in checkForUpdates')
       }
     })
     ipcMain.on('open-update:install', (_event) => {
@@ -67,12 +68,20 @@ class Updater {
 
       autoUpdater.autoDownload = false
       autoUpdater.logger = log
+      const isPro = store.get('pro')?.value ?? true
+      const feedUrl = isPro ? (store.get('versionFormalUrl')?.value ?? "https://bd.baizhoucn.com/upload") : (store.get('versionTestUrl')?.value ?? "http://192.168.0.10:20010/upload")
+      
       if (is.dev) {
         autoUpdater.forceDevUpdateConfig = true
-        autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
-      } else {
-        autoUpdater.setFeedURL(store.get('update_url', 'http://36.32.174.26:5018/updates'))
       }
+      autoUpdater.setFeedURL(feedUrl)
+
+      // if (is.dev) {
+      //   autoUpdater.forceDevUpdateConfig = true
+      //   autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
+      // } else {
+      //   autoUpdater.setFeedURL('https://bd.baizhoucn.com/upload')
+      // }
 
       autoUpdater.on('checking-for-update', () => {
         this.sendStatusToWindow('checking-for-update', 'Checking for update...')
@@ -184,7 +193,7 @@ class WindowManger {
             previewWindow.show()
           })
           .catch((err) => {
-            log.error('open fail', err)
+            log.error('open fail', err, 'hash ', hash)
           })
       } else {
         after(previewWindow)
@@ -291,8 +300,8 @@ log.transports.file.resolvePathFn = () => {
   return logPath
 }
 
-const loginWidth = 320
-const loginHeight = 320
+const loginWidth = 360
+const loginHeight = 400
 const mainWidth = 950
 const mainHeight = 700
 
@@ -378,7 +387,7 @@ function createWindow() {
     mainWindow.setResizable(true)
 
     // TODO: 添加托盘操作
-    contextMenu.unshift({ label: data.username, click: () => {} })
+    contextMenu.unshift({ label: data.username, click: () => { } })
   })
 
   // 去登录
@@ -436,31 +445,40 @@ function createWindow() {
     screenshots.startCapture()
   })
 
+  const state = { global: false }
   // 绑定全局快捷键
   globalShortcut.register('ctrl+q', () => {
+    state.global = true
     screenshots.startCapture()
   })
 
   // 点击确定按钮回调事件
   screenshots.on('ok', (e, buffer, bounds) => {
     // const src = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
-    const src =
-      'data:image/png;base64,' +
-      btoa(new Uint8Array(buffer).reduce((data, btye) => data + String.fromCharCode(btye), ''))
-    mainWindow.webContents.send('key-capture', src)
+    const src = 'data:image/png;base64,' + btoa(new Uint8Array(buffer).reduce((data, btye) => data + String.fromCharCode(btye), ''))
+    if (state.global) {
+      mainWindow.webContents.send('shortcut-key-capture', src)
+    } else {
+      mainWindow.webContents.send('key-capture', src)
+    }
+    state.global = false
   })
+
   // 点击取消按钮回调事件
   screenshots.on('cancel', () => {
     screenshots.endCapture()
+    state.global = false
   })
   // 点击保存按钮回调事件
   screenshots.on('save', (e, buffer, bounds) => {
     // console.log("capture", buffer, bounds)
+    state.global = false
   })
   // esc取消
   globalShortcut.register('esc', () => {
     if (screenshots.$win?.isFocused()) {
       screenshots.endCapture()
+      state.global = false
     }
   })
 
@@ -552,20 +570,9 @@ function createWindow() {
       })
   })
 
-  // excel窗口
-
+  // excel编辑窗口
   const stox = (wb, excelColors) => {
     var out = []
-    const k = store.get('currentUserId')
-    // const excelColors = store.get(`${k}.excelColors`, {
-    //   approval_number: {color: '#5B9BD5'},
-    //   account_id: {color: '#FFC000'},
-    //   receiving_account: {color: '#92D050'},
-    //   transaction_number: {color: '#8497B0'},
-    //   note: {color: '#F4B084'},
-    //   currency: {color: 'red'},
-    //   origin_total_amount: {color: 'blue'}
-    // })
     const styleObj = {}
     const styles = []
     Object.keys(excelColors).forEach((k, index) => {
@@ -592,19 +599,11 @@ function createWindow() {
         o.rows[i] = { cells: cells }
       })
       o.styles = styles
-      ///
-      console.log(`ws`, ws)
+
       // 设置合并单元格
       if (ws['!merges']) {
         ws['!merges'].forEach((merge) => {
-          /** merge = {
-           *  s: {c: 0, r: 15}
-           *  e: {c: 15, r: 15}
-           * }
-           */
-          // 修改 cell 中 merge [合并行数,合并列数]
           let cell = o.rows[merge.s.r].cells[merge.s.c]
-
           //无内容单元格处理
           if (!cell) {
             cell = { text: '' }
@@ -620,7 +619,20 @@ function createWindow() {
     })
     return out
   }
+  ipcMain.on('open-excel:data', (event, data) => {
+    try {
+      mainWindow.webContents.send('open-excel:batch-select-excel-data', data)
+    } catch (err) {
 
+    }
+  })
+  ipcMain.on('open-excel:excelColor-change', (event, data) => {
+    try {
+      mainWindow.webContents.send('open-excel:excelColor-new', data)
+    } catch (err) {
+
+    }
+  })
   ipcMain.on('open-excel', (event, user, config, hash) => {
     dialog
       .showOpenDialog({
@@ -634,27 +646,24 @@ function createWindow() {
           try {
             const fileBuffer = fs.readFileSync(result.filePaths[0])
             const workbook = XLSX.read(fileBuffer, { type: 'buffer' })
-            // const sheetName = workbook.SheetNames[0];
-            // const sheet = workbook.Sheets[sheetName];
-            // const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            // const excelData = { name: sheetName, rows: convertToSpreadsheetFormat(data) }
             const excelData = stox(workbook, config)
-            console.log('rs ', excelData)
             manager.createWindow(
               'excel',
               (frame) => {
                 frame.webContents.send('open-excel:success', user, result.filePaths[0], excelData)
+                mainWindow.webContents.send('open-excel:ok')
               },
               { title: 'excel', hash },
               true
             )
           } catch (error) {
-            log.error('打开excel失败', error)
-            console.log('errr ', error)
-            event.reply('open-excel:error', error.message) // 发送错误消息
+            log.error('Excel加载失败', error)
+            mainWindow.webContents.send('open-excel:error', error.message)
+            // event.reply('open-excel:error', error.message) // 发送错误消息
           }
         } else {
-          event.reply('open-excel:cancel')
+          mainWindow.webContents.send('open-excel:cancel')
+          // event.reply('open-excel:cancel')
         }
       })
       .catch((err) => {

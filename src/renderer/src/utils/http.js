@@ -4,6 +4,7 @@ import Message from '@/utils/message'
 import logger from '@/utils/logger'
 import { useUserStore } from '@/stores'
 import { useLocalConfig } from "@/stores/config"
+import appInfo from "../../../../package.json"
 
 const env = import.meta.env
 const store = useUserStore()
@@ -92,7 +93,6 @@ instance.interceptors.response.use(
       } else {
         returned = res.response
       }
-      console.log('mode ', cfgStore.mode)
       if (!cfgStore.mode) {
         logger.debug(`[${response.config?.method?.toUpperCase()}] ${response.config.url}, response\n`, JSON.stringify(returned, null, 4))
       }
@@ -113,7 +113,7 @@ instance.interceptors.response.use(
           `[${response.config?.method?.toUpperCase()}] ${response.config?.url} fail, error info is `,
           res
         )
-        Message.error(res.msg)
+        showError && Message.error(res.msg)
       }
       return Promise.reject({ showError, msg: res.msg })
     }
@@ -165,10 +165,11 @@ const http = (config) => {
     'Content-Type': contentType,
     'X-Requested-With': 'XMLHttpRequest',
     'target-url': targetUrl,
+    'version': appInfo.version,
     token: token
   }
   if (method === 'post') {
-    const logParams = { ...params }
+    const logParams = { ...params}
     logParams.user_id = store.user.id
     logger.info(`[POST] ${url} data:`, logParams)
     return instance.post(url, formData, {

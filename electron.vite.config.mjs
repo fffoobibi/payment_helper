@@ -9,9 +9,6 @@ const root = process.cwd()
 export default ({ mode }) => {
   const env = loadEnv(mode, root)
   return defineConfig({
-    // define: {
-    //   __APP_VERSION__: JSON.stringify(info.version)
-    // },
     main: {
       plugins: [externalizeDepsPlugin()]
     },
@@ -34,7 +31,7 @@ export default ({ mode }) => {
           '/api': {
             target: env.VITE_API_DOMAIN,
             changeOrigin: true,
-            rewrite: (path) =>  path, // path.replace(/^\/api/, ''), //path
+            rewrite: (path) => path.replace(/^\/api/, ''), //path
             configure: (proxy, options) => {
               // 使用自定义的代理逻辑
               const originalWeb = proxy.web

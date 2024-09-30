@@ -7,8 +7,6 @@ import message from "../utils/message"
 import { useAccountStore } from "@/stores"
 import { Check, Close } from '@element-plus/icons-vue'
 
-
-
 const bank = useAccountStore()
 
 const props = defineProps({

@@ -69,9 +69,14 @@ const showBar = computed(() => {
 </template>
 
 <style scoped>
-:deep(.el-progress__text){
-  font-size:10pt !important
+:global(#app) {
+    border: 1px solid rgb(207, 207, 207);
 }
+
+:deep(.el-progress__text) {
+    font-size: 10pt !important
+}
+
 .bold {
     font-weight: 600;
 }

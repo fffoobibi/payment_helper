@@ -1,27 +1,20 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch, toRaw } from 'vue'
+import { onBeforeMount, reactive, ref, watch } from 'vue'
 import PaymentAdd from './PaymentAdd.vue'
 import PaymentRecord from './PaymentRecord.vue'
 import api from '@/api'
 import { numberFmt } from '@/utils/format'
 import Message from '@/utils/message'
-import { Check, Warning, Remove, QuestionFilled } from '@element-plus/icons-vue'
+import { Check, Warning, Remove, QuestionFilled, Eleme } from '@element-plus/icons-vue'
 import BankTransferAdd from './BankTransferAdd.vue'
-import { useUserStore } from "@/stores/index"
-import { useLocalConfig } from '@/stores/config'
-
-const store = useUserStore()
-const cfgStore = useLocalConfig()
-
-const openExcel = () => {
-  electron.openExcel(toRaw(store.user), toRaw(cfgStore.excelColors))
-}
-
+import { useExcelStore } from "@/stores/index"
+import { useRoute } from 'vue-router'
+const ws = useExcelStore()
 const props = defineProps({
   detailId: String,
 })
-
-const emit = defineEmits(['update'])
+const emit = defineEmits(['update', 'openBatch'])
+const route = useRoute()
 
 const approve = ref({})
 const reasons = {
@@ -81,6 +74,7 @@ const onCopy = async text => {
   await navigator.clipboard.writeText(text)
   Message.success("复制成功")
 }
+const feePayers = { 0: '--', 1: '我方', 2: '顾客', 3: '双方平摊' }
 
 const fetchData = async () => {
   const data = await api.getPaymentDetail({
@@ -90,6 +84,7 @@ const fetchData = async () => {
   approve.value.cashier = data.payment_cashier.cashier
   approve.value.payment_error_msg = data.payment_cashier.payment_error_msg
   approve.value.payment_status = data.payment_cashier.payment_status
+  approve.value.fee_payer_str = feePayers[data.payment_detail.detail?.fee_payer]
 
   tableData.value = data.payment_detail.items
   if (data.payment_detail.items.length > 0) {
@@ -174,17 +169,24 @@ const onAbnoraml = async () => {
       </template>
 
       <template #option>
-        <el-tooltip content="批量打款" placement="left">
-          <el-button size="small" class="option-btn" @click="openExcel" link>
-            <i class="iconfont icon-Excel" :size="17"></i>
+        <el-tooltip content="批量打款" placement="bottom" hide-after="0" transition="none" :disabled="ws.excelLoading">
+          <el-button link @click="emit('openBatch')" :loading="ws.excelLoading">
+            <template #loading>
+              <el-icon class="is-loading" :size="20" color="black">
+                <Eleme />
+              </el-icon>
+            </template>
+            <el-icon v-if="!ws.excelLoading" :size="20" class="iconfont icon-Excelxieru-xuanzhong">
+            </el-icon>
           </el-button>
         </el-tooltip>
-        <el-tooltip content="新增打款/转账" placement="bottom-end">
+        <el-tooltip content="新增打款/转账" placement="bottom" hide-after="0" transition="none"
+          v-if="route.query.type === 'pending'">
           <el-button size="small" class="option-btn" @click="showAddDrawer = true" link>
             <i class="iconfont icon-edit"></i>
           </el-button>
         </el-tooltip>
-        <el-tooltip content="打款记录" placement="bottom-end">
+        <el-tooltip content="打款记录" placement="bottom-end" hide-after="0" transition="none">
           <el-button size="small" class="option-btn" @click="showRecordDrawer = true" link>
             <i class="iconfont icon-history-record"></i>
           </el-button>
@@ -257,7 +259,7 @@ const onAbnoraml = async () => {
           <div class="info-item">
             <i class="item-icon iconfont icon-undertaker"></i>
             <div class="item-label">手续费承担方：</div>
-            <div class="item-value">{{ approve.fee_payer }}</div>
+            <div class="item-value">{{ approve.fee_payer_str }}</div>
           </div>
           <div class="info-item">
             <i class="item-icon iconfont icon-system-info"></i>

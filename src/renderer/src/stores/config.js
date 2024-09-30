@@ -14,6 +14,7 @@ const Keys = {
   currentUserId: 'currentUserId',
   accountIndexs: 'accountIndexs',
   accountMenus: 'accountMenus',
+  layout: 'layout',
 
   formalUrl: 'formalUrl',
   testUrl: 'testUrl',
@@ -29,6 +30,8 @@ const Globals = {
   testUrl: 'testUrl',
   uploadFormalUrl: 'uploadFormalUrl',
   uploadTestUrl: 'uploadTestUrl',
+  versionFormalUrl: 'versionFormalUrl',
+  versionTestUrl: 'versionTestUrl',
   pro: 'pro'
 }
 
@@ -249,26 +252,32 @@ const useLocalConfig = defineStore('localConfig', () => {
 
   // excel 
   const { refV: excelColors, update: updateExcelColors } = makeScope({
-    approval_number: {color: '#5B9BD5'},
-    account_id: {color: '#FFC000'},
-    receiving_account: {color: '#92D050'},
-    transaction_number: {color: '#8497B0'},
-    note: {color: '#F4B084'},
-    currency: {color: 'red'},
-    origin_total_amount: {color: 'blue'}
+    approval_number: { color: '#5B9BD5' },
+    account_id: { color: '#FFC000' },
+    receiving_account: { color: '#92D050' },
+    transaction_number: { color: '#8497B0' },
+    note: { color: '#F4B084' },
+    currency: { color: 'red' },
+    origin_total_amount: { color: 'blue' },
+    normal: { color: 'black' }
   }, async () => {
-    const r = await getConfig(Keys.excelColors)
+    const r = await getConfig(Keys.excelColors, undefined)
     console.log('fetch excel ', r);
     return r
   }, Keys.excelColors)
 
+  // 布局
+  const { refV: layout, update: updateLayout } = makeScope(false, async () => {
+    return await getConfig(Keys.layout)
+  }, Keys.layout, { autoSave: true })
+
   // 自动点单确认
-  const { refV: autoConfirm, update: updateAutoConfirm } = makeScope(true, async () => {
+  const { refV: autoConfirm, update: updateAutoConfirm } = makeScope(false, async () => {
     return await getConfig(Keys.autoConfirm)
   }, Keys.autoConfirm)
 
   // 自动点单关闭
-  const { refV: autoClick, update: updateAutoClick } = makeScope(false, async () => {
+  const { refV: autoClick, update: updateAutoClick } = makeScope(true, async () => {
     return await getConfig(Keys.autoClick)
   }, Keys.autoClick)
 
@@ -288,9 +297,19 @@ const useLocalConfig = defineStore('localConfig', () => {
   }, Globals.uploadFormalUrl, { debounced: true })
 
   // 图片上传测试服
-  const { refV: uploadTestUrl, update: updateUploadTest } = makeGlobal('http://192.168.0.10/index.php', async () => {
+  const { refV: uploadTestUrl, update: updateUploadTest } = makeGlobal('http://bduploadtest.baizhoucn.com/index.php', async () => {
     return await getGlobalConfig(Globals.uploadTestUrl)
   }, Globals.uploadTestUrl, { debounced: true })
+
+  // 更新正式服
+  const { refV: versionFormalUrl, update: updateVersion } = makeGlobal('https://bd.baizhoucn.com/upload', async () => {
+    return await getGlobalConfig(Globals.versionFormalUrl)
+  }, Globals.versionFormalUrl, { debounced: true, autoSave: true })
+
+  //更新测试服
+  const { refV: versionTestUrl, update: updateTestVersion } = makeGlobal('http://192.168.0.10:20010/upload', async () => {
+    return await getGlobalConfig(Globals.versionTestUrl)
+  }, Globals.versionTestUrl, { debounced: true, autoSave: true })
 
   const { refV: mode, update: updateMode } = makeGlobal(true, async () => {
     return await getGlobalConfig(Globals.pro)
@@ -336,6 +355,12 @@ const useLocalConfig = defineStore('localConfig', () => {
     currentUserName,
     currentUserPasswd,
     currentUserRemeber,
+
+    layout,
+    updateLayout,
+
+    versionFormalUrl,
+    versionTestUrl,
 
     excelColors,
     updateExcelColors,

@@ -291,26 +291,6 @@ const onSubmit = () => {
     })
 }
 
-// 截图
-// electron.onCapture(async (src) => {
-//     if (form.mode == 'add') {
-//         form.post.attachment_list.push({
-//             url: src
-//         })
-//     } else {
-//         form.editPost.attachment_list.push({
-//             url: src
-//         })
-//     }
-
-// })
-
-// const crop = () => {
-//     electron.capture().catch(err => {
-//         logger.error('capture fail', err)
-//     })
-// }
-
 const crop = setUpCapture(src => {
     if (form.mode == 'add') {
         form.post.attachment_list.push({

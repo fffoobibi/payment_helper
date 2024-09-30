@@ -1,6 +1,5 @@
-import { computed, ref, watch, watchEffect } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { get } from 'lodash'
 
 // 用户信息
 const useUserStore = defineStore('user', () => {
@@ -41,24 +40,35 @@ const useUserStore = defineStore('user', () => {
 // 银行账户下拉列表
 const useAccountStore = defineStore('accounts', () => {
   const accountObject = ref({})
+  const accountLabel = ref({})
   const accounts = ref([])
 
   const payouts = ref([])  //科目支出
   const incomes = ref([])  //科目收入
   const currencies = ref([]) // 币种列表
+  const currencyCodes = computed(() => {
+    return currencies.value.map(v => v.code)
+  })
 
   const setAccounts = (data) => {
     accounts.value = data
     const obj = {}
+    const labels = {}
     data.forEach(element => {
       obj[element.id] = element
+      labels[element.account_name] = element.id
     })
     accountObject.value = obj
+    accountLabel.value = labels
     localStorage.setItem('accounts', JSON.stringify(data))
   }
 
   const getAccountInfo = accountId => {
     return accountObject.value[accountId]
+  }
+
+  const getAccountId = accountName => {
+    return accountLabel.value[accountName] ?? null
   }
 
   const setPayouts = data => {
@@ -84,7 +94,7 @@ const useAccountStore = defineStore('accounts', () => {
     return accounts
   }
 
-  return { accounts, payouts, incomes, currencies, setAccounts, getAccountInfo, setPayouts, setInComes, setCurrencies, getAccounts }
+  return { accounts, payouts, incomes, currencies, setAccounts, getAccountInfo, getAccountId, setPayouts, setInComes, setCurrencies, getAccounts, currencyCodes }
 
 })
 
@@ -169,13 +179,28 @@ const useUpdateStore = defineStore('updateStore', () => {
   }
 })
 
-const useWindowStore = defineStore('windowStore', () => {
+const useExcelStore = defineStore('windowStore', () => {
   const user = ref({})
   const excelFile = ref(null)
   const excelData = ref(null)
+  const excelLoading = ref(false)
+  const recvBatchExcelData = ref(null)
   return {
-    user, excelFile, excelData
+    user, excelFile, excelData, recvBatchExcelData, excelLoading
   }
+})
+
+const useScreenShortStore = defineStore('screenShortCutStore', () => {
+  const image = ref('')
+  // const flag = localStorage.getItem('global-short-cut')
+  // if (flag === null) {
+  //   electron.onShortCutCapture(async src => {
+  //     console.log('get short cut ===> ');
+  //     image.value = src
+  //   })
+  //   localStorage.setItem('global-short-cut', 'true')
+  // }
+  return { image }
 })
 
 export {
@@ -184,5 +209,6 @@ export {
   useAirwallexStore,
   useLogStore,
   useUpdateStore,
-  useWindowStore
+  useExcelStore,
+  useScreenShortStore
 }
