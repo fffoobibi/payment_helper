@@ -602,7 +602,7 @@ const crop = setUpCapture(src => {
           :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
           :total="pageInfo.totalCount" />
 
-        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" @closed="handleClose"
+        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" destroy-on-close :close-on-click-modal="false"
           ref="drawRef">
           <template #default>
             <el-form :model="form" label-width="auto" style="width:100%" ref="formRef" :rules="formRules">
@@ -726,7 +726,7 @@ const crop = setUpCapture(src => {
           </template>
         </el-drawer>
 
-        <el-dialog v-model="form.noteShow" title="备注修改" width="500" :before-close="handleClose">
+        <el-dialog v-model="form.noteShow" title="备注修改" width="500" destroy-on-close :close-on-click-modal="false">
           <el-input type="textarea" v-model="form.notePost.note"></el-input>
           <template #footer>
             <div class="dialog-footer">
@@ -739,7 +739,7 @@ const crop = setUpCapture(src => {
         </el-dialog>
 
 
-        <el-dialog v-model="form.cancelShow" title="撤销" width="500" :before-close="handleClose" destroy-on-close>
+        <el-dialog v-model="form.cancelShow" title="撤销" width="500"  destroy-on-close :close-on-click-modal="false">
           <span>撤销修改审核么</span>
           <template #footer>
             <div class="dialog-footer">
@@ -751,7 +751,7 @@ const crop = setUpCapture(src => {
           </template>
         </el-dialog>
 
-        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose" destroy-on-close>
+        <el-dialog v-model="form.auditShow" title="审核" width="500" destroy-on-close :close-on-click-modal="false">
           <p>修改人: {{ form.auditPost.applicant }}</p>
           <p>提交时间: {{ timestampToFormattedString(form.auditPost.application_time) }}</p>
           <el-form-item label="修改原因: ">

@@ -7,6 +7,7 @@ import { useClient } from "@/utils/client"
 import { useExcelStore } from "@/stores/index"
 import { useLocalConfig } from "@/stores/config"
 import { toRaw } from "vue"
+import { getExcelColumnLetter } from "../utils/tools";
 const { height } = useClient()
 const cfgStore = useLocalConfig()
 Spreadsheet.locale("zh-cn", zhCN);
@@ -18,19 +19,19 @@ let xs
 const ws = useExcelStore()
 const toolBar = ref(null)
 const sheetContainer = ref(null)
-// const currentOffSet = ref([0, 0])
-// const currentRange = ref(
-//     {
-//         eci: 0,
-//         eri: 0,
-//         sci: 0,
-//         sri: 0,
-//         w: 0,
-//         h: 0
-//     })
+const currentOffSet = ref([0, 0])
+const currentRange = ref(
+    {
+        eci: 0,
+        eri: 0,
+        sci: 0,
+        sri: 0,
+        w: 0,
+        h: 0
+    })
 
-const currentOffSet = ref(null)
-const currentRange = ref(null)
+// const currentOffSet = ref(null)
+// const currentRange = ref(null)
 
 const menuRef = ref(null)
 const isPaste = ref(false)
@@ -205,55 +206,31 @@ onUnmounted(() => {
     window.removeEventListener('paste', onPaste)
 })
 
-
-
+const convs = {
+    'approval_number': '钉钉编号',
+    'account_id': '银行账号',
+    'receiving_account': '收款账号',
+    'transaction_number': '交易流水号',
+    'note': '备注',
+    'currency': '币种',
+    'origin_total_amount': '金额'
+}
 const menuItems = computed(() => {
-    return [
-        {
-            label: '设置该列为钉钉编号',
-            color: '#5B9BD5',
-            name: "钉钉编号",
-            id: 'approval_number'
-        },
-        {
-            label: '设置该列为银行账号',
-            color: '#FFC000',
-            name: "银行账号",
-            id: 'account_id'
-        },
-        {
-            label: '设置该列为收款账号',
-            color: '#92D050',
-            name: "收款账号",
-            id: 'receiving_account'
+    return Object.keys(cfgStore.excelColors).map(k => {
+        const v = cfgStore.excelColors[k]
+        if (k === 'normal') return null
+        const ret = {
+            label: "设置该列为" + convs[k],
+            color: v.color,
+            name: convs[k],
+            id: k
+        }
+        if (v.col !== undefined) {
+            ret.name += " " + getExcelColumnLetter(v.col + 1)
+        }
+        return ret
+    }).filter(v => v)
 
-        },
-        {
-            label: '设置该列为交易流水号',
-            color: '#8497B0',
-            name: "交易流水号",
-            id: 'transaction_number'
-        },
-        {
-            label: '设置该列为备注',
-            color: '#F4B084',
-            name: "备注",
-            id: 'note'
-
-        },
-        {
-            label: '设置该列为币种',
-            color: 'red',
-            name: "币种",
-            id: 'currency'
-        },
-        {
-            label: '设置该列为金额',
-            color: 'blue',
-            name: "金额",
-            id: 'origin_total_amount'
-        },
-    ]
 })
 
 const menuItemClick = (item) => {
@@ -286,7 +263,7 @@ const showPolicy = (x, y, dx, dy, trigger) => {
 <template>
     <div class="main">
         <div style="height: 30px; width: 100%;">
-            <Toolbar title="批量打款" :close-type="5" :only-close="true" ref="toolBar">
+            <Toolbar title="批量打款" :close-type="5" :only-close="true" ref="toolBar" mode="custom">
                 <!-- <template #options>
                     <el-space>
                         <el-button link @click="getData">导出</el-button>

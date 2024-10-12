@@ -1,18 +1,19 @@
 <script setup>
-import { reactive, ref, watch, onActivated } from 'vue'
-import { useAccountStore, useUserStore } from "@/stores"
-import { timestampToFormattedString, numberFmt, subNumbers, formatDate } from "@/utils/format"
+import { reactive, ref, watch, onActivated, computed } from 'vue'
+import { useUserStore, useAccountStore } from "@/stores"
+import { timestampToFormattedString, numberFmt, formatDate } from "@/utils/format"
 import { useClient } from "@/utils/client"
-import { setUpCapture, setUpExportToExcel } from "@/utils/tools"
+import { setUpExportToExcel, useFutureControl } from "@/utils/tools"
 import { computedAsync } from "@vueuse/core"
 import api from "@/api"
-import { computed } from 'vue'
 import message from '@/utils/message'
 import CreditCardWriteOff from './CreditCardWriteOff.vue'
+import CreditCardReimbursement from './CreditCardReimbursement.vue'
 const store = useUserStore()
 const { height, width } = useClient()
 
-
+const features = useFutureControl()
+const bank = useAccountStore()
 const accountsLoading = ref(true)
 const accounts = computedAsync(async () => {
     try {
@@ -27,7 +28,24 @@ const accounts = computedAsync(async () => {
     }
 }, [], accountsLoading)
 
-const selectable = row => row.is_review == 0
+const mode = computed(() => {
+    if (store.canCreditCardReview) {
+        return 0
+    }
+    if (store.canCreditCardCheckReview) {
+        return 1
+    }
+
+}) // 0 核销 1 复核
+
+const selectable = row => {
+    if (mode.value == 0) {
+        return row.is_review == 0
+    }
+    else if (mode.value == 1) {
+        return row.is_review == 1
+    }
+}
 const checkRows = ref([])
 const dialog = reactive({
     visible: false,
@@ -139,7 +157,7 @@ const tableHeight = computed(
             width.value + 1
             let th
             if (h > 60) {
-                th = 270
+                th = 220
             } else {
                 th = 220
             }
@@ -156,6 +174,13 @@ const tableHeight = computed(
 onActivated(() => {
     tableHeight.value = 1
 })
+
+// onMounted(async () => {
+//     await nextTick(() => {
+//         const h = queryFormRef.value.$el?.clientHeight || 0
+//         console.log('height ', h, queryFormRef.value.$el);
+//     })
+// })
 
 const onWriteOff = () => {
     if (checkRows.value.length == 0) {
@@ -174,122 +199,178 @@ const onClose = () => {
     dialog.visible = false
     onSearch()
 }
+const tabs = reactive({
+    currentTab: '信用卡管理'
+})
+
+const amountFormatter = value => `${value}`.replace(/[^\-?\d.]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+const amountParser = value => value.replace(/[^\-?\d.]/g, '')
+const formAddShow = ref(false)
+const formAdd = reactive({
+    currency: '',
+    account_id: null,
+    origin_total_amount: '',
+    note: ''
+})
 </script>
 
 <template>
     <Layout>
         <template #layout-main-inner>
-            <Header>
-                <template #title>
-                    <h4>信用卡管理
-                    </h4>
-                </template>
-
-                <template #option>
-                    <el-space>
-                        <span class="red" style="font-size: 10pt;padding-left: 10px;margin-right: 10px;"> *注:
-                            每月5号之前核销上月消费金额</span>
-                    </el-space>
-                </template>
-            </Header>
-
-            <div class="pannel">
-                <el-form :inline="true" :model="queryForm.search" class="query-form-inline" ref="queryFormRef">
-                    <el-form-item label="账户" v-loading="accountsLoading">
-                        <el-select v-model="queryForm.search.account_id" placeholder="请选择" default-first-option>
-                            <el-option v-for="(item, index) in accounts" :key="index" :label="item.account_name" :value="item.account_id"></el-option>
-                        </el-select>
-                    </el-form-item>
-                    <el-form-item>
-                        <el-date-picker v-model="queryForm.search.year_month" type="month"
-                            placeholder="选择月份" />
-                    </el-form-item>
-                    <el-form-item>
-                        <el-input v-model="queryForm.search.content" placeholder="钉钉编号/采购单号" style="width: 180px" clearable></el-input>
-                    </el-form-item>
-                    <el-form-item>
-                        <el-select v-model="queryForm.search.is_review" style="width: 120px">
-                            <el-option label="全部" value=" "></el-option>
-                            <el-option label="待核销" value="0"></el-option>
-                            <el-option label="已核销" value="1"></el-option>
-                        </el-select>
-                    </el-form-item>
-                    <el-form-item>
-                        <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
-                        <el-button type="success" :loading="exportLoading" @click="exportToExcel">
-                            <el-icon class="iconfont icon-Excel" :size="17"></el-icon>导出
-                        </el-button>
-                        <el-button type="warning" @click="onWriteOff">核销</el-button>
-                    </el-form-item>
-                    <el-form-item>
-                        <div v-show="!queryForm.searching">
-                            <span
-                                style="background-color: #6DBEAD; color: white; padding: 4px 4px; margin-right: 10px; font-size: 10pt">待核销总额
-                                {{ numberFmt(queryForm.statistics_pending) + " " + queryForm.statistics_currency
-                                }}</span>
-                            <span
-                                style="background-color: #9BA9E6; color: white; padding: 4px 4px; font-size: 10pt">核销总额
-                                {{ numberFmt(queryForm.statistics_settled) + " " + queryForm.statistics_currency
-                                }}</span>
-                        </div>
-
-                    </el-form-item>
-                </el-form>
-
-                <el-table :data="queryForm.tableData" :height="tableHeight" highlight-current-row
-                    :show-header="queryForm.page.totalCount > 0" @selection-change="onTableCheck" row-key="id">
-                    <template #empty>
-                        <el-empty :image-size="200" />
-                    </template>
-                    <el-table-column type="selection" :selectable="selectable" width="40" />
-                    <el-table-column label="摘要信息" width="240">
-                        <template #default="{ row }">
-                            <div>
-                                <div>钉钉编号： <span class="user-black">{{ row.approval_number }}</span></div>
-                                <div>采购单号： <span class="user-black">{{ row.purchase_number }}</span></div>
-                                <div>创建人：<span class="user-black">{{ row.creator + " - " + row.department_name }}</span>
+            <el-tabs v-model="tabs.currentTab" type="border-card" class="bank-tabs">
+                <el-tab-pane label="信用卡管理" name="信用卡管理">
+                    <div class="pannel">
+                        <el-form :inline="true" :model="queryForm.search" class="query-form-inline" ref="queryFormRef">
+                            <el-form-item label="账户" v-loading="accountsLoading">
+                                <el-select v-model="queryForm.search.account_id" placeholder="请选择" default-first-option>
+                                    <el-option v-for="(item, index) in accounts" :key="index" :label="item.account_name"
+                                        :value="item.account_id"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-date-picker v-model="queryForm.search.year_month" type="month" placeholder="选择月份" />
+                            </el-form-item>
+                            <el-form-item>
+                                <el-input v-model="queryForm.search.content" placeholder="钉钉编号/采购单号"
+                                    style="width: 180px" clearable></el-input>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-select v-model="queryForm.search.is_review" style="width: 120px">
+                                    <el-option label="全部" value=" "></el-option>
+                                    <el-option label="待核销" value="0"></el-option>
+                                    <el-option label="已核销" value="1"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
+                                <el-button type="primary" @click="formAddShow = true">添加</el-button>
+                                <el-button type="warning" @click="onWriteOff"
+                                    v-if="!store.canCreditCardReview">核销</el-button>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button type="danger" @click="onWriteOff"
+                                    v-if="!store.canCreditCardCheckReview">复核</el-button>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button type="success" :loading="exportLoading" @click="exportToExcel">
+                                    导出
+                                </el-button>
+                            </el-form-item>
+                            <el-form-item>
+                                <div v-show="!queryForm.searching">
+                                    <span
+                                        style="background-color: #6DBEAD; color: white; padding: 4px 4px; margin-right: 10px; font-size: 10pt">待核销总额
+                                        {{ numberFmt(queryForm.statistics_pending) + " " + queryForm.statistics_currency
+                                        }}</span>
+                                    <span
+                                        style="background-color: #9BA9E6; color: white; padding: 4px 4px; font-size: 10pt">核销总额
+                                        {{ numberFmt(queryForm.statistics_settled) + " " + queryForm.statistics_currency
+                                        }}</span>
                                 </div>
-                            </div>
-                        </template>
-                    </el-table-column>
-                    <el-table-column label="金额">
-                        <template #default="{ row }">
-                            <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)
-                                    }}</span><span>{{ " " +
-                    row.currency }}</span></div>
-                            <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount) }}</span><span>{{
-                    " " + "CNY" }}</span></div>
-                            <div>状态：<span :class="['user-black', row.is_review == 1 ? 'green' : 'red']">{{ row.is_review
+
+                            </el-form-item>
+                        </el-form>
+
+                        <el-table :data="queryForm.tableData" :height="tableHeight" highlight-current-row
+                            :show-header="queryForm.page.totalCount > 0" @selection-change="onTableCheck" row-key="id">
+                            <template #empty>
+                                <el-empty :image-size="200" />
+                            </template>
+                            <el-table-column type="selection" :selectable="selectable" width="40" />
+                            <el-table-column label="摘要信息" width="240">
+                                <template #default="{ row }">
+                                    <div>
+                                        <div>钉钉编号： <span class="user-black">{{ row.approval_number }}</span></div>
+                                        <div>采购单号： <span class="user-black">{{ row.purchase_number }}</span></div>
+                                        <div>创建人：<span class="user-black">{{ row.creator + " - " + row.department_name
+                                                }}</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="金额">
+                                <template #default="{ row }">
+                                    <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)
+                                            }}</span><span>{{ " " +
+                row.currency }}</span></div>
+                                    <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)
+                                            }}</span><span>{{
+                " " + "CNY" }}</span></div>
+                                    <div>状态：<span :class="['user-black', row.is_review == 1 ? 'green' : 'red']">{{
+                row.is_review
                     == 1 ?
                     '已核销' : '未核销' }}</span></div>
-                        </template>
-                    </el-table-column>
-                    <el-table-column label="时间">
-                        <template #default="{ row }">
-                            <div>创建时间：<span class="user-black">{{ timestampToFormattedString(row.create_time) }}</span>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="时间">
+                                <template #default="{ row }">
+                                    <div>创建时间：<span class="user-black">{{ timestampToFormattedString(row.create_time)
+                                            }}</span>
+                                    </div>
+                                    <div v-if="row.is_review == 1">核销时间：<span class="user-black">{{
+                timestampToFormattedString(row.update_time) }}</span></div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="备注">
+                                <template #default="{ row }">
+                                    <div class="user-black">{{ row.note }}</div>
+                                </template>
+                            </el-table-column>
+
+                        </el-table>
+
+                        <el-pagination size="default" style="padding-top: 5px; position: fixed;bottom: 20px"
+                            v-show="queryForm.page.totalCount > 0" v-model:current-page="queryForm.page.currentPage"
+                            v-model:page-size="queryForm.page.pageSize" background="true"
+                            :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
+                            :total="queryForm.page.totalCount" />
+                    </div>
+
+                    <el-dialog width="400px" v-model="formAddShow" destroy-on-close title="新增报销" :close-on-click-modal="false">
+                        <el-form label-width="auto">
+                            <el-form-item label="账户">
+                                <el-select v-model="formAdd.account_id" placeholder="请选择" default-first-option>
+                                    <el-option v-for="(item, index) in accounts" :key="index" :label="item.account_name"
+                                        :value="item.account_id"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="币种">
+                                <el-select v-model="formAdd.currency" placeholder="币种" filterable
+                                    :validate-event="false">
+                                    <el-option label="全部" value="" />
+                                    <el-option v-for="item in bank.currencies" :value="item.code" />
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="金额">
+                                <el-input v-model="formAdd.origin_total_amount" placeholder="打款金额"
+                                    :formatter="amountFormatter" :parser="amountParser" clearable />
+                            </el-form-item>
+                            <el-form-item label="备注">
+                                <el-input v-model="formAdd.note" type="textarea" spellcheck="false" maxlength="100"
+                                    show-word-limit />
+
+                            </el-form-item>
+                        </el-form>
+                        <template #footer>
+                            <div class="dialog-footer">
+                                <el-button @click="formAddShow = false">关闭</el-button>
+                                <el-button type="primary" @click="formAddShow = false">
+                                    确认
+                                </el-button>
                             </div>
-                            <div v-if="row.is_review == 1">核销时间：<span class="user-black">{{
-                    timestampToFormattedString(row.update_time) }}</span></div>
                         </template>
-                    </el-table-column>
-                    <el-table-column label="备注">
-                        <template #default="{ row }">
-                            <div class="user-black">{{ row.note }}</div>
-                        </template>
-                    </el-table-column>
+                    </el-dialog>
 
-                </el-table>
+                </el-tab-pane>
 
-                <el-pagination size="default" style="padding-top: 5px; position: fixed;bottom: 20px"
-                    v-show="queryForm.page.totalCount > 0" v-model:current-page="queryForm.page.currentPage"
-                    v-model:page-size="queryForm.page.pageSize" background="true" :page-sizes="[10, 20, 50, 100]"
-                    layout="total, sizes, prev, pager, next, jumper" :total="queryForm.page.totalCount" />
-            </div>
-
+                <el-tab-pane label="信用卡报销管理" name="信用卡报销管理" v-if="features.gt('2.0.1')">
+                    <CreditCardReimbursement></CreditCardReimbursement>
+                </el-tab-pane>
+            </el-tabs>
         </template>
     </Layout>
 
-    <el-dialog title="信用卡核销明细" v-model="dialog.visible" width="90%" destroy-on-close>
+    <el-dialog title="信用卡核销明细" v-model="dialog.visible" width="90%" destroy-on-close :close-on-click-modal="false">
         <CreditCardWriteOff :rows="checkRows" @close="onClose" />
     </el-dialog>
 
@@ -306,12 +387,15 @@ h4 {
 .pannel {
     padding: 10px;
 }
+
 .el-form--inline .el-form-item {
     margin: 0 8px 8px 0;
 }
+
 :deep(.el-date-editor) {
     width: 120px;
 }
+
 .el-form--inline .el-select {
     width: 150px;
 }
@@ -352,7 +436,83 @@ h4 {
     background-size: 50px 50px;
 }
 
+/* tab 设置 */
 :deep(.el-input-number .el-input__inner) {
     text-align: left;
+}
+
+:deep(.el-tabs__nav-scroll) {
+    height: 36px;
+    background-color: white !important;
+    border: none !important;
+    border-bottom: 1px solid #eee !important;
+}
+
+:deep(.el-tabs__header),
+:deep(.el-tabs__nav),
+:deep(.el-tabs__item) {
+    height: 36px;
+    border: none !important
+}
+
+:deep(.el-tabs__nav .el-tabs__item) {
+    height: 36px !important;
+    transition: none !important;
+}
+
+:deep(.el-tabs__nav .el-tabs__item:hover) {
+    color: black !important;
+}
+
+:deep(.el-tabs__nav .el-tabs__item:first-child .el-icon.is-icon-close) {
+    display: none;
+}
+
+/* :deep(.el-tabs__nav .el-tabs__item:not(:first-child) .el-icon.is-icon-close ) {
+  color: transparent;
+}
+:deep(.el-tabs__nav .el-tabs__item:not(:first-child) .el-icon.is-icon-close:hover ) {
+  background-color: transparent!important;
+  color: transparent;
+} */
+
+:deep(.el-tabs__nav .el-tabs__item:first-child) {
+    padding: 0px;
+    margin-left: 10px;
+    margin-top: -3px;
+    margin-right: 0px !important;
+    font-size: 15px;
+}
+
+:deep(.el-tabs__nav .el-tabs__item:not(:first-child)) {
+    padding: 0px !important;
+    margin: 0px;
+    padding-right: 10px;
+    margin-left: 20px;
+    margin-top: -3px;
+    font-size: 15px;
+}
+
+
+
+:deep(.el-tabs__nav .el-tabs__item.is-active:not(:first-child)) {
+    padding: 0px !important;
+    margin: 0px;
+    padding-right: 10px;
+    margin-left: 20px;
+    margin-top: -3px;
+    font-size: 15px;
+}
+
+:deep(.el-tabs__nav) {
+    border: none !important;
+}
+
+:deep(.el-tabs__content),
+:deep(.el-tabs) {
+    border: none !important;
+    padding: 0px !important;
+    margin: 0px !important;
+    background-color: transparent !important;
 }
 </style>

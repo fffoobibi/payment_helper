@@ -7,10 +7,10 @@ import BankAccountRecord from "@/views/BankAccountRecord.vue"
 import { reactive, ref, watch, onMounted } from 'vue'
 import { storeToRefs } from "pinia"
 import { useUserStore } from "@/stores"
-import { timestampToFormattedString, numberFmt } from "@/utils/format"
+import { timestampToFormattedString, numberFmt, formatDate } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { useLocalConfig } from "@/stores/config"
-import { setUpCapture } from "@/utils/tools"
+import { setUpCapture, setUpExportToExcel } from "@/utils/tools"
 import api from "@/api"
 import { computed } from 'vue'
 import message from '@/utils/message'
@@ -576,6 +576,44 @@ const crop = setUpCapture(src => {
   })
 })
 
+const shortcuts = [
+  {
+    text: '近1周',
+    value: () => {
+      const end = new Date()
+      const start = new Date()
+      start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
+      return [start, end]
+    },
+  },
+  {
+    text: '近1月',
+    value: () => {
+      const end = new Date()
+      const start = new Date()
+      start.setTime(start.getTime() - 3600 * 1000 * 24 * 30)
+      return [start, end]
+    },
+  }
+]
+const detailsExportShow = ref(false)
+const detailsLoading = ref(false)
+const exportDetails = () => {
+  detailsExportShow.value = true
+  exportForm.date = shortcuts[1].value()
+}
+const saveAsExcel = setUpExportToExcel(() => {
+  detailsLoading.value = false
+}, () => {
+  detailsExportShow.value = false
+})
+const exportRef = ref(null)
+const exportForm = reactive({
+  date: null,
+  is_business_system: "1"
+})
+
+
 </script>
 
 <template>
@@ -632,6 +670,8 @@ const crop = setUpCapture(src => {
                       </template>
                     </el-tree>
                   </el-popover>
+                  <el-button type="success" @click="exportDetails" v-if="store.canExportDetails">打款明细导出</el-button>
+
                 </el-space>
 
               </el-form-item>
@@ -706,7 +746,7 @@ const crop = setUpCapture(src => {
               background="true" :page-sizes="[10, 50, 100, 300]" layout="total, sizes, prev, pager, next, jumper"
               :total="queryForm.page.totalCount" />
 
-            <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500" @opened="menuInputRef.focus()">
+            <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500" @opened="menuInputRef.focus()" :close-on-click-modal="false">
               <template #footer>
                 <el-form-item label="目录名称">
                   <el-input v-model.trim="form.menuData.menuDir" clearable ref="menuInputRef"></el-input>
@@ -720,6 +760,79 @@ const crop = setUpCapture(src => {
                     确认
                   </el-button>
                 </div>
+              </template>
+            </el-dialog>
+
+            <el-dialog v-model="detailsExportShow" title="打款明细导出" width="400" destroy-on-close :close-on-click-modal="false">
+
+              <el-form label-width="auto" :model="exportForm" ref="exportRef">
+                <el-form-item label="日期" required prop="date" :rules="[{ message: '请选择截止时间', required: true, }]">
+                  <el-date-picker v-model="exportForm.date" type="daterange" range-separator="-" start-placeholder="开始"
+                   :shortcuts="shortcuts" end-placeholder="结束" />
+                </el-form-item>
+                <el-form-item label="类型" required>
+                  <el-select v-model="exportForm.is_business_system" disabled>
+                    <el-option label="系统业务打款明细" value="1"></el-option>
+                    <el-option label="打款助手收支明细" value="0"></el-option>
+                  </el-select>
+
+                </el-form-item>
+
+              </el-form>
+
+              <template #footer>
+                <el-button @click="detailsExportShow = false">关闭</el-button>
+                <el-button type="primary" :loading="detailsLoading" @click="() => {
+        exportRef.validate(async valid => {
+          if (valid) {
+            try {
+              detailsLoading = true
+              const resp = await api.getAssistantDetails({
+                start_time: formatDate(exportForm.date[0], { start: true }),
+                end_time: formatDate(exportForm.date[1], { end: true }),
+                is_business_system: exportForm.is_business_system
+              })
+              const d = resp.list.map(v => {
+                return {
+                  '凭证编号': v.voucher_id,
+                  '打款编号': v.payment_id,
+                  '类型': v.type_name,
+                  '类型备注': v.type_name_desc,
+                  '钉钉编号/系统编号': v.sn,
+                  '打款创建时间': formatDate(v.create_time),
+                  '审批完成时间': formatDate(v.dingtalk_create_time),
+                  '打款员': v.creator,
+                  '打款员部门': v.department_name,
+                  '打款金额': v.origin_amount,
+                  '打款币种': v.origin_currency,
+                  '打款申请人': v.payment_creator,
+                  '打款申请人部门': v.payment_department_name,
+                  '打款银行账号': v.account_name,
+                  '打款账号类型': v.attribute_name,
+                  '收款人账号': v.receiving_account,
+                  '银行交易流水号': v.transaction_number,
+                  '附加交易流水号': v.transaction_number_airwallex,
+                  '附加交易状态': v.airwallex_status,
+                  '打款员备注': v.note,
+                  '系统来源': v.system_code,
+                  '采购单号/流水号': v.purchase_number,
+                  '科目': v.account_titles,
+                  '申请人备注': v.payment_note
+                }
+              })
+              saveAsExcel(d, '系统业务打款明细_' + formatDate(new Date(), { sepLast: '-' }))
+
+            } catch (err) {
+              detailsLoading = false
+              console.log('err ==> ', err);
+            }
+          }
+        })
+        console.log(exportForm)
+
+      }">
+                  确认
+                </el-button>
               </template>
             </el-dialog>
 
@@ -739,7 +852,7 @@ const crop = setUpCapture(src => {
             :type-name="form.history.typeName" :available="form.history.available" :balance="form.history.balance" />
         </el-tab-pane>
       </el-tabs>
-      <el-drawer destroy-on-close v-model="form.panzhangShow" size="50%" :title="form.pangZhangTitle">
+      <el-drawer destroy-on-close v-model="form.panzhangShow" size="50%" :title="form.pangZhangTitle" :close-on-click-modal="false">
         <el-form :model="form.panzhangPost" label-width="auto" :rules="rules" ref="formRef">
           <p style="font-size: 11pt; color:blue; margin-bottom: 10px; margin-top: -20px;">
             {{ form.panzhangState.account_name }}

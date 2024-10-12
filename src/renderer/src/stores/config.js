@@ -15,6 +15,7 @@ const Keys = {
   accountIndexs: 'accountIndexs',
   accountMenus: 'accountMenus',
   layout: 'layout',
+  closeMode: 'closeMode',
 
   formalUrl: 'formalUrl',
   testUrl: 'testUrl',
@@ -23,6 +24,8 @@ const Keys = {
   excelColors: 'excelColors',
   uploadFormalUrl: 'uploadFormalUrl',
   uploadTestUrl: 'uploadTestUrl',
+  histories: 'histories',
+  records: 'records'
 }
 
 const Globals = {
@@ -262,14 +265,46 @@ const useLocalConfig = defineStore('localConfig', () => {
     normal: { color: 'black' }
   }, async () => {
     const r = await getConfig(Keys.excelColors, undefined)
-    console.log('fetch excel ', r);
     return r
   }, Keys.excelColors)
+
+  // 银行账号历史
+  const { refV: histories, update: updateHistories } = makeScope([
+    { value: true, label: '序号' },
+    { value: true, label: '摘要信息' },
+    { value: true, label: '创建' },
+    { value: true, label: '初期' },
+    { value: true, label: '本期' },
+    { value: true, label: '期末' },
+    { value: true, label: '凭证号' },
+    { value: true, label: '操作' },
+  ], async () => {
+    return await getConfig(Keys.histories, undefined)
+  }, Keys.histories)
+
+  // 银行账号日志
+  const { refV: records, update: updateRecords } = makeScope([
+    { value: true, label: '序号' },
+    { value: true, label: '摘要信息' },
+    { value: true, label: '创建' },
+    { value: true, label: '初期' },
+    { value: true, label: '本期' },
+    { value: true, label: '期末' },
+    { value: true, label: '凭证号' },
+    { value: true, label: '操作' },
+  ], async () => {
+    return await getConfig(Keys.records, undefined)
+  }, Keys.records)
 
   // 布局
   const { refV: layout, update: updateLayout } = makeScope(false, async () => {
     return await getConfig(Keys.layout)
   }, Keys.layout, { autoSave: true })
+
+  // 关闭模式 0关闭 1隐藏
+  const { refV: closeMode, update: updateCloseMode } = makeScope(0, async () => {
+    return await getConfig(Keys.closeMode)
+  }, Keys.closeMode, { autoSave: true })
 
   // 自动点单确认
   const { refV: autoConfirm, update: updateAutoConfirm } = makeScope(false, async () => {
@@ -314,8 +349,6 @@ const useLocalConfig = defineStore('localConfig', () => {
   const { refV: mode, update: updateMode } = makeGlobal(true, async () => {
     return await getGlobalConfig(Globals.pro)
   }, Globals.pro, { autoSave: true })
-
-
 
 
   // prod
@@ -382,7 +415,16 @@ const useLocalConfig = defineStore('localConfig', () => {
     updateUploadTest,
 
     mode,
-    updateMode
+    updateMode,
+
+    histories,
+    updateHistories,
+
+    records,
+    updateRecords,
+
+    closeMode,
+    updateCloseMode
 
   }
 })

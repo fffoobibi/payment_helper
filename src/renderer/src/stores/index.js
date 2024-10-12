@@ -34,7 +34,26 @@ const useUserStore = defineStore('user', () => {
     return user.value.auth_list.includes('/payment_assistant_note_modify')
   })
 
-  return { user, setUser, canAudit, canModify, canCancel, canDelete, canModifyNote, showUpdate, logOut }
+  // 打款明细导出权限
+  const canExportDetails = computed(() => {
+    return user.value.auth_list.includes('/payment_assistant_detail')
+  })
+
+  //信用卡核销权限
+  const canCreditCardReview = computed(() => {
+    return user.value.auth_list.includes('/payment_assistant_credit_card_review')
+  })
+  
+  // 信用卡复核权限
+  const canCreditCardCheckReview = computed(() => {
+    return user.value.auth_list.includes('/payment_assistant_credit_card_check_review')
+  })
+
+  return {
+    user, setUser, canAudit, canModify, canCancel, canDelete, canModifyNote, canExportDetails, canCreditCardReview,
+    canCreditCardCheckReview,
+    showUpdate, logOut
+  }
 })
 
 // 银行账户下拉列表
@@ -203,6 +222,21 @@ const useScreenShortStore = defineStore('screenShortCutStore', () => {
   return { image }
 })
 
+const useDingdingSubmitStore = defineStore('dingdingStore', () => {
+  const approve = ref({})
+  const reset = () => {
+    approve.value = {}
+  }
+  const flag = ref(Date.now())
+
+  const change = () => {
+    flag.value = Date.now()
+  }
+  return {
+    approve, reset, change, flag
+  }
+})
+
 export {
   useUserStore,
   useAccountStore,
@@ -210,5 +244,6 @@ export {
   useLogStore,
   useUpdateStore,
   useExcelStore,
-  useScreenShortStore
+  useScreenShortStore,
+  useDingdingSubmitStore
 }

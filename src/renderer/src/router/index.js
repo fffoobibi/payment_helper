@@ -42,7 +42,7 @@ const router = createRouter({
                 {
                     path: '/payment',
                     name: 'payment',
-                    redirect: { name: 'blank' },
+                    redirect: { name: 'paymentForm' },
                     component: () => import('@/views/Payment.vue'),
                     children: [
                         {
@@ -55,6 +55,12 @@ const router = createRouter({
                             path: '/payment/:id',
                             name: 'paymentInfo',
                             component: () => import('@/views/PaymentInfo.vue')
+                        },
+                        {
+                            path: '/payment/form',
+                            name: 'paymentForm',
+                            component: ()=>import('@/views/PaymentForm.vue'),
+                            props: route => ({ approve: route.query?.approve, formData: route.query.formData })
                         }
                     ]
                 },

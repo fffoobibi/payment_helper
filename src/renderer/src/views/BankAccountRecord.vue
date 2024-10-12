@@ -9,9 +9,23 @@ import { setUpExportToExcel } from "@/utils/tools"
 import logger from "../utils/logger"
 import { viewImages } from "../utils/tools"
 import { useAccountStore } from "@/stores/index"
+import { useLocalConfig } from "../stores/config"
 const bank = useAccountStore()
-
+const cfg = useLocalConfig()
 const { height, width } = useClient()
+
+
+const tableFields = computed(() => {
+  return cfg.records
+})
+
+const tableFieldsInfo = computed(() => {
+  const rs = {}
+  cfg.records.forEach((v) => {
+    rs[v.label] = v.value
+  })
+  return rs
+})
 
 const vFocus = {
   mounted: (el) => el.querySelector('textarea')?.focus()
@@ -22,30 +36,30 @@ const props = defineProps({
 })
 const shortcuts = [
   {
-    text: '近1周',
+    text: '1周前',
     value: () => {
       const end = new Date()
       const start = new Date()
       start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
-      return [start, end]
+      return start
     },
   },
   {
-    text: '近1月',
+    text: '1月前',
     value: () => {
       const end = new Date()
       const start = new Date()
       start.setTime(start.getTime() - 3600 * 1000 * 24 * 30)
-      return [start, end]
+      return start
     },
   },
   {
-    text: '近3月',
+    text: '3月前',
     value: () => {
       const end = new Date()
       const start = new Date()
       start.setTime(start.getTime() - 3600 * 1000 * 24 * 90)
-      return [start, end]
+      return start
     },
   },
 ]
@@ -59,7 +73,8 @@ const queryForm = reactive({
   },
   search: {
     account_id: '0',
-    date: shortcuts[0].value(),    // 日期
+    start_time: formatDate(shortcuts[1].value(), {start: true}),
+    end_time: formatDate(new Date, {end: true}),
     content: '',  // 凭证号
     rank: 'DESC',  // 倒叙，顺序 ASC DESC
     voucher_no: '', // 编号
@@ -116,15 +131,11 @@ const exportData = async () => {
   try {
     exportLoading.value = true
     const post = { ...queryForm.search }
-    if (post.date) {
-      post.start_time = formatDate(post.date[0], { start: true })
-      post.end_time = formatDate(post.date[1], { end: true })
-    } if (post.account_id === '0') {
+    if (post.account_id === '0') {
       delete post.account_id
     }
     delete post.page
     delete post.limit
-    delete post.date
     const resp = await api.bank_account.exportAccountRecordHistoryAllList(post)
     const data = resp.list.map(v => {
       return {
@@ -169,10 +180,7 @@ const onSearch = async (page = null, pageSize = null) => {
         queryForm.search.limit = queryForm.page.pageSize
       }
       const post = { ...queryForm.search }
-      const a = timestampToFormattedString(post.date[0].getTime() / 1000, false, true)
-      post.start_time = a.split(' ')[0] + ' 00:00:00'
-      const b = timestampToFormattedString(post.date[1].getTime() / 1000, false, true)
-      post.end_time = b.split(' ')[0] + ' 23:59:59'
+
 
       if (post.account_id == '0') {
         post.account_id = ''
@@ -180,7 +188,6 @@ const onSearch = async (page = null, pageSize = null) => {
       if (!post.account_id) {
         delete post.account_id
       }
-      delete post.date
       const data = await api.bank_account.getAccountRecordHistoryAllList(post, processResponse)
       queryForm.tableData = data.list
       queryForm.page.totalCount = data.count
@@ -227,37 +234,67 @@ onMounted(() => {
   }
 })
 
+const rules = reactive({
+  start_time: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
+  end_time: [{ required: false, message: '请选择结束日期', trigger: 'change' }],
+})
 </script>
 
 <template>
   <div style=" width:100%;height: 100%; padding: 10px;">
-    <el-form inline :model="queryForm.search" ref="queryFormRef"
-      :rules="{ 'date': [{ required: true, message: '请选择截止日期', trigger: 'change' }] }">
+    <el-form inline :model="queryForm.search" ref="queryFormRef" :rules="rules">
       <el-form-item>
-        <el-select v-model="queryForm.search.account_id" filterable style="width: 250px">
+        <el-select v-model="queryForm.search.account_id" filterable style="width: 220px">
           <el-option label="全部" value="0"></el-option>
           <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-input placeholder="钉钉编号/收支编号" clearable style="width:200px"
+        <el-input placeholder="钉钉编号/收支编号" clearable style="width:150px"
           v-model.trim="queryForm.search.content"></el-input>
       </el-form-item>
       <el-form-item>
         <el-input placeholder="凭证号" clearable style="width:150px" v-model.trim="queryForm.search.voucher_no"></el-input>
       </el-form-item>
-      <el-form-item prop="date">
-        <el-date-picker style="width: 240px" v-model="queryForm.search.date" type="daterange" range-separator="-"
-          start-placeholder="开始" end-placeholder="结束" :shortcuts="shortcuts" />
+
+      <el-form-item  style="width: 260px; margin-right: 0px !important;">
+        <el-form-item prop="start_time" style="margin-right: 0px !important">
+          <el-date-picker style="width: 110px; margin-right:5px" v-model="queryForm.search.start_time" type="date"
+            value-format="YYYY-MM-DD 00:00:00" format="YY/MM/DD" placeholder="开始" :shortcuts="shortcuts" />
+        </el-form-item>
+        <el-form-item prop="end_time">
+          <el-date-picker style="width: 110px; margin-right: 0px;" v-model="queryForm.search.end_time" type="date"
+            value-format="YYYY-MM-DD 00:00:00" format="YY/MM/DD" placeholder="结束" :shortcuts="shortcuts" />
+        </el-form-item>
       </el-form-item>
-      <el-form-item>
+
+      <el-form-item >
         <el-button type='primary' @click="onSearch(1, null)">
           查询
         </el-button>
         <el-button type='success' @click="exportData" :loading="exportLoading">
-          <el-icon class="iconfont icon-Excel" :size="17"></el-icon>
           导出
         </el-button>
+      </el-form-item>
+      
+      <el-form-item>
+        <el-dropdown :hide-on-click="false">
+          <el-button>
+            查看列<el-icon class="el-icon--right"><arrow-down /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item v-for=" (item, index) in tableFields" :key="index">
+                <el-checkbox :checked="item.value" @change="(v) => {
+      cfg.records[index] = { label: item.label, value: v }
+      cfg.updateRecords()
+    }">
+                  {{ item.label }}
+                </el-checkbox>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </el-form-item>
     </el-form>
     <el-table row-key="id" ref="tableRef" highlight-current-row :data="queryForm.tableData" :height="tableHeight"
@@ -277,13 +314,14 @@ onMounted(() => {
       <template #empty>
         <el-empty :image-size="200" />
       </template>
-      <el-table-column label="序号" width="60">
+      <el-table-column label="序号" width="60" v-if="tableFieldsInfo['序号']">
         <template #default="scope">
           <div>{{ scope.$index + 1 + (queryForm.page.currentPage - 1) * queryForm.page.pageSize }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="摘要信息" sortable="custom" :sort-orders="['ascending', 'descending']" prop="info"
-        width="300">
+
+      <el-table-column label="摘要信息" sortable="custom" :sort-orders="['ascending', 'descending']" prop="info" width="300"
+        v-if="tableFieldsInfo['摘要信息']">
         <template #default="{ row }">
           <div>账号： <span class="user-select">{{ row.account_name }}</span></div>
           <div>编号：<span class="user-select">{{ row.sn }}</span></div>
@@ -292,39 +330,53 @@ onMounted(() => {
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="创建" :show-overflow-tooltip="{disabled: true}">
+
+      <el-table-column label="创建" :show-overflow-tooltip="{ disabled: true }" v-if="tableFieldsInfo['创建']">
         <template #default="{ row }">
           <div>类型：<span class="user-select">{{ row.type_name }}</span></div>
           <div>备注：
-            <el-tooltip hide-after="0" transition="none" v-if="row.account_record_note?.trim()?.length >= 11" :content="row.account_record_note?.trim()"
-              effect="dark" placement="right">
-              <span class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span>
+            <el-tooltip hide-after="0" transition="none" v-if="row.account_record_note?.trim()?.length >= 11"
+              :content="row.account_record_note?.trim()" effect="dark" placement="right">
+              <!-- <span class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span> -->
+              <span class="user-select">{{ (row.account_record_note?.trim()) }}</span>
             </el-tooltip>
-            <span v-else class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span>
+            <!-- <span v-else class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span> -->
+            <span v-else class="user-select">{{ (row.account_record_note?.trim()) }}</span>
           </div>
           <div>打款备注：
             <el-tooltip hide-after="0" transition="none" v-if="row.account_voucher_ext_note?.trim()?.length >= 11"
               :content="row.account_voucher_ext_note?.trim()" effect="dark" placement="right">
-              <span class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span>
+              <!-- <span class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span> -->
+              <span class="user-select">{{ (row.account_voucher_ext_note?.trim()) }}</span>
             </el-tooltip>
-            <span v-else class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span>
+            <!-- <span v-else class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span> -->
+            <span v-else class="user-select">{{ (row.account_voucher_ext_note?.trim()) }}</span>
           </div>
 
         </template>
       </el-table-column>
-      <el-table-column label="金额" width="200">
+
+      <el-table-column label="初期" v-if="tableFieldsInfo['初期']" width="90">
         <template #default="{ row }">
-          <div>初期：<span class="user-select">{{ numberFmt(row.beginning_balance) }}</span><span class="red">{{ " " +
-      row.base_currency }}</span></div>
-          <div>本期：<span class="user-select">{{ numberFmt(row.current_amount) }}</span><span class="red">{{ " " +
-      row.base_currency
-              }}</span></div>
-          <div>期末：<span class="user-select">{{ numberFmt(row.ending_balance) }}</span><span class="red">{{ " " +
-      row.base_currency
-              }}</span></div>
+          <div class="user-select">{{ numberFmt(row.beginning_balance) }}</div>
+          <div class="red">{{ " " + row.base_currency }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="凭证号" >
+
+      <el-table-column label="本期" v-if="tableFieldsInfo['本期']" width="90">
+        <template #default="{ row }">
+          <div class="user-select">{{ numberFmt(row.current_amount) }}</div>
+          <div class="red">{{ " " + row.base_currency }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="期末" v-if="tableFieldsInfo['期末']" width="90">
+        <template #default="{ row }">
+          <div class="user-select">{{ numberFmt(row.ending_balance) }}</div>
+          <div class="red">{{ " " + row.base_currency }}</div>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="凭证号" v-if="tableFieldsInfo['凭证号']">
         <template #header>
           <el-tooltip effect="dark" placement="right">
             <template #content>
@@ -350,7 +402,7 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="170">
+      <el-table-column label="操作" width="170" v-if="tableFieldsInfo['操作']">
         <template #default="{ row }">
           <el-button link type='primary' v-if="row.attachment_list?.length" @click="() => {
       viewImages(row.attachment_list.map(v => v.path), 0)
@@ -364,7 +416,8 @@ onMounted(() => {
             </template>
             <el-scrollbar :max-height="300" :height="250">
               <div style="border-bottom:1px solid lightgray;margin-bottom: 4px; padding-bottom: 4px;">
-                <p>合计： <span> {{ numberFmt(row._vo_total) }} </span><span class="red">{{ " " + row.payment_items[0].currency
+                <p>合计： <span> {{ numberFmt(row._vo_total) }} </span><span class="red">{{ " " +
+      row.payment_items[0].currency
                     }}</span></p>
               </div>
               <div v-for="item in row.payment_items" :key="item.item_id"

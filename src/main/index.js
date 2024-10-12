@@ -70,7 +70,7 @@ class Updater {
       autoUpdater.logger = log
       const isPro = store.get('pro')?.value ?? true
       const feedUrl = isPro ? (store.get('versionFormalUrl')?.value ?? "https://bd.baizhoucn.com/upload") : (store.get('versionTestUrl')?.value ?? "http://192.168.0.10:20010/upload")
-      
+
       if (is.dev) {
         autoUpdater.forceDevUpdateConfig = true
       }
@@ -442,6 +442,7 @@ function createWindow() {
   // 截图事件
   const screenshots = new Screenshots()
   ipcMain.handle('btn-capture', (e) => {
+    mainWindow.hide()
     screenshots.startCapture()
   })
 
@@ -449,12 +450,14 @@ function createWindow() {
   // 绑定全局快捷键
   globalShortcut.register('ctrl+q', () => {
     state.global = true
+    mainWindow.hide()
     screenshots.startCapture()
   })
 
   // 点击确定按钮回调事件
   screenshots.on('ok', (e, buffer, bounds) => {
     // const src = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    mainWindow.show()
     const src = 'data:image/png;base64,' + btoa(new Uint8Array(buffer).reduce((data, btye) => data + String.fromCharCode(btye), ''))
     if (state.global) {
       mainWindow.webContents.send('shortcut-key-capture', src)
@@ -466,6 +469,7 @@ function createWindow() {
 
   // 点击取消按钮回调事件
   screenshots.on('cancel', () => {
+    mainWindow.show()
     screenshots.endCapture()
     state.global = false
   })
@@ -477,6 +481,7 @@ function createWindow() {
   // esc取消
   globalShortcut.register('esc', () => {
     if (screenshots.$win?.isFocused()) {
+      mainWindow.show()
       screenshots.endCapture()
       state.global = false
     }
@@ -583,42 +588,61 @@ function createWindow() {
       styles.push({ color: v.color })
     })
 
-    wb.SheetNames.forEach((name) => {
+    wb.SheetNames.slice(0, 1).forEach((name) => {
       var o = { name: name, rows: {}, merges: [] }
       var ws = wb.Sheets[name]
-      var aoa = XLSX.utils.sheet_to_json(ws, { raw: false, header: 1 })
-      aoa.forEach((r, i) => {
-        var cells = {}
-        r.forEach((c, j) => {
-          if (styleObj[j] !== undefined) {
-            cells[j] = { text: c, style: styleObj[j] }
-          } else {
-            cells[j] = { text: c }
-          }
-        })
-        o.rows[i] = { cells: cells }
-      })
+      // var aoa = XLSX.utils.sheet_to_json(ws, { raw: false, header: 1 })
+      // aoa.forEach((r, i) => {
+      //   var cells = {}
+      //   r.forEach((c, j) => {
+      //     if (styleObj[j] !== undefined) {
+      //       cells[j] = { text: c, style: styleObj[j] }
+      //     } else {
+      //       cells[j] = { text: c }
+      //     }
+      //   })
+      //   o.rows[i] = { cells: cells }
+      // })
       o.styles = styles
 
       // 设置合并单元格
-      if (ws['!merges']) {
-        ws['!merges'].forEach((merge) => {
-          let cell = o.rows[merge.s.r].cells[merge.s.c]
-          //无内容单元格处理
-          if (!cell) {
-            cell = { text: '' }
-          }
-          cell.merge = [merge.e.r - merge.s.r, merge.e.c - merge.s.c]
-          o.rows[merge.s.r].cells[merge.s.c] = cell
+      // if (ws['!merges']) {
+      //   ws['!merges'].forEach((merge) => {
+      //     let cell = o.rows[merge.s.r].cells[merge.s.c]
+      //     //无内容单元格处理
+      //     if (!cell) {
+      //       cell = { text: '' }
+      //     }
+      //     cell.merge = [merge.e.r - merge.s.r, merge.e.c - merge.s.c]
+      //     o.rows[merge.s.r].cells[merge.s.c] = cell
 
-          // 修改 merges
-          o.merges.push(XLSX.utils.encode_range(merge))
-        })
-      }
+      //     // 修改 merges
+      //     o.merges.push(XLSX.utils.encode_range(merge))
+      //   })
+      // }
       out.push(o)
     })
     return out
   }
+
+  // excel编辑窗口
+  const stoxNoFile = (excelColors) => {
+    var out = []
+    const styleObj = {}
+    const styles = []
+    Object.keys(excelColors).forEach((k, index) => {
+      const v = excelColors[k]
+      if (v.col !== undefined) {
+        styleObj[v.col] = index
+      }
+      styles.push({ color: v.color })
+    })
+    var o = { name: 'sheet1', rows: {}, merges: [] }
+    o.styles = styles
+    out.push(o)
+    return out
+  }
+
   ipcMain.on('open-excel:data', (event, data) => {
     try {
       mainWindow.webContents.send('open-excel:batch-select-excel-data', data)
@@ -626,6 +650,7 @@ function createWindow() {
 
     }
   })
+
   ipcMain.on('open-excel:excelColor-change', (event, data) => {
     try {
       mainWindow.webContents.send('open-excel:excelColor-new', data)
@@ -633,113 +658,133 @@ function createWindow() {
 
     }
   })
+
   ipcMain.on('open-excel', (event, user, config, hash) => {
-    dialog
-      .showOpenDialog({
-        title: '打开Excel文件',
-        defaultPath: app.getPath('desktop'),
-        filters: [{ name: 'Excel files', extensions: ['xlsx', 'xls'] }],
-        properties: ['openFile']
-      })
-      .then((result) => {
-        if (!result.canceled && result.filePaths.length) {
-          try {
-            const fileBuffer = fs.readFileSync(result.filePaths[0])
-            const workbook = XLSX.read(fileBuffer, { type: 'buffer' })
-            const excelData = stox(workbook, config)
-            manager.createWindow(
-              'excel',
-              (frame) => {
-                frame.webContents.send('open-excel:success', user, result.filePaths[0], excelData)
-                mainWindow.webContents.send('open-excel:ok')
-              },
-              { title: 'excel', hash },
-              true
-            )
-          } catch (error) {
-            log.error('Excel加载失败', error)
-            mainWindow.webContents.send('open-excel:error', error.message)
-            // event.reply('open-excel:error', error.message) // 发送错误消息
-          }
-        } else {
-          mainWindow.webContents.send('open-excel:cancel')
-          // event.reply('open-excel:cancel')
-        }
-      })
-      .catch((err) => {
-        log.error('保存excel失败', err)
-      })
+      try {
+        const excelData = stoxNoFile(config)
+        manager.createWindow(
+          'excel',
+          (frame) => {
+            console.log('success ');
+            frame.webContents.send('open-excel:success', user, 'temp.xlsx', excelData)
+            mainWindow.webContents.send('open-excel:ok')
+          },
+          { title: 'excel', hash },
+          true
+        )
+      } catch (error) {
+        console.log('open excel fail ', error)
+        log.error('Excel加载失败', error)
+        mainWindow.webContents.send('open-excel:error', error.message)
+      }
   })
 
-  ipcMain.on('log-event', (event, level, ...args) => {
-    switch (level) {
-      case 'info':
-        log.info(...args)
-        break
-      case 'debug':
-        log.debug(...args)
-        break
-      case 'warn':
-        log.warn(...args)
-        break
-      case 'error':
-        log.error(...args)
-        break
-      default:
-        break
+  // dialog
+  //   .showOpenDialog({
+  //     title: '打开Excel文件',
+  //     defaultPath: app.getPath('desktop'),
+  //     filters: [{ name: 'Excel files', extensions: ['xlsx', 'xls'] }],
+  //     properties: ['openFile']
+  //   })
+  //   .then((result) => {
+  //     if (!result.canceled && result.filePaths.length) {
+  //       try {
+  //         const fileBuffer = fs.readFileSync(result.filePaths[0])
+  //         const workbook = XLSX.read(fileBuffer, { type: 'buffer' })
+  //         const excelData = stox(workbook, config)
+  //         manager.createWindow(
+  //           'excel',
+  //           (frame) => {
+  //             frame.webContents.send('open-excel:success', user, result.filePaths[0], excelData)
+  //             mainWindow.webContents.send('open-excel:ok')
+  //           },
+  //           { title: 'excel', hash },
+  //           true
+  //         )
+  //       } catch (error) {
+  //         log.error('Excel加载失败', error)
+  //         mainWindow.webContents.send('open-excel:error', error.message)
+  //         // event.reply('open-excel:error', error.message) // 发送错误消息
+  //       }
+  //     } else {
+  //       mainWindow.webContents.send('open-excel:cancel')
+  //       // event.reply('open-excel:cancel')
+  //     }
+  //   })
+  //   .catch((err) => {
+  //     log.error('保存excel失败', err)
+  //   })
+}
+
+ipcMain.on('log-event', (event, level, ...args) => {
+  switch (level) {
+    case 'info':
+      log.info(...args)
+      break
+    case 'debug':
+      log.debug(...args)
+      break
+    case 'warn':
+      log.warn(...args)
+      break
+    case 'error':
+      log.error(...args)
+      break
+    default:
+      break
+  }
+})
+
+ipcMain.on('new-window', (event, urlname, params, options) => {
+  const newWin = new BrowserWindow({
+    icon: icon,
+    width: mainWidth,
+    height: mainHeight,
+    show: false,
+    autoHideMenuBar: true,
+    title: options.title ?? '新窗口',
+    titleBarStyle: 'hidden',
+    frame: false,
+    transparent: true,
+    closable: false,
+    maximizable: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: true,
+      preload: join(__dirname, '../preload/index.mjs'),
+      sandbox: false
     }
   })
 
-  ipcMain.on('new-window', (event, urlname, params, options) => {
-    const newWin = new BrowserWindow({
-      icon: icon,
-      width: mainWidth,
-      height: mainHeight,
-      show: false,
-      autoHideMenuBar: true,
-      title: options.title ?? '新窗口',
-      titleBarStyle: 'hidden',
-      frame: false,
-      transparent: true,
-      closable: false,
-      maximizable: true,
-      alwaysOnTop: true,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: true,
-        preload: join(__dirname, '../preload/index.mjs'),
-        sandbox: false
-      }
-    })
-
-    newWin.loadURL(process.env['ELECTRON_RENDERER_URL']).then(() => {
-      newWin.show()
-      newWin.center()
-      newWin.webContents.send('load-window', urlname, params)
-    })
+  newWin.loadURL(process.env['ELECTRON_RENDERER_URL']).then(() => {
+    newWin.show()
+    newWin.center()
+    newWin.webContents.send('load-window', urlname, params)
   })
+})
 
-  // sql
-  ipcMain.handle('sql-query', async (event, sql, params) => {
-    const result = await db.query(sql, params)
-    if (result) return result
-  })
+// sql
+ipcMain.handle('sql-query', async (event, sql, params) => {
+  const result = await db.query(sql, params)
+  if (result) return result
+})
 
-  ipcMain.handle('sql-insert', async (event, table, data) => {
-    const result = await db.insert(table, data)
-    if (result) return result
-  })
+ipcMain.handle('sql-insert', async (event, table, data) => {
+  const result = await db.insert(table, data)
+  if (result) return result
+})
 
-  ipcMain.handle('sql-update', async (event, table, data, where) => {
-    const result = await db.update(table, data, where)
-    if (result) return result
-  })
+ipcMain.handle('sql-update', async (event, table, data, where) => {
+  const result = await db.update(table, data, where)
+  if (result) return result
+})
 
-  ipcMain.handle('sql-delete', async (event, table, where) => {
-    const result = await db.delete(table, where)
-    if (result) return result
-  })
-}
+ipcMain.handle('sql-delete', async (event, table, where) => {
+  const result = await db.delete(table, where)
+  if (result) return result
+})
+
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

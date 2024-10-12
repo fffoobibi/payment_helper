@@ -30,7 +30,7 @@ const showBar = computed(() => {
 <template>
     <div class="main">
         <div style="height: 30px; width: 100%;">
-            <Toolbar :close-type="4" :only-close="true">
+            <Toolbar :close-type="4" :only-close="true" mode="custom">
                 <span style="margin-left: -20px; font-weight: bold">版本更新</span>
             </Toolbar>
         </div>

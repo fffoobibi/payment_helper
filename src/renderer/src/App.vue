@@ -151,7 +151,7 @@ electron.onShortCutCapture(async src => {
   </el-config-provider>
 
   <el-dialog v-model="show" :close-on-click-modal="false" :close-on-press-escape="false" :show-close="false"
-    :append-to-body="true">
+    append-to-body>
 
     <div v-loading="updateStore.checking" element-loading-background="white" element-loading-text="检查更新中">
       <div v-if="updateStore.update_err">

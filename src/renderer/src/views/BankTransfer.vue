@@ -504,7 +504,9 @@ const submitAuditTransfer = async () => {
           v-model:page-size="queryForm.page.pageSize" background="true" :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper" :total="queryForm.page.totalCount" />
 
-        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" destroy-on-close
+        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" 
+          :close-on-click-modal="false"
+          destroy-on-close
           ref="drawRef">
           <template #default>
             <el-form :model="form.post" label-width="auto" style="width:100%" ref="formRef" :rules="formRules">
@@ -634,7 +636,7 @@ const submitAuditTransfer = async () => {
           </template>
         </el-drawer>
 
-        <el-dialog v-model="form.noteShow" title="备注修改" width="500" destroy-on-close>
+        <el-dialog v-model="form.noteShow" title="备注修改" width="500" destroy-on-close :close-on-click-modal="false">
           <el-input type="textarea" v-model="form.notePost.note"></el-input>
           <template #footer>
             <div class="dialog-footer">
@@ -646,7 +648,7 @@ const submitAuditTransfer = async () => {
           </template>
         </el-dialog>
 
-        <el-dialog v-model="form.cancelShow" title="撤销" width="500" destroy-on-close>
+        <el-dialog v-model="form.cancelShow" title="撤销" width="500" destroy-on-close :close-on-click-modal="false">
           <span>撤销修改审核么</span>
           <template #footer>
             <div class="dialog-footer">
@@ -658,7 +660,7 @@ const submitAuditTransfer = async () => {
           </template>
         </el-dialog>
 
-        <el-dialog v-model="form.auditShow" title="审核" width="500" destroy-on-close>
+        <el-dialog v-model="form.auditShow" title="审核" width="500" destroy-on-close :close-on-click-modal="false">
           <p>修改人: {{ form.auditPost.applicant }}</p>
           <p>提交时间: {{ timestampToFormattedString(form.auditPost.application_time) }}</p>
           <el-form-item label="修改原因: ">

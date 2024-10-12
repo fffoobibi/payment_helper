@@ -35,7 +35,7 @@ const onSubmit = () => {
 }
 
 .layout-list {
-  width: 300px;
+  width: 320px;
   height: 100%;
   background-color: #f5f6f7;
   border-right: 1px solid #eee;

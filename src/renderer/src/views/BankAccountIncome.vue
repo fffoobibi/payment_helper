@@ -448,7 +448,7 @@ watch(() => form.post.account_id, async () => {
             </div>
         </div>
 
-        <el-drawer v-model="form.editShow" size="50%" destroy-on-close title="编辑" :rules="form.editRules"
+        <el-drawer v-model="form.editShow" size="50%" destroy-on-close title="编辑" :rules="form.editRules" :close-on-click-modal="false"
             @opened="form.mode = 'edit'" @closed="form.mode = 'add'">
             <el-form :model="form.editPost" label-width="auto" ref="editFormRef">
                 <el-form-item label="收入科目" prop="in_account_title_id" required>
@@ -489,7 +489,7 @@ watch(() => form.post.account_id, async () => {
         </el-drawer>
 
 
-        <el-dialog v-model="form.noteShow" title="备注修改" destroy-on-close>
+        <el-dialog v-model="form.noteShow" title="备注修改" destroy-on-close :close-on-click-modal="false">
             <el-form-item label="备注">
                 <el-input type='textarea' :rows="3" v-model="form.notePost.note"></el-input>
             </el-form-item>
@@ -500,7 +500,7 @@ watch(() => form.post.account_id, async () => {
             </template>
         </el-dialog>
 
-        <el-dialog v-model="form.cancelShow" title="撤销" width="500" destroy-on-close>
+        <el-dialog v-model="form.cancelShow" title="撤销" width="500" destroy-on-close :close-on-click-modal="false">
             <span>撤销修申请么</span>
             <template #footer>
                 <div class="dialog-footer">
@@ -512,7 +512,7 @@ watch(() => form.post.account_id, async () => {
             </template>
         </el-dialog>
 
-        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose" destroy-on-close>
+        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose" destroy-on-close :close-on-click-modal="false">
             <p>修改人: {{ form.auditPost.applicant }}</p>
             <p>提交时间: {{ timestampToFormattedString(form.auditPost.application_time) }}</p>
             <el-form-item label="修改原因: ">

@@ -23,7 +23,7 @@ const reload = () => {
 <template>
     <div class="main">
         <div style="height: 30px; width: 100%;">
-            <Toolbar title="日志查看" :close-type="3" :only-close="true">
+            <Toolbar title="日志查看" :close-type="3" :only-close="true" mode="custom">
                 <template #options>
                     <el-button class="win-option" type="text" link :loading="loading" @click="reload">
                         <template #loading>

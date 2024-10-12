@@ -26,7 +26,7 @@ const emit = defineEmits(['openBatch'])
       </template>
 
       <template #option>
-        <el-tooltip content="批量打款" placement="bottom" hide-after="0" transition="none" :disabled="ws.excelLoading">
+        <!-- <el-tooltip content="批量打款" placement="bottom" hide-after="0" transition="none" :disabled="ws.excelLoading">
           <el-button link @click="emit('openBatch')" :loading="ws.excelLoading">
             <template #loading>
               <el-icon class="is-loading" :size="20" color="black">
@@ -36,7 +36,7 @@ const emit = defineEmits(['openBatch'])
             <el-icon v-if="!ws.excelLoading" :size="20" class="iconfont icon-Excelxieru-xuanzhong">
             </el-icon>
           </el-button>
-        </el-tooltip>
+        </el-tooltip> -->
         <el-tooltip content="新增打款" placement="bottom" hide-after="0" transition="none" v-if="type === 'pending'">
           <el-button size="small" class="option-btn" @click="showAddDrawer = true" link>
             <i class="iconfont icon-edit"></i>
@@ -53,12 +53,12 @@ const emit = defineEmits(['openBatch'])
     <Blank class="empty-page" />
 
     <!-- 新增打款抽屉 -->
-    <el-drawer v-model="showAddDrawer" title="新增打款" direction="rtl" size="600" destroy-on-close>
+    <el-drawer v-model="showAddDrawer" title="新增打款" direction="rtl" size="600" destroy-on-close :close-on-click-modal="false">
       <PaymentAdd @close="showAddDrawer = false" />
     </el-drawer>
 
     <!-- 打款记录抽屉 -->
-    <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="600" class="records" destroy-on-close>
+    <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="600" class="records" destroy-on-close :close-on-click-modal="false">
       <PaymentRecord />
     </el-drawer>
   </div>

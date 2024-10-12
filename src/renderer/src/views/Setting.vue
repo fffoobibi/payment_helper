@@ -193,6 +193,18 @@ const download = () => {
           </el-form>
         </div>
 
+        <div class="pannel">
+          <span class="black" style="font-size: 11pt;border-bottom: 2px solid purple;">其他设置</span>
+          <el-form label-width="auto">
+            <el-form-item label="窗口关闭">
+              <el-select style="width: 200px" v-model="cfgStore.closeMode">
+                <el-option :value="0" label="关闭窗口"></el-option>
+                <el-option :value="1" label="隐藏至系统托盘"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </div>
+
         <div v-if="showHidden" class="pannel">
           <el-space>
             <span class="black"
@@ -265,6 +277,7 @@ const download = () => {
 
       </el-scrollbar>
 
+      <!-- 更新弹窗 -->
       <el-dialog v-model="show" :close-on-click-modal="false">
 
         <div v-loading="update.checking" element-loading-background="white" element-loading-text="检查更新中">

@@ -21,11 +21,11 @@ const { title, show, openBatch, close, batch, batchData } = useExcelBatchPayment
           </keep-alive>
         </transition>
       </RouterView>
-    </template>
+    </template> 
   </Layout>
 
   <!-- 新增批量打款抽屉 -->
-  <el-drawer v-model="show" :title="title" direction="rtl" size="600" destroy-on-close @closed="close">
+  <el-drawer v-model="show" :title="title" direction="rtl" size="600" destroy-on-close @closed="close" :close-on-click-modal="false">
     <PaymentAdd @close="close" :batch="batch" :batch-data="batchData" />
   </el-drawer>
 

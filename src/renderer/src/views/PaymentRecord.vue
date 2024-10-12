@@ -279,15 +279,24 @@ onBeforeMount(() => {
           <!-- 费用明细 -->
           <el-table class="sub-table" :data="props.row.payment_items" row-key="item_id" border>
             <el-table-column type="index" label="#" width="30" />
-            <el-table-column label="标题" width="150">
+            <!-- <el-table-column label="标题" width="150">
               <template #default="subscope">{{ subscope.row.account_title_parent }} - {{ subscope.row.account_title
                 }}</template>
+            </el-table-column> -->
+            <el-table-column label="信息" width="160">
+              <template #default="subscope" style="user-select: text;">
+                <div class="select-text">标题: {{ subscope.row.account_title_parent }} - {{ subscope.row.account_title}}</div>
+                <div class="select-text">金额: {{ numberFmt(subscope.row.origin_amount) }} {{ subscope.row.currency }}</div>
+              </template>
             </el-table-column>
-            <el-table-column label="打款金额" width="120">
-              <template #default="subscope">{{ numberFmt(subscope.row.origin_amount) }} {{ subscope.row.currency
-                }}</template>
+            <el-table-column label="备注" prop="note">
+              <template #default="{ row }">
+                <div style="white-space: pre-wrap;user-select: text;">
+                  {{ row.note }}
+                </div>
+              </template>
+
             </el-table-column>
-            <el-table-column label="备注" prop="note" />
           </el-table>
         </div>
       </template>
@@ -398,7 +407,9 @@ onBeforeMount(() => {
   gap: 0 8px;
   padding: 0 12px;
 }
-
+.select-text{
+  user-select: text
+}
 .filter .el-form-item {
   margin: 0;
 }

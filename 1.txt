@@ -1,0 +1,28 @@
+(node:17828) UnhandledPromiseRejectionWarning: Error: Cannot find channel "latest.yml" update info: HttpError: 404 Not Found
+"method: GET url: http://192.168.0.10:20010/upload/latest.yml?noCache=1i9ldet48\n\nPlease double check that your authentication token is correct. Due to security reasons, actual status maybe not reported, but 404.\n"
+Headers: {
+  "connection": "keep-alive",
+  "content-encoding": "gzip",
+  "content-type": "text/html; charset=UTF-8",
+  "date": "Tue, 08 Oct 2024 06:35:58 GMT",
+  "server": "nginx",
+  "sip": "192.168.1.245",
+  "transfer-encoding": "chunked",
+  "yourcountryiso": "",
+  "yourip": "192.168.0.206",
+  "set-cookie": [
+    "user_uniqid=66704d2ce0a190; expires=Fri, 06-Oct-2034 06:35:58 GMT; Max-Age=315360000; path=/; domain=amzgame.com"
+  ]
+}
+    at createHttpError (E:\works\payment_helper\node_modules\electron-updater\node_modules\builder-util-runtime\out\httpExecutor.js:21:12)
+    at ElectronHttpExecutor.handleResponse (E:\works\payment_helper\node_modules\electron-updater\node_modules\builder-util-runtime\out\httpExecutor.js:121:20)
+    at ClientRequest.<anonymous> (E:\works\payment_helper\node_modules\electron-updater\node_modules\builder-util-runtime\out\httpExecutor.js:87:26)
+    at ClientRequest.emit (node:events:519:28)
+    at SimpleURLLoaderWrapper.<anonymous> (node:electron/js2c/browser_init:2:115224)
+    at SimpleURLLoaderWrapper.emit (node:events:519:28)
+    at newError (E:\works\payment_helper\node_modules\electron-updater\node_modules\builder-util-runtime\out\error.js:5:19)
+    at GenericProvider.getLatestVersion (E:\works\payment_helper\node_modules\electron-updater\out\providers\GenericProvider.js:27:63)
+    at async NsisUpdater.getUpdateInfoAndProvider (E:\works\payment_helper\node_modules\electron-updater\out\AppUpdater.js:343:19)
+    at async NsisUpdater.doCheckForUpdates (E:\works\payment_helper\node_modules\electron-updater\out\AppUpdater.js:357:24)
+(Use `electron --trace-warnings ...` to show where the warning was created)
+(node:17828) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). To terminate the node process on unhandled promise rejection, use the CLI flag `--unhandled-rejections=strict` (see https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode). (rejection id: 1)

@@ -395,7 +395,7 @@ onMounted(async () => {
     </template>
   </el-dialog>
 
-  <el-dialog :title="histories.title" v-model="histories.show" width="80%" destroy-on-close>
+  <el-dialog :title="histories.title" v-model="histories.show" width="80%" destroy-on-close :close-on-click-modal="false">
     <el-table :data="histories.list">
       <el-table-column label="#" width="20">
         <template #default="scope">

@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch } from 'vue'
+import { onBeforeMount, reactive, ref, watch, computed } from 'vue'
 import PaymentAdd from './PaymentAdd.vue'
 import PaymentRecord from './PaymentRecord.vue'
 import api from '@/api'
@@ -12,6 +12,10 @@ import { useRoute } from 'vue-router'
 const ws = useExcelStore()
 const props = defineProps({
   detailId: String,
+  mode: {
+    type: String,
+    default: 'operate'
+  }
 })
 const emit = defineEmits(['update', 'openBatch'])
 const route = useRoute()
@@ -33,24 +37,24 @@ const firstItem = ref(null)
 
 const showAddDrawer = ref(false)
 const showRecordDrawer = ref(false)
-const passDialogVisible = ref(false)
-const rejectDialogVisible = ref(false)
-const rejectCommentVisible = ref(false)
-const abnormalDialogVisible = ref(false)
+const passSingleDialogVisible = ref(false)
+const rejectSingleDialogVisible = ref(false)
+const rejectSingleCommentVisible = ref(false)
+const abnormalSingleDialogVisible = ref(false)
 const abnormalCommentVisible = ref(false)
-const dialogForm = reactive({
+const dialogSingleForm = reactive({
   status: 0,
   reasonType: '',
   comment: ''
 })
-const dialogFormReset = () => {
-  dialogForm.status = 0
-  dialogForm.reasonType = ''
-  dialogForm.comment = ''
-  passDialogVisible.value = false
-  rejectDialogVisible.value = false
-  rejectCommentVisible.value = false
-  abnormalDialogVisible.value = false
+const dialogSingleFormReset = () => {
+  dialogSingleForm.status = 0
+  dialogSingleForm.reasonType = ''
+  dialogSingleForm.comment = ''
+  passSingleDialogVisible.value = false
+  rejectSingleDialogVisible.value = false
+  rejectSingleCommentVisible.value = false
+  abnormalSingleDialogVisible.value = false
   abnormalCommentVisible.value = false
 }
 
@@ -58,11 +62,11 @@ watch(() => props.detailId, () => {
   fetchData()
 })
 
-watch(() => dialogForm.reasonType, () => {
-  if (dialogForm.status == 2) {
-    rejectCommentVisible.value = dialogForm.reasonType == 5
-  } else if (dialogForm.status == 3) {
-    abnormalCommentVisible.value = dialogForm.reasonType == 5
+watch(() => dialogSingleForm.reasonType, () => {
+  if (dialogSingleForm.status == 2) {
+    rejectSingleCommentVisible.value = dialogSingleForm.reasonType == 5
+  } else if (dialogSingleForm.status == 3) {
+    abnormalCommentVisible.value = dialogSingleForm.reasonType == 5
   }
 })
 
@@ -95,37 +99,37 @@ const fetchData = async () => {
   }
 }
 
-const onShowDialog = status => {
-  dialogForm.status = status
+const onShowDialog = (status) => {
+  dialogSingleForm.status = status
   switch (status) {
-    case 1: passDialogVisible.value = true; break;
-    case 2: rejectDialogVisible.value = true; break;
-    case 3: abnormalDialogVisible.value = true; break;
-    default: passDialogVisible.value = true; break;
+    case 1: passSingleDialogVisible.value = true; break;
+    case 2: rejectSingleDialogVisible.value = true; break;
+    case 3: abnormalSingleDialogVisible.value = true; break;
+    default: passSingleDialogVisible.value = true; break;
   }
 }
 
 // 审核通过/拒绝
 const onReview = async () => {
-  if (dialogForm.status == 2) {
-    dialogForm.comment = dialogForm.reasonType == 5 ? dialogForm.comment : reasons[dialogForm.reasonType]
-    if (!dialogForm.comment) {
+  if (dialogSingleForm.status == 2) {
+    dialogSingleForm.comment = dialogSingleForm.reasonType == 5 ? dialogSingleForm.comment : reasons[dialogSingleForm.reasonType]
+    if (!dialogSingleForm.comment) {
       Message.error('请输入拒绝理由')
       return
     }
   }
 
-  if (dialogForm.status == 1) {
-    passDialogVisible.value = false
+  if (dialogSingleForm.status == 1) {
+    passSingleDialogVisible.value = false
   } else {
-    rejectDialogVisible.value = false
+    rejectSingleDialogVisible.value = false
   }
 
   try {
     await api.review({
       id: props.detailId,
-      status: dialogForm.status,
-      comment: dialogForm.comment.trim()
+      status: dialogSingleForm.status,
+      comment: dialogSingleForm.comment.trim()
     })
     Message.success('审批完成')
     // emit('update')
@@ -133,31 +137,40 @@ const onReview = async () => {
   } catch (error) {
     Message.success('审批失败')
   } finally {
-    dialogFormReset()
+    dialogSingleFormReset()
   }
 }
 
 // 打款异常
 const onAbnoraml = async () => {
-  dialogForm.comment = dialogForm.reasonType == 5 ? dialogForm.comment : reasons[dialogForm.reasonType]
-  if (!dialogForm.comment) {
+  dialogSingleForm.comment = dialogSingleForm.reasonType == 5 ? dialogSingleForm.comment : reasons[dialogSingleForm.reasonType]
+  if (!dialogSingleForm.comment) {
     Message.error('请输入异常原因')
     return
   }
 
-  abnormalDialogVisible.value = true
+  abnormalSingleDialogVisible.value = true
 
   try {
     await api.abnormal({
       purchase_number: approve.value.purchase_number,
-      payment_error_msg: dialogForm.comment.trim()
+      payment_error_msg: dialogSingleForm.comment.trim()
     })
   } catch (error) {
   } finally {
-    dialogFormReset()
+    dialogSingleFormReset()
   }
 }
 
+const showOperate = computed(() => {
+  if (props.mode === 'view') {
+    return false
+  }
+  if (approve.payment_status === 0) {
+    return true
+  }
+  return false
+})
 </script>
 
 
@@ -168,18 +181,18 @@ const onAbnoraml = async () => {
         <h4>{{ approve.process_name }}</h4>
       </template>
 
-      <template #option>
-        <el-tooltip content="批量打款" placement="bottom" hide-after="0" transition="none" :disabled="ws.excelLoading">
+      <template #option v-if="mode == 'operate'">
+        <!-- <el-tooltip content="批量打款" placement="bottom" hide-after="0" transition="none" :disabled="ws.excelLoading">
           <el-button link @click="emit('openBatch')" :loading="ws.excelLoading">
             <template #loading>
               <el-icon class="is-loading" :size="20" color="black">
                 <Eleme />
               </el-icon>
             </template>
-            <el-icon v-if="!ws.excelLoading" :size="20" class="iconfont icon-Excelxieru-xuanzhong">
-            </el-icon>
-          </el-button>
-        </el-tooltip>
+<el-icon v-if="!ws.excelLoading" :size="20" class="iconfont icon-Excelxieru-xuanzhong">
+</el-icon>
+</el-button>
+</el-tooltip> -->
         <el-tooltip content="新增打款/转账" placement="bottom" hide-after="0" transition="none"
           v-if="route.query.type === 'pending'">
           <el-button size="small" class="option-btn" @click="showAddDrawer = true" link>
@@ -192,6 +205,7 @@ const onAbnoraml = async () => {
           </el-button>
         </el-tooltip>
       </template>
+
     </Header>
 
     <el-scrollbar class="info-box">
@@ -288,7 +302,7 @@ const onAbnoraml = async () => {
         </div>
       </section>
 
-      <section class="operate-box" v-if="approve.payment_status === 0">
+      <section class="operate-box" v-if="showOperate">
         <i class="item-icon iconfont icon-operate"></i>
         <div class="item-label">操作：</div>
         <div class="operates">
@@ -300,49 +314,57 @@ const onAbnoraml = async () => {
 
       <section class="table-box">
         <el-table :data="tableData" style="width: 100%">
-          <el-table-column prop="item_id" label="编号" width="80" />
-          <el-table-column label="信息">
+          <!-- <el-table-column prop="item_id" label="编号" width="80" /> -->
+          <el-table-column label="信息" width="160">
             <template #default="scope">
-              <div>科目：{{ scope.row.account_title_parent }} - {{ scope.row.account_title }}</div>
-              <div>金额：{{ numberFmt(scope.row.origin_amount) }} {{ scope.row.currency }}</div>
-              <div>人民币金额：{{ numberFmt(scope.row.cny_amount) }} CNY</div>
+              <div class="select-text">编号：{{ scope.row.item_id }}</div>
+              <div class="select-text">科目：{{ scope.row.account_title_parent }} - {{ scope.row.account_title }}</div>
+              <div class="select-text">金额：{{ numberFmt(scope.row.origin_amount) }} {{ scope.row.currency }}</div>
+              <div class="select-text">人民币金额：{{ numberFmt(scope.row.cny_amount) }} CNY</div>
             </template>
           </el-table-column>
-          <el-table-column prop="note" label="备注" />
+          <el-table-column prop="note" label="备注">
+            <template #default="{ row }">
+              <div style="white-space: pre-wrap;user-select: text">
+                {{ row.note }}
+              </div>
+            </template>
+          </el-table-column>
         </el-table>
       </section>
     </el-scrollbar>
 
     <!-- 新增打款抽屉 -->
     <el-drawer v-model="showAddDrawer" :title="isBankTransfer ? '新增银行转账' : '新增打款'" direction="rtl" size="600"
+    :close-on-click-modal="false"
       destroy-on-close>
       <BankTransferAdd :item="firstItem" @close="showAddDrawer = false" v-if="isBankTransfer" />
       <PaymentAdd :approve="approve" @close="showAddDrawer = false" v-else />
     </el-drawer>
 
     <!-- 打款记录抽屉 -->
-    <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="600" class="records" destroy-on-close>
+    <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="70%" class="records" destroy-on-close :close-on-click-modal="false">
       <PaymentRecord />
     </el-drawer>
 
     <!-- 打款通过确认弹窗 -->
-    <el-dialog v-model="passDialogVisible" width="320" align-center>
+    <el-dialog v-model="passSingleDialogVisible" width="320" align-center :close-on-click-modal="false">
       <div class="dialog-content"><el-icon size="20" color="#409eff">
           <QuestionFilled />
         </el-icon> 确认已完成打款了吗？</div>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="dialogFormReset">取消</el-button>
+          <el-button @click="dialogSingleFormReset">取消</el-button>
           <el-button type="primary" @click="onReview">确认</el-button>
         </div>
       </template>
     </el-dialog>
 
     <!-- 打款拒绝确认弹窗 -->
-    <el-dialog v-model="rejectDialogVisible" title="拒绝原因" width="320" align-center>
-      <el-form :model="dialogForm">
+    <el-dialog v-model="rejectSingleDialogVisible" title="拒绝原因" width="320" align-center :close-on-click-modal="false">
+      <el-form :model="dialogSingleForm">
         <el-form-item>
-          <el-select v-model="dialogForm.reasonType">
+          <el-select v-model="dialogSingleForm.reasonType">
             <el-option label="请选择" value="" />
             <el-option label="付款方式选择错误" value="1" />
             <el-option label="顾客收款账号错误" value="2" />
@@ -351,24 +373,24 @@ const onAbnoraml = async () => {
             <el-option label="其它原因" value="5" />
           </el-select>
         </el-form-item>
-        <el-form-item v-show="rejectCommentVisible">
-          <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因"
+        <el-form-item v-show="rejectSingleCommentVisible">
+          <el-input v-model="dialogSingleForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因"
             spellcheck="false" maxlength="100" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="dialogFormReset">取消</el-button>
+          <el-button @click="dialogSingleFormReset">取消</el-button>
           <el-button type="primary" @click="onReview">确认</el-button>
         </div>
       </template>
     </el-dialog>
 
     <!-- 打款异常弹窗 -->
-    <el-dialog v-model="abnormalDialogVisible" title="异常原因" width="320" align-center>
-      <el-form :model="dialogForm">
+    <el-dialog v-model="abnormalSingleDialogVisible" title="异常原因" width="320" align-center :close-on-click-modal="false">
+      <el-form :model="dialogSingleForm">
         <el-form-item>
-          <el-select v-model="dialogForm.reasonType">
+          <el-select v-model="dialogSingleForm.reasonType">
             <el-option label="请选择" value="" />
             <el-option label="付款方式选择错误" value="1" />
             <el-option label="顾客收款账号错误" value="2" />
@@ -378,13 +400,13 @@ const onAbnoraml = async () => {
           </el-select>
         </el-form-item>
         <el-form-item v-show="abnormalCommentVisible">
-          <el-input v-model="dialogForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因"
+          <el-input v-model="dialogSingleForm.comment" autocomplete="off" type="textarea" placeholder="请输入其它原因"
             spellcheck="false" maxlength="100" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="dialogFormReset">取消</el-button>
+          <el-button @click="dialogSingleFormReset">取消</el-button>
           <el-button type="primary" @click="onAbnoraml">确认</el-button>
         </div>
       </template>
@@ -396,6 +418,10 @@ const onAbnoraml = async () => {
 <style scoped>
 .wrapper {
   height: 100%;
+}
+
+.select-text {
+  user-select: text
 }
 
 .info-box {

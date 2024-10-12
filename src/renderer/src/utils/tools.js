@@ -2,8 +2,9 @@ import { toRaw, ref } from 'vue'
 import notification from './notification'
 import { useUserStore, useExcelStore } from '../stores'
 import { useLocalConfig } from '../stores/config'
+import appInfo from "../../../../package.json"
 
-const isDev = import.meta.env.PROD
+const isDev = !import.meta.env.PROD
 
 const viewImages = (urls, index = 0) => {
   const r = toRaw(urls)
@@ -57,6 +58,49 @@ const setUpCapture = (callback) => {
   return crop
 }
 
+const useFutureControl = () => {
+  const current = ref(appInfo.version)
+
+  const convert = v => {
+    let c = current.value.replaceAll('.', '')
+    let r = v.replaceAll('.', '')
+    const maxLen = Math.max(r.length, c.length)
+    let l = c.padEnd(maxLen, '0')
+    let t = r.padEnd(maxLen, '0')
+    return [parseInt(l), parseInt(t)]
+  }
+
+  const eq = v => {
+    if (!import.meta.env.PROD) return true
+    const [r, t] = convert(v)
+    return r == t
+  }
+  const gt = v => {
+    if (!import.meta.env.PROD) return true
+    const [r, t] = convert(v)
+    return r > t
+  }
+
+  const gte = v => {
+    if (!import.meta.env.PROD) return true
+    const [r, t] = convert(v)
+    return r >= t
+  }
+  const lt = v => {
+    if (!import.meta.env.PROD) return true
+    const [r, t] = convert(v)
+    return r < t
+  }
+  const lte = v => {
+    if (!import.meta.env.PROD) return true
+    const [r, t] = convert(v)
+    return r < + t
+  }
+
+  return {
+    current, gt, gte, lt, lte, eq
+  }
+}
 const useExcelBatchPayment = (callback = null) => {
   const title = ref('新增打款')
   const batch = ref(false)
@@ -111,4 +155,4 @@ const getExcelColumnLetter = (index) => {
   return columnLetter
 }
 
-export { viewImages, getIndexFromArray, setUpExportToExcel, setUpCapture, getExcelColumnLetter, isDev, useExcelBatchPayment }
+export { viewImages, getIndexFromArray, setUpExportToExcel, setUpCapture, getExcelColumnLetter, isDev, useExcelBatchPayment, useFutureControl }
