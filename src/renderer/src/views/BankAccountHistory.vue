@@ -3,7 +3,7 @@ import { ref, watch, computed, reactive, onMounted } from "vue"
 import api from "@/api"
 import message from "@/utils/message"
 import notification from "@/utils/notification"
-import { timestampToFormattedString, numberFmt, maxText, addNumbers } from "@/utils/format"
+import { timestampToFormattedString, numberFmt, maxText, addNumbers, formatDate } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import {setUpExportToExcel} from "@/utils/tools"
 import logger from "../utils/logger"
@@ -38,33 +38,6 @@ const props = defineProps({
   typeName: String,
   balance:Number
 })
-const queryFormRef = ref(null)
-const queryForm = reactive({
-  page: {
-    currentPage: 1,
-    pageSize: 50,
-    totalCount: 0,
-  },
-  search: {
-    account_id: props.accountId,
-    start_time: '',
-    end_time: '',
-
-    content: '',  // 凭证号
-    rank: 'DESC',  // 倒叙，顺序 ASC DESC
-    voucher_no: '', // 编号
-    page: 1,
-    limit: 10,
-  },
-  tableData: [],
-  hasSearch: false
-})
-
-const currentPageIndex = computed(()=>{
-  return queryForm.page.currentPage * queryForm.page.pageSize
-})
-
-const tableRef = ref(null)
 const shortcuts = [
   {
     text: '1周前',
@@ -94,6 +67,36 @@ const shortcuts = [
     },
   },
 ]
+const queryFormRef = ref(null)
+const queryForm = reactive({
+  page: {
+    currentPage: 1,
+    pageSize: 50,
+    totalCount: 0,
+  },
+  search: {
+    account_id: props.accountId,
+    // start_time: formatDate( shortcuts[1].value(), {start: true}),
+    // end_time: formatDate(new Date, {end: true}),
+    start_time:"",
+    end_time: "",
+
+    content: '',  // 凭证号
+    rank: 'DESC',  // 倒叙，顺序 ASC DESC
+    voucher_no: '', // 编号
+    page: 1,
+    limit: 10,
+  },
+  tableData: [],
+  hasSearch: false
+})
+
+const currentPageIndex = computed(()=>{
+  return queryForm.page.currentPage * queryForm.page.pageSize
+})
+
+const tableRef = ref(null)
+
 const tableHeight = computed(() => {
   const el = queryFormRef.value?.$el
   const h = el?.clientHeight || 0
@@ -290,7 +293,7 @@ onMounted(() => {
 
     <el-table row-key="id" ref="tableRef" highlight-current-row :data="queryForm.tableData" :height="tableHeight"
       :row-class-name="renderTableRowClass" 
-      :default-sort="{ prop: 'info', order: 'descending' }"
+      :default-sort="{ prop: 'create_time', order: 'descending' }"
       @sort-change="(d)=>{
         if(d.order =='ascending'){
           queryForm.search.rank = 'ASC'
@@ -308,62 +311,41 @@ onMounted(() => {
       <template #empty>
         <el-empty :image-size="200" />
       </template>
-      <el-table-column label="序号" width="60" v-if="tableFieldsInfo['序号']">
+      <el-table-column label="#" width="50" v-if="tableFieldsInfo['#']" class-name="cell-select">
         <template #default="scope">
           <div>{{ scope.$index + 1 + (queryForm.page.currentPage - 1) * queryForm.page.pageSize }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="摘要信息" sortable="custom" :sort-orders="['ascending', 'descending']" prop="info" width="230" v-if="tableFieldsInfo['摘要信息']">
-        <template #default="{ row }">
-          <div>编号：<span class="user-select">{{ row.sn }}</span></div>
-          <div>时间：<span class="user-select">{{ timestampToFormattedString(row.create_time) }}</span>
-            <div>创建：<span class="user-select">{{ row.creator + `(${row.department_name})` }}</span></div>
-          </div>
+      <el-table-column label='编号' prop="sn" class-name="cell-select" v-if="tableFieldsInfo['编号']" ></el-table-column>
+      <el-table-column label='时间' prop="create_time" class-name="cell-select" sortable="custom" :sort-orders="['ascending', 'descending']" v-if="tableFieldsInfo['时间']">
+        <template #default="{row}">
+          <span class="user-select">{{ timestampToFormattedString(row.create_time) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="创建" :show-overflow-tooltip="{disabled: true}" v-if="tableFieldsInfo['创建']">
-        <template #default="{ row }">
-          <div>类型：<span class="user-select">{{ row.type_name }}</span></div>
-          <div>备注：
-            <el-tooltip hide-after="0" transition="none" v-if="row.account_record_note?.trim()?.length>=11" :content="row.account_record_note?.trim()" effect="dark" placement="right">
-              <!-- <span class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span> -->
-              <span class="user-select">{{ row.account_record_note?.trim() }}</span>
-            </el-tooltip>
-            <!-- <span v-else class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span> -->
-            <span v-else class="user-select">{{ row.account_record_note?.trim() }}</span>
-          </div>
-          <div>打款备注：
-            <el-tooltip hide-after="0" transition="none" v-if="row.account_voucher_ext_note?.trim()?.length>=11" :content="row.account_voucher_ext_note?.trim()" effect="dark" placement="right">
-              <!-- <span class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span> -->
-              <span class="user-select">{{ row.account_voucher_ext_note?.trim() }}</span>
-            </el-tooltip>
-            <!-- <span v-else class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span> -->
-            <span v-else class="user-select">{{ row.account_voucher_ext_note?.trim() }}</span>
-          </div>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="初期"  v-if="tableFieldsInfo['初期']" width="90">
+      <el-table-column label='类型' prop="type_name" class-name="cell-select" v-if="tableFieldsInfo['类型']"></el-table-column>
+      <el-table-column label='备注' prop="account_record_note" class-name="cell-select" v-if="tableFieldsInfo['备注']"></el-table-column>
+      <el-table-column label='打款备注' prop="account_voucher_ext_note" class-name="cell-select" v-if="tableFieldsInfo['打款备注']"></el-table-column>
+      <el-table-column label="初期"  v-if="tableFieldsInfo['初期']" width="90" class-name="cell-select" >
         <template #default="{ row }">
           <div class="user-select">{{ numberFmt(row.beginning_balance) }}</div>
           <div class="red">{{ " " + row.base_currency }}</div>
         </template>
       </el-table-column>
 
-      <el-table-column label="本期"  v-if="tableFieldsInfo['本期']" width="90">
+      <el-table-column label="本期"  v-if="tableFieldsInfo['本期']" width="90" class-name="cell-select" >
         <template #default="{ row }">
           <div class="user-select">{{ numberFmt(row.current_amount) }}</div>
           <div class="red">{{ " " + row.base_currency }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="期末"  v-if="tableFieldsInfo['期末']" width="90" >
+      <el-table-column label="期末"  v-if="tableFieldsInfo['期末']" width="90" class-name="cell-select" >
         <template #default="{ row }">
           <div class="user-select">{{ numberFmt(row.ending_balance) }}</div>
           <div class="red">{{ " " + row.base_currency }}</div>
         </template>
       </el-table-column>
 
-      <el-table-column label="凭证号" v-if="tableFieldsInfo['凭证号']">
+      <el-table-column label="凭证号" v-if="tableFieldsInfo['凭证号']" class-name="cell-select">
         <template #header>
           <el-tooltip effect="dark"  placement="right">
             <template #content>
@@ -388,7 +370,7 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="170" v-if="tableFieldsInfo['操作']">
+      <el-table-column label="操作" width="170" v-if="tableFieldsInfo['操作']" class-name="cell-select">
         <template #default="{ row }">
           <el-button link type='primary' v-if="row.attachment_list?.length" @click="()=>{
             viewImages(row.attachment_list.map(v=>v.path), 0)
@@ -428,13 +410,16 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* :deep(.el-popper) {
-    max-width: 10px;
-} */
+
 
 .user-select {
   color: black;
-  font-size: 10pt;
+  /* font-size: 10pt; */
+  user-select: text
+}
+:deep(.el-table__row .cell-select .cell){
+  color: black;
+  /* font-size: 10pt; */
   user-select: text
 }
 

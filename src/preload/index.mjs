@@ -37,6 +37,13 @@ const electron = {
     update: (table, data, where) => ipcRenderer.invoke('sql-update', table, data, where),
     delete: (table, where) => ipcRenderer.invoke('sql-delete', table, where),
   },
+  operate: {
+    query: (sql, params) => ipcRenderer.invoke('operate-sql-query', sql, params),
+    insert: (table, data) => ipcRenderer.invoke('operate-sql-insert', table, data),
+    update: (table, data, where) => ipcRenderer.invoke('operate-sql-update', table, data, where),
+    delete: (table, where) => ipcRenderer.invoke('operate-sql-delete', table, where),
+    record: (data)=>ipcRenderer.send('operate-sql:record', url, data)
+  },
   // excel
   openExcel: (user, config) => ipcRenderer.send('open-excel', user, config, 'excel',),
   onOpenExcel: (callback, statusCallback) => {

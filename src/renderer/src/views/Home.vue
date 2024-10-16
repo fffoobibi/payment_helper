@@ -7,26 +7,17 @@ const store = useUserStore()
 const router = useRouter()
 const cfg = useLocalConfig()
 const menuItems = reactive([
-  { icon: 'dingdingdingd', text: '钉钉打款', name: 'payment' },
-  { icon: 'fund-intransit', text: '在途资金', name: 'fundInTransit' },
-  { icon: 'payment', text: '银行转账', name: 'bankTransfer' },
-  { icon: 'bank-transfer', text: '银行账户', name: 'bankAccount' },
-  { icon: 'bank-account', text: '信用卡管理', name: 'creditCard' },
+  { display: '打款', icon: 'dingdingdingd', text: '钉钉打款', name: 'payment' },
+  { display: '在途', icon: 'fund-intransit', text: '在途资金', name: 'fundInTransit' },
+  { display: '转账', icon: 'payment', text: '银行转账', name: 'bankTransfer' },
+  { display: '账户', icon: 'bank-transfer', text: '银行账户', name: 'bankAccount' },
+  { display: '信用', icon: 'bank-account', text: '信用卡管理', name: 'creditCard' },
 ])
 
 const optionItems = computed(() => {
-  if (cfg.mode) {
-    return [{ icon: 'setting', text: '设置', name: 'setting' }]
-  } else {
-    return [
-      // {
-      //   icon: 'debug', text: '当前为调试服', name: 'debug'
-      // },
-      { icon: 'setting', text: '设置', name: 'setting' }
-    ]
-  }
-}
-)
+  return [{ icon: 'setting', text: '设置', name: 'setting' }]
+})
+
 const switchAccount = () => {
   store.logOut()
   router.push({ name: 'login' })
@@ -64,7 +55,10 @@ const onMenu = (item) => {
         <li :class="['menu-item', { active: item.name == currItem.name }]" v-for="item in menuItems" :key="item.name">
           <el-tooltip :content="item.text" :hide-after="0" effect="dark" transition="none" placement="right-start">
             <el-button @click="onMenu(item)" text>
-              <el-icon :class="['iconfont', 'icon-' + item.icon]"></el-icon>
+              <div style="display: flex; flex-direction: column;justify-content: center; align-items: center; gap: 3px">
+                <el-icon :class="['iconfont', 'icon-' + item.icon]"></el-icon>
+                <span class="menu-item-display">{{ item.display }}</span>
+              </div>
             </el-button>
           </el-tooltip>
         </li>
@@ -112,6 +106,7 @@ const onMenu = (item) => {
   padding: 27px 0 20px;
   background-color: #2e3238;
 }
+
 .el-avatar {
   background: #5ba3ed;
 }
@@ -141,7 +136,10 @@ const onMenu = (item) => {
 
 .menu {
   flex: 1;
-  padding: 20px 0;
+  /* padding: 20px 0; */
+  padding: 0px;
+  padding-top: 20px;
+  gap: 0px;
 }
 
 .menu-item {
@@ -149,12 +147,32 @@ const onMenu = (item) => {
   justify-content: center;
   align-items: center;
   width: 100%;
+  /* padding-top: 20px;
+  padding-bottom: 20px; */
 }
 
+.menu-item-display {
+  color: gray;
+  font-size: 12px;
+}
+
+.menu-item.active .menu-item-display {
+  color: #eee;
+}
+
+/* .menu-item.active{
+  border-left: 2px solid #1d6dbd;
+} */
+
 .menu-item .el-button {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  /* width: 36px;
+  height: 36px; */
+  /* padding-left: 2px; */
+  padding-top: 26px;
+  padding-bottom: 26px;
+
+  /* height: 50px; */
+  /* border-radius: 10px; */
 }
 
 .menu-item.active .el-button,

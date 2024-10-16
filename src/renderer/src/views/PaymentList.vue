@@ -512,6 +512,11 @@ const onAbnoraml = async () => {
           <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{
       listTitle
     }}</el-checkbox>
+          <el-button link @click="onSearch">
+            <el-icon :size="16">
+              <Refresh />
+            </el-icon>
+          </el-button>
           <el-tooltip content="布局" placement="top" hide-after="0" transition="none">
             <div class="custom-style">
               <el-segmented v-model="cfg.layout" size="small" :options="[
@@ -557,13 +562,13 @@ const onAbnoraml = async () => {
             :icon="Delete" link></el-button>
           <div class="space" v-if="form.type == 'processed'"></div>
           <div class="row-content" @click="() => {
-      if (form.type != 'pending') {
-        onDetail(item.id, item)
-      }
-      if (!cfg.layout) {
-        onDetail(item.id, item)
-      }
-    }">
+              if (form.type != 'pending') {
+                onDetail(item.id, item)
+              }
+              if (!cfg.layout) {
+                onDetail(item.id, item)
+              }
+            }">
             <div class="row-top">
               <div class="row-title">{{ item.process_name }}</div>
               <div class="row-time">{{ dateTimeFmt(item.create_time) }}</div>

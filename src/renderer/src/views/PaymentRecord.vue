@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeMount, reactive } from 'vue'
+import { onBeforeMount, reactive,ref } from 'vue'
 import api from '@/api'
 import { Check, DocumentDelete, Edit, Picture, RefreshLeft } from '@element-plus/icons-vue'
 import Message from '@/utils/message'
@@ -9,12 +9,28 @@ import * as XLSX from "xlsx"
 import { getExcelColumnLetter } from '@/utils/tools'
 import { useUserStore } from "@/stores/index"
 
+const props = defineProps({
+  condition: {
+    type: String,
+    default: '1'
+  },
+  content: {
+    type: String,
+    default: ''
+  },
+  expands: {
+    type: Array,
+    default: () => []
+  }
+})
 
 const store = useUserStore()
 
 const form = reactive({
-  condition: '1',
-  content: '',
+  // condition: '1',
+  // content: '',
+  condition: props.condition,
+  content: props.content,
   page: 1,
   limit: 10,
 })
@@ -53,6 +69,9 @@ const onSubmit = async () => {
     const data = await api.getPaymentRecordList(form)
     table.data = data.list
     table.total = data.count
+    if(props.expands.length){
+      tableRef.value.toggleRowExpansion(table.data[0])
+    }
   } catch (error) {
     console.log(error)
   }
@@ -120,12 +139,15 @@ const onCopy = async text => {
   Message.success("复制成功")
 }
 
+const tableRef = ref(null)
 const onExpandRow = async (row, _) => {
   row.isLoading = row.voucher_ext_list == undefined || row.voucher_ext_list.length == 0
   try {
     const data = await api.getPaymentRecordExtList({ voucher_id: row.voucher_id })
     row.voucher_ext_list = data.list
-  } finally {
+  } catch(err){
+    console.log('err ==> ', err)
+  }finally {
     row.isLoading = false
   }
 }
@@ -204,7 +226,8 @@ onBeforeMount(() => {
     </el-form-item>
   </el-form>
 
-  <el-table :data="table.data" class="table" row-key="voucher_id" @expand-change="onExpandRow">
+  <el-table :data="table.data" class="table" row-key="voucher_id" @expand-change="onExpandRow"
+    :expand-row-keys="props.expands" ref="tableRef">
     <el-table-column type="expand">
       <template #default="props">
         <div class="table-wrap" v-loading="props.row?.isLoading">
@@ -285,8 +308,10 @@ onBeforeMount(() => {
             </el-table-column> -->
             <el-table-column label="信息" width="160">
               <template #default="subscope" style="user-select: text;">
-                <div class="select-text">标题: {{ subscope.row.account_title_parent }} - {{ subscope.row.account_title}}</div>
-                <div class="select-text">金额: {{ numberFmt(subscope.row.origin_amount) }} {{ subscope.row.currency }}</div>
+                <div class="select-text">标题: {{ subscope.row.account_title_parent }} - {{ subscope.row.account_title }}
+                </div>
+                <div class="select-text">金额: {{ numberFmt(subscope.row.origin_amount) }} {{ subscope.row.currency }}
+                </div>
               </template>
             </el-table-column>
             <el-table-column label="备注" prop="note">
@@ -407,9 +432,11 @@ onBeforeMount(() => {
   gap: 0 8px;
   padding: 0 12px;
 }
-.select-text{
+
+.select-text {
   user-select: text
 }
+
 .filter .el-form-item {
   margin: 0;
 }

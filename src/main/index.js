@@ -8,6 +8,7 @@ import trayIcon from '../../resources/favicon.ico?asset'
 import log from 'electron-log'
 import fs from 'fs'
 import db from './db.js'
+import {OperateDataBase} from './operatedb.js'
 import * as XLSX from 'xlsx'
 
 import _ from 'electron-updater'
@@ -17,6 +18,19 @@ const autoUpdater = _.autoUpdater
 // 配置文件
 const store = new Store()
 console.log(store.path)
+const getCurrentConfig = (key, defaultValue) =>{
+  const v = store.get('currentUserId', null)
+  if (v === null || v === undefined) {
+    return null
+  }
+  const field = `${v}.${key}`
+  const rs = store.get(field)
+  let r = rs || {}
+  if(r.value === undefined){
+    return defaultValue
+  }
+  return r.value
+}
 
 // 更新管理
 class Updater {
@@ -69,7 +83,9 @@ class Updater {
       autoUpdater.autoDownload = false
       autoUpdater.logger = log
       const isPro = store.get('pro')?.value ?? true
-      const feedUrl = isPro ? (store.get('versionFormalUrl')?.value ?? "https://bd.baizhoucn.com/upload") : (store.get('versionTestUrl')?.value ?? "http://192.168.0.10:20010/upload")
+      // const debugFeedLocalUrl = 'http://36.32.174.26:5018/updates'
+      const debugFeedLocalUrl = 'http://192.168.0.10:20010/upload'
+      const feedUrl = isPro ? (store.get('versionFormalUrl')?.value ?? "https://bd.baizhoucn.com/upload") : (store.get('versionTestUrl')?.value ?? debugFeedLocalUrl)
 
       if (is.dev) {
         autoUpdater.forceDevUpdateConfig = true
@@ -300,10 +316,15 @@ log.transports.file.resolvePathFn = () => {
   return logPath
 }
 
+
+const directoryPath = join(app.getPath('home'), '.payment_helper')
+const dbPath = is.dev ? 'operate_dev.db' : 'operate.db'
+const operateDb = new OperateDataBase(join(directoryPath, dbPath))
+
 const loginWidth = 360
 const loginHeight = 400
-const mainWidth = 950
-const mainHeight = 700
+const mainWidth = 950+20
+const mainHeight = 700+200
 
 function createWindow() {
   // Create the browser window.
@@ -457,7 +478,11 @@ function createWindow() {
   // 点击确定按钮回调事件
   screenshots.on('ok', (e, buffer, bounds) => {
     // const src = 'data:image/png;base64,' + btoa(String.fromCharCode(...new Uint8Array(buffer)))
+
+    const pined = getCurrentConfig("pinned", false)
+    mainWindow.setAlwaysOnTop(pined, 'screen-saver')
     mainWindow.show()
+
     const src = 'data:image/png;base64,' + btoa(new Uint8Array(buffer).reduce((data, btye) => data + String.fromCharCode(btye), ''))
     if (state.global) {
       mainWindow.webContents.send('shortcut-key-capture', src)
@@ -469,7 +494,11 @@ function createWindow() {
 
   // 点击取消按钮回调事件
   screenshots.on('cancel', () => {
+
+    const pined = getCurrentConfig("pinned", false)
+    mainWindow.setAlwaysOnTop(pined, 'screen-saver')
     mainWindow.show()
+
     screenshots.endCapture()
     state.global = false
   })
@@ -481,6 +510,9 @@ function createWindow() {
   // esc取消
   globalShortcut.register('esc', () => {
     if (screenshots.$win?.isFocused()) {
+      const pined = getCurrentConfig("pinned", false)
+      mainWindow.setAlwaysOnTop(pined, 'screen-saver')
+
       mainWindow.show()
       screenshots.endCapture()
       state.global = false
@@ -784,6 +816,8 @@ ipcMain.handle('sql-delete', async (event, table, where) => {
   const result = await db.delete(table, where)
   if (result) return result
 })
+
+operateDb.initHandles()
 
 
 // This method will be called when Electron has finished

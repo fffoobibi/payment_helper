@@ -117,3 +117,123 @@ body {
 .records .el-drawer__body {
   padding: 12px 0 !important;
 }
+
+.w-full {
+  width: 100%;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-start {
+  justify-content: flex-start;
+}
+
+.flex-center {
+  justify-content: center;
+}
+
+.flex-end {
+  justify-content: flex-end;
+}
+
+.flex-between {
+  justify-content: space-between;
+}
+
+.flex-c-start {
+  align-items: flex-start;
+}
+
+.flex-c-center {
+  align-items: center;
+}
+
+.flex-c-end {
+  align-items: flex-end;
+}
+
+.flex-c-between {
+  align-items: space-between;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.gap-2 {
+  gap: 2px
+}
+
+.gap-3 {
+  gap: 3px
+}
+
+.gap-4 {
+  gap: 4px
+}
+
+.gap-8 {
+  gap: 8px
+}
+
+.t-select {
+  user-select: text;
+}
+
+.t-no-select {
+  user-select: none !important;
+}
+
+.c-pointer {
+  cursor: pointer;
+}
+
+.t-primary {
+  color: #5F89DF;
+  user-select: text;
+}
+
+.t-black {
+  color: black;
+  user-select: text;
+}
+
+.t-gray {
+  color: gray;
+  user-select: text;
+}
+
+.t-red {
+  color: rgb(250, 58, 58);
+  user-select: text;
+}
+
+.f-12 {
+  font-size: 12px;
+}
+
+.f-13 {
+  font-size: 13px;
+}
+
+.f-14 {
+  font-size: 14px;
+}
+
+.f-15 {
+  font-size: 15px;
+}
+
+.b-500 {
+  font-weight: 500;
+}
+
+.b-600 {
+  font-weight: 600;
+}

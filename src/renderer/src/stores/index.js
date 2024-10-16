@@ -8,6 +8,7 @@ const useUserStore = defineStore('user', () => {
   const setUser = (data) => {
     user.value = data
     localStorage.setItem('user', JSON.stringify(data))
+    console.log('权限： ', data.auth_list);
   }
   const logOut = () => {
     user.value = {}
@@ -43,15 +44,19 @@ const useUserStore = defineStore('user', () => {
   const canCreditCardReview = computed(() => {
     return user.value.auth_list.includes('/payment_assistant_credit_card_review')
   })
-  
+
   // 信用卡复核权限
   const canCreditCardCheckReview = computed(() => {
     return user.value.auth_list.includes('/payment_assistant_credit_card_check_review')
   })
 
+  // 信用卡报销权限
+  const canCreditCardReimburse = computed(() => {
+    return user.value.auth_list.includes('/payment_assistant_credit_card_reimburse')
+  })
   return {
     user, setUser, canAudit, canModify, canCancel, canDelete, canModifyNote, canExportDetails, canCreditCardReview,
-    canCreditCardCheckReview,
+    canCreditCardCheckReview, canCreditCardReimburse,
     showUpdate, logOut
   }
 })

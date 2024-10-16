@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch } from 'vue'
+import { onBeforeMount, reactive, ref, watch, computed, onMounted } from 'vue'
 import { useUserStore, useAccountStore, useAirwallexStore, useScreenShortStore, useDingdingSubmitStore, useExcelStore } from '@/stores'
 import { useLocalConfig } from "@/stores/config"
 import { storeToRefs } from "pinia"
@@ -10,7 +10,6 @@ import { accountFormatter, accountParser, amountFormatter, amountParser, numberF
 import { viewImages } from "@/utils/tools"
 import Message from '@/utils/message'
 import Airwallex from './Airwallex.vue'
-import { computed, onMounted } from 'vue'
 import { debounce } from 'lodash'
 
 import PaymentRecord from './PaymentRecord.vue'
@@ -94,7 +93,7 @@ const form = reactive({
     origin_total_amount: dd.approve.origin_total_amount,
     currency: dd.approve.currency || '',
     commission: '',
-    transaction_number:  '',
+    transaction_number: '',
     note: dd.approve.note || '',
     transaction_number_airwallex: '',
     airwallex_status: '',
@@ -109,7 +108,7 @@ const formReset = () => {
     form.origin_total_amount = dd.approve.origin_total_amount || ''
     form.currency = dd.approve.currency || ''
     form.commission = ''
-    form.transaction_number =  ''
+    form.transaction_number = ''
     form.note = dd.approve.note || ''
     form.transaction_number_airwallex = ''
     form.airwallex_status = ''
@@ -171,6 +170,7 @@ const onSubmit = async el => {
         try {
             await api.addPaymentRecord(data)
             Message.success("打款提交成功")
+            listRef.value?.reload()
 
             if (form.transaction_number_airwallex) {
                 if (form.is_binding) {  // 更新本地airwallex记录
@@ -274,7 +274,59 @@ const fetchAccountVoucherInfo = debounce(
 )
 
 const showRecordDrawer = ref(false)
+const showRecordCondition = ref('1')
+const showRecordContent = ref('')
+const showRecordExpands = ref([])
 
+const recordQuery = reactive({
+    condition: '1',
+    content: '',
+    page: 1,
+    limit: 10,
+})
+const record = reactive({
+    totalPage: null,
+    loading: false,
+    showSearch: false,
+})
+const listRef = ref(null)
+const onSearchRecord = async (page, limit) => {
+    try {
+        const data = await api.getPaymentRecordList({ ...recordQuery, page, limit, showLoading: false })
+        return data
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+const onFetchDone = ({ total }) => {
+    record.totalPage = total
+    record.loading = false
+}
+
+const onFetchStart = () => {
+    record.loading = true
+}
+const listHeight = computed(() => {
+    const formHeight = formRef.value?.$el?.clientHeight ?? 474
+    return height.value - 20 - 66 - formHeight - 40 - 20
+})
+const onCopy = async text => {
+    await navigator.clipboard.writeText(text)
+    Message.success("复制成功")
+}
+
+watch(() => recordQuery.condition, () => {
+    listRef.value.reload()
+})
+
+const dSearch = debounce(() => {
+    listRef.value.reload()
+}, 300)
+
+watch(() => recordQuery.content, () => {
+    dSearch()
+})
 </script>
 
 
@@ -296,12 +348,6 @@ const showRecordDrawer = ref(false)
                     </el-icon>
                 </el-button>
             </el-tooltip>
-            <!-- <el-tooltip content="新增打款/转账" placement="bottom" hide-after="0" transition="none"
-          v-if="route.query.type === 'pending'">
-          <el-button size="small" class="option-btn" @click="showAddDrawer = true" link>
-            <i class="iconfont icon-edit"></i>
-          </el-button>
-        </el-tooltip> -->
             <el-tooltip content="打款记录" placement="bottom-end" hide-after="0" transition="none">
                 <el-button size="small" class="option-btn" @click="showRecordDrawer = true" link>
                     <i class="iconfont icon-history-record"></i>
@@ -377,7 +423,7 @@ const showRecordDrawer = ref(false)
                     </el-col>
                 </el-form-item>
                 <el-form-item label="交易流水号" prop="transaction_number" required>
-                    <el-input v-model="form.transaction_number" spellcheck="false" :validate-event="false" />
+                    <el-input v-model="form.transaction_number" spellcheck="false" :validate-event="false" clearable />
                 </el-form-item>
                 <el-form-item label="备注" prop="note">
                     <el-input v-model="form.note" rows="3" type="textarea" spellcheck="false" maxlength="100"
@@ -414,6 +460,112 @@ const showRecordDrawer = ref(false)
 
                 </el-form-item>
             </el-form>
+
+            <div class="flex flex-between w-full gap-8" style="margin-bottom: 10px; height:30px">
+                <div class="flex flex-c-center gap-4">
+                    <h3 class="t-primary">打款记录</h3>
+                    <span class="t-gray f-13 b-500 t-no-select">(共{{ record.totalPage }}条记录)</span>
+                    <el-button link @click="() => {
+                recordQuery.showSearch = !recordQuery.showSearch
+                if (recordQuery.showSearch === false) {
+                    recordQuery.content = ''
+                }
+            }"><el-icon>
+                            <Search />
+                        </el-icon></el-button>
+                    <el-input v-if="recordQuery.showSearch" style="width: 240px" clearable placeholder="输入编号"
+                        v-model="recordQuery.content" @keyup.esc="() => {
+                recordQuery.showSearch = !recordQuery.showSearch
+                if (recordQuery.showSearch === false) {
+                    recordQuery.content = ''
+                }
+            }"></el-input>
+                </div>
+                <div>
+                    <el-button link @click="listRef.reload()">
+                        <el-icon :class="record.loading ? 'is-loading' : ''" size="large">
+                            <Refresh />
+                        </el-icon>
+                    </el-button>
+                    <el-select style="width: 120px" v-model="recordQuery.condition">
+                        <el-option label="今天" value="1" />
+                        <el-option label="昨天" value="2" />
+                        <el-option label="近7天" value="3" />
+                        <el-option label="本月" value="4" />
+                        <el-option label="上个月" value="5" />
+                    </el-select>
+                </div>
+            </div>
+            <!-- <div v-for="item in recordData" :key="item.voucher_id" class="flex-col gap-4 record-container">
+                <div class="flex flex-between">
+                    <span class="t-black f-14 b-500">编号 {{ item.sn }} </span>
+                    <span class="t-gray f-14">{{ timestampToFormattedString(item.create_time) }} </span>
+                </div>
+                <div class="flex flex-between">
+                    <div class="flex flex-col">
+                        <span class="t-black f-14">{{ item.creator }} ({{ item.department_name }})</span>
+                        <div>
+                            <span class="t-black f-14">支出金额 </span>
+                            <span class="t-red f-14">{{ numberFmt(item.origin_total_amount) + " " }}</span>
+                            <span class="t-gray f-14">{{ item.currency }}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col flex-c-end">
+                        <span class="t-black f-14">{{ item.voucher_ext_last.account_name }}</span>
+                        <span class="t-black f-14">收款账号 {{ " " + item.voucher_ext_last.receiving_account }}</span>
+                    </div>
+
+                </div>
+            </div> -->
+
+            <LoadingList :fetch="onSearchRecord" ref="listRef" :height="listHeight" @on-fetch-start="onFetchStart"
+                @on-fetch-done="onFetchDone">
+                <template #empty>
+                    <el-empty :image-size="120" />
+                </template>
+                <template #default="{ info: item }">
+                    <div class="flex-col gap-4 record-container">
+                        <div class="flex flex-between">
+                            <div>
+                                <span class="t-black f-14 b-500">编号 {{ item.sn }} </span>
+                                <el-button @click="onCopy(item.sn)" link><i class="iconfont icon-copy"></i></el-button>
+                            </div>
+                            <span class="t-gray f-14">{{ timestampToFormattedString(item.create_time) }} </span>
+                        </div>
+                        <div class="flex flex-between">
+                            <div class="flex flex-col">
+                                <span class="t-black f-14">{{ item.creator }} ({{ item.department_name }})</span>
+                                <div>
+                                    <span class="t-black f-14">支出金额 </span>
+                                    <span class="t-red f-14">{{ numberFmt(item.origin_total_amount) + " " }}</span>
+                                    <span class="t-gray f-14">{{ item.currency }}</span>
+                                </div>
+                                <div>
+                                    <span class="t-black f-14">交易流水</span>
+                                    <span class="t-gray f-14">{{ " " + item.voucher_ext_last.transaction_number
+                                        }}</span>
+                                </div>
+
+                            </div>
+                            <div class="flex flex-col flex-c-end">
+                                <span class="t-black f-14">{{ item.voucher_ext_last.account_name }}</span>
+                                <span class="t-black f-14">收款账号 {{ " " + item.voucher_ext_last.receiving_account
+                                    }}</span>
+                                <span class="t-primary f-14 t-no-select c-pointer" @click="() => {
+                                        showRecordCondition = recordQuery.condition
+                                        showRecordContent = item.sn
+                                        showRecordExpands = [item.voucher_id]
+                                        showRecordDrawer = true
+                                    }">明细 {{ item.voucher_ext_count }}</span>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </template>
+            </LoadingList>
+
+
         </el-scrollbar>
 
 
@@ -435,7 +587,8 @@ const showRecordDrawer = ref(false)
         </el-dialog>
 
         <!-- 打款历史 -->
-        <el-dialog :title="histories.title" v-model="histories.show" width="80%" destroy-on-close :close-on-click-modal="false">
+        <el-dialog :title="histories.title" v-model="histories.show" width="80%" destroy-on-close
+            :close-on-click-modal="false">
             <el-table :data="histories.list">
                 <el-table-column label="#" width="20">
                     <template #default="scope">
@@ -510,8 +663,13 @@ const showRecordDrawer = ref(false)
         </el-dialog>
 
         <!-- 打款记录抽屉 -->
-        <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="70%" class="records" destroy-on-close :close-on-click-modal="false">
-            <PaymentRecord />
+        <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="70%" class="records" destroy-on-close
+            @closed="() => {
+                showRecordCondition = '1'
+                showRecordContent = ''
+                showRecordExpands = []
+            }" :close-on-click-modal="false">
+            <PaymentRecord :condition="showRecordCondition" :content="showRecordContent" :expands="showRecordExpands" />
         </el-drawer>
     </div>
 
@@ -524,6 +682,15 @@ const showRecordDrawer = ref(false)
     padding: 10px;
     /* background-color: white; */
     height: 100%
+}
+
+.record-container {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    /* width: calc(100% - 10px) */
 }
 
 .value {

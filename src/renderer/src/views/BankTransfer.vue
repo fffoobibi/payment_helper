@@ -1,7 +1,7 @@
 <script setup>
 import { reactive, ref, watch, onMounted } from 'vue'
 import { useAccountStore, useUserStore } from "@/stores"
-import { timestampToFormattedString, numberFmt, subNumbers } from "@/utils/format"
+import { timestampToFormattedString, numberFmt, subNumbers, addNumbers } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { setUpCapture } from "@/utils/tools"
 import api from "@/api"
@@ -127,6 +127,7 @@ const form = reactive({
 })
 
 const formState = reactive({
+  in_account_id_balance_base: '',
   in_account_id_loading: false,
   out_account_id_loading: false,
   in_account_id_color: 'transparent',
@@ -177,9 +178,10 @@ watch(() => form.post.in_account_id, async () => {
   if (form.post.in_account_id) {
     formState.in_account_id_loading = true
     const resp = await api.getAccountDetail({ user_id: store.user.id, account_id: form.post.in_account_id })
+    formState.in_account_id_balance_base = resp.ending_balance
     formState.in_account_id_color = 'black'
     formState.in_account_id_loading = false
-    formState.in_account_id_balance = numberFmt(resp.available_balance)
+    formState.in_account_id_balance = addNumbers(resp.ending_balance, form.post.received_amount)
     formState.in_account_id_currency = resp.currency
     form.post.received_currency = resp.currency
   } else {
@@ -190,20 +192,31 @@ watch(() => form.post.in_account_id, async () => {
 })
 
 watch(() => form.post.out_account_id, async () => {
-  if (form.post.out_account_id) {
-    formState.out_account_id_loading = true
-    const resp = await api.getAccountDetail({ user_id: store.user.id, account_id: form.post.out_account_id })
-    formState.out_account_id_color = 'black'
+  try {
+    if (form.post.out_account_id) {
+      formState.out_account_id_loading = true
+      const resp = await api.getAccountDetail({ user_id: store.user.id, account_id: form.post.out_account_id })
+      formState.out_account_id_color = 'black'
+      formState.out_account_id_loading = false
+      formState.out_account_id_balance = numberFmt(resp.ending_balance)
+      formState.out_account_id_currency = resp.currency
+      form.post.currency = resp.currency
+    } else {
+      formState.out_account_id_color = 'transparent'
+      formState.out_account_id_balance = ''
+      formState.out_account_id_currency = ''
+    }
+  } catch (err) {
     formState.out_account_id_loading = false
-    formState.out_account_id_balance = numberFmt(resp.available_balance)
-    formState.out_account_id_currency = resp.currency
-    form.post.currency = resp.currency
-  } else {
-    formState.out_account_id_color = 'transparent'
-    formState.out_account_id_balance = ''
-    formState.out_account_id_currency = ''
+    message.error('转出账户实时余额获取失败')
   }
+
 })
+
+watch(() => form.post.received_amount, (v) => {
+  formState.in_account_id_balance = addNumbers(formState.in_account_id_balance_base, form.post.received_amount)
+})
+
 const formRules = reactive({
   origin_amount: [
     {
@@ -244,6 +257,10 @@ const resetForm = () => {
     attachment_list: [],
   }
   formRef.value?.clearValidate()
+
+  formState.in_account_id_balance_base=''
+  formState.in_account_id_loading=false
+  formState.out_account_id_loading=false
 }
 
 const crop = setUpCapture(src => {
@@ -327,20 +344,20 @@ const viewTransfer = async (row) => {
 
 const editTransfer = async (row) => {
   const data = await api.transfer.getDetail({ user_id: store.user.id, id: row.id })
-  form.post = {
-    out_account_id: data.out_account_id,
-    in_account_id: data.in_account_id,
-    origin_amount: data.origin_amount,
-    currency: data.currency,
-    received_amount: data.received_amount,
-    received_currency: data.received_currency,
-    note: data.note,
-    in_account_title_id: data.in_account_title_id,
-    out_account_title_id: data.out_account_title_id,
-    attachment_list: data.attachment_list.map(v => { return { url: v.path } }),
-    voucher_ext_id: row.voucher_ext_id,
-    id: row.id
-  }
+  form.post.out_account_id = data.out_account_id
+  form.post.in_account_id = data.in_account_id
+  form.post.origin_amount = data.origin_amount
+  form.post.currency = data.currency
+  form.post.received_amount = data.received_amount
+  form.post.received_currency = data.received_currency
+  form.post.note = data.note
+  form.post.in_account_title_id = data.in_account_title_id
+  form.post.out_account_title_id = data.out_account_title_id
+  form.post.attachment_list = data.attachment_list.map(v => { return { url: v.path } })
+  form.post.voucher_ext_id = row.voucher_ext_id
+  form.post.id = row.id
+
+  console.log('edit ===> ', data, form.post.origin_amount, data.origin_amount);
   form.mode = 'edit'
   form.show = true
 }
@@ -405,12 +422,6 @@ const submitAuditTransfer = async () => {
         <template #title>
           <h4>银行转账</h4>
         </template>
-
-        <!-- <template #option>
-          <el-button size="small" class="option-btn" link>
-            <i class="iconfont icon-setting"></i>
-          </el-button>
-        </template> -->
       </Header>
 
       <div class="pannel">
@@ -458,8 +469,9 @@ const submitAuditTransfer = async () => {
             <template #default="scope">
               <div>转出：<span class="user-black">{{ scope.row.out_account_name }}</span></div>
               <div>转入：<span class="user-black">{{ scope.row.in_account_name }}</span></div>
-              <div>金额：<span class="user-black red light">{{ `${numberFmt(scope.row.origin_amount)}` }}</span> <span class="black light">{{ `
-                ${scope.row.currency}` }}</span></div>
+              <div>金额：<span class="user-black red light">{{ `${numberFmt(scope.row.origin_amount)}` }}</span> <span
+                  class="black light">{{ `
+                  ${scope.row.currency}` }}</span></div>
             </template>
           </el-table-column>
           <el-table-column label="备注">
@@ -504,27 +516,24 @@ const submitAuditTransfer = async () => {
           v-model:page-size="queryForm.page.pageSize" background="true" :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper" :total="queryForm.page.totalCount" />
 
-        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" 
-          :close-on-click-modal="false"
-          destroy-on-close
-          ref="drawRef">
+        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%"
+          :close-on-click-modal="false" destroy-on-close ref="drawRef" @closed="()=>{
+              resetForm()
+          }">
           <template #default>
             <el-form :model="form.post" label-width="auto" style="width:100%" ref="formRef" :rules="formRules">
 
               <el-form-item label="转出账户" prop="out_account_id" required :show-message="false">
-                <div style=" display: flex;flex-direction: column;width: 100%;"
-                  v-loading="formState.out_account_id_loading">
-                  <el-select v-model="form.post.out_account_id" filterable @change="handleBankChange"
+                <div class="form-item-detail" v-loading="formState.out_account_id_loading">
+                  <el-select v-model="form.post.out_account_id" filterable
                     :disabled="formState.getDisabledState('out_account_id')">
                     <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
                       :value="item.id" />
                   </el-select>
-
-                  <div style="display: flex;justify-content: flex-start;align-items: center">
-                    <p><span :class="formState.out_account_id_color">实时余额 </span>
-                      <span style="color:black">{{ formState.out_account_id_balance }}</span>
-                      <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
-                    </p>
+                  <div>
+                    <span :class="formState.out_account_id_color">实时余额 </span>
+                    <span style="color:black">{{ formState.out_account_id_balance }}</span>
+                    <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
                   </div>
                 </div>
               </el-form-item>
@@ -537,10 +546,9 @@ const submitAuditTransfer = async () => {
               </el-form-item>
 
               <el-form-item label="转出金额" prop="origin_amount" required>
-                <div style=" display: flex;flex-direction: column;width: 100%;">
+                <div class="form-item-detail">
                   <div style=" display: flex;justify-content: center; width: 100%;">
                     <el-input-number v-model="form.post.origin_amount" style="width:70%"
-                      :max="formState.out_account_id_balance?.replaceAll(',', '')"
                       :disabled="formState.getDisabledState('origin_amount')" :precision="2" :controls="false">
                       <template #suffix>
                         <p>{{ form.currency }}</p>
@@ -552,30 +560,27 @@ const submitAuditTransfer = async () => {
                         :value="item.code" />
                     </el-select>
                   </div>
-                  <p>
+                  <div>
                     <span :class="formState.available_color">可用余额</span>
                     <span :class="formState.available_color">{{ " " + formState.available_balance }}</span>
                     <span :class="formState.available_color == 'transparent' ? 'transparent' : 'red'">{{ " " +
           formState.out_account_id_currency }}</span>
-                  </p>
+                  </div>
                 </div>
 
               </el-form-item>
 
               <el-form-item label="转入账户" prop="in_account_id" required :show-message="false">
-                <div style=" display: flex;flex-direction: column;width: 100%;"
-                  v-loading="formState.in_account_id_loading">
-                  <el-select v-model="form.post.in_account_id" filterable @change="handleBankChange"
+                <div class="form-item-detail" v-loading="formState.in_account_id_loading">
+                  <el-select v-model="form.post.in_account_id" filterable
                     :disabled="formState.getDisabledState('in_account_id')">
                     <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
                       :value="item.id" />
                   </el-select>
-
-                  <div style="display: flex;justify-content: flex-start;align-items: center">
-                    <p><span :class="formState.in_account_id_color">实时余额 </span>
-                      <span style="color:black">{{ formState.in_account_id_balance }}</span>
-                      <span style="color:red">{{ " " + formState.in_account_id_currency }}</span>
-                    </p>
+                  <div>
+                    <span :class="formState.in_account_id_color">实时余额 </span>
+                    <span style="color:black">{{ formState.in_account_id_balance }}</span>
+                    <span style="color:red">{{ " " + formState.in_account_id_currency }}</span>
                   </div>
                 </div>
               </el-form-item>
@@ -690,6 +695,12 @@ h4 {
   font-weight: bold;
 }
 
+.form-item-detail {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .pannel {
   padding: 10px;
 }
@@ -718,7 +729,7 @@ h4 {
   color: rgb(245, 108, 108) !important
 }
 
-.light{
+.light {
   font-weight: 600
 }
 

@@ -270,9 +270,12 @@ const useLocalConfig = defineStore('localConfig', () => {
 
   // 银行账号历史
   const { refV: histories, update: updateHistories } = makeScope([
-    { value: true, label: '序号' },
-    { value: true, label: '摘要信息' },
-    { value: true, label: '创建' },
+    { value: true, label: '#' },
+    { value: true, label: '编号' },
+    { value: true, label: '时间' },
+    { value: true, label: '类型' },
+    { value: true, label: '备注' },
+    { value: true, label: '打款备注' },
     { value: true, label: '初期' },
     { value: true, label: '本期' },
     { value: true, label: '期末' },
@@ -284,9 +287,22 @@ const useLocalConfig = defineStore('localConfig', () => {
 
   // 银行账号日志
   const { refV: records, update: updateRecords } = makeScope([
-    { value: true, label: '序号' },
-    { value: true, label: '摘要信息' },
-    { value: true, label: '创建' },
+    // { value: true, label: '序号' },
+    // { value: true, label: '摘要信息' },
+    // { value: true, label: '创建' },
+    // { value: true, label: '初期' },
+    // { value: true, label: '本期' },
+    // { value: true, label: '期末' },
+    // { value: true, label: '凭证号' },
+    // { value: true, label: '操作' },
+    { value: true, label: '#' },
+    { value: true, label: '编号' },
+    { value: true, label: '银行' },
+    { value: true, label: '姓名/部门' },
+    { value: true, label: '时间' },
+    { value: true, label: '类型' },
+    { value: true, label: '备注' },
+    { value: true, label: '打款备注' },
     { value: true, label: '初期' },
     { value: true, label: '本期' },
     { value: true, label: '期末' },
@@ -297,7 +313,7 @@ const useLocalConfig = defineStore('localConfig', () => {
   }, Keys.records)
 
   // 布局
-  const { refV: layout, update: updateLayout } = makeScope(false, async () => {
+  const { refV: layout, update: updateLayout } = makeScope(true, async () => {
     return await getConfig(Keys.layout)
   }, Keys.layout, { autoSave: true })
 
@@ -342,10 +358,13 @@ const useLocalConfig = defineStore('localConfig', () => {
   }, Globals.versionFormalUrl, { debounced: true, autoSave: true })
 
   //更新测试服
-  const { refV: versionTestUrl, update: updateTestVersion } = makeGlobal('http://192.168.0.10:20010/upload', async () => {
+  const r = 'http://192.168.0.10:20010/upload'
+  // const r = 'http://36.32.174.26:5018/updates'
+  const { refV: versionTestUrl, update: updateTestVersion } = makeGlobal(r, async () => {
     return await getGlobalConfig(Globals.versionTestUrl)
   }, Globals.versionTestUrl, { debounced: true, autoSave: true })
 
+  // 域名模式
   const { refV: mode, update: updateMode } = makeGlobal(true, async () => {
     return await getGlobalConfig(Globals.pro)
   }, Globals.pro, { autoSave: true })

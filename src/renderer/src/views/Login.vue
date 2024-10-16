@@ -1,6 +1,6 @@
 <script setup>
-import { nextTick, reactive, ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { reactive, ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from "pinia"
 import Toolbar from '@/components/Toolbar.vue'
 import api from "@/api"
@@ -9,6 +9,7 @@ import { Keys, useLocalConfig } from "@/stores/config"
 
 import app_info from '../../../../package.json'
 import { CircleCloseFilled } from '@element-plus/icons-vue'
+import updater from '../utils/update'
 
 
 const router = useRouter()

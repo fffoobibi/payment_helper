@@ -72,9 +72,10 @@ const queryForm = reactive({
     totalCount: 0,
   },
   search: {
-    account_id: '0',
-    start_time: formatDate(shortcuts[1].value(), {start: true}),
-    end_time: formatDate(new Date, {end: true}),
+    account_id: '',
+    // account_id: bank.accounts[0]?.id,
+    start_time: formatDate(shortcuts[1].value(), { start: true }),
+    end_time: formatDate(new Date, { end: true }),
     content: '',  // 凭证号
     rank: 'DESC',  // 倒叙，顺序 ASC DESC
     voucher_no: '', // 编号
@@ -131,9 +132,6 @@ const exportData = async () => {
   try {
     exportLoading.value = true
     const post = { ...queryForm.search }
-    if (post.account_id === '0') {
-      delete post.account_id
-    }
     delete post.page
     delete post.limit
     const resp = await api.bank_account.exportAccountRecordHistoryAllList(post)
@@ -180,14 +178,6 @@ const onSearch = async (page = null, pageSize = null) => {
         queryForm.search.limit = queryForm.page.pageSize
       }
       const post = { ...queryForm.search }
-
-
-      if (post.account_id == '0') {
-        post.account_id = ''
-      }
-      if (!post.account_id) {
-        delete post.account_id
-      }
       const data = await api.bank_account.getAccountRecordHistoryAllList(post, processResponse)
       queryForm.tableData = data.list
       queryForm.page.totalCount = data.count
@@ -244,8 +234,9 @@ const rules = reactive({
   <div style=" width:100%;height: 100%; padding: 10px;">
     <el-form inline :model="queryForm.search" ref="queryFormRef" :rules="rules">
       <el-form-item>
-        <el-select v-model="queryForm.search.account_id" filterable style="width: 220px">
-          <el-option label="全部" value="0"></el-option>
+        <el-select v-model="queryForm.search.account_id" filterable style="width: 220px" default-first-option
+          :empty-values="[null, undefined]">
+          <el-option label="全部" value=""></el-option>
           <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" />
         </el-select>
       </el-form-item>
@@ -257,7 +248,7 @@ const rules = reactive({
         <el-input placeholder="凭证号" clearable style="width:150px" v-model.trim="queryForm.search.voucher_no"></el-input>
       </el-form-item>
 
-      <el-form-item  style="width: 260px; margin-right: 0px !important;">
+      <el-form-item style="width: 260px; margin-right: 0px !important;">
         <el-form-item prop="start_time" style="margin-right: 0px !important">
           <el-date-picker style="width: 110px; margin-right:5px" v-model="queryForm.search.start_time" type="date"
             value-format="YYYY-MM-DD 00:00:00" format="YY/MM/DD" placeholder="开始" :shortcuts="shortcuts" />
@@ -268,7 +259,7 @@ const rules = reactive({
         </el-form-item>
       </el-form-item>
 
-      <el-form-item >
+      <el-form-item>
         <el-button type='primary' @click="onSearch(1, null)">
           查询
         </el-button>
@@ -276,7 +267,7 @@ const rules = reactive({
           导出
         </el-button>
       </el-form-item>
-      
+
       <el-form-item>
         <el-dropdown :hide-on-click="false">
           <el-button>
@@ -298,7 +289,7 @@ const rules = reactive({
       </el-form-item>
     </el-form>
     <el-table row-key="id" ref="tableRef" highlight-current-row :data="queryForm.tableData" :height="tableHeight"
-      :row-class-name="renderTableRowClass" :default-sort="{ prop: 'info', order: 'descending' }" @sort-change="(d) => {
+      :row-class-name="renderTableRowClass" :default-sort="{ prop: 'create_time', order: 'descending' }" @sort-change="(d) => {
       if (d.order == 'ascending') {
         queryForm.search.rank = 'ASC'
       } else {
@@ -314,48 +305,27 @@ const rules = reactive({
       <template #empty>
         <el-empty :image-size="200" />
       </template>
-      <el-table-column label="序号" width="60" v-if="tableFieldsInfo['序号']">
+      <el-table-column label="#" width="50" v-if="tableFieldsInfo['#']" class-name="cell-select">
         <template #default="scope">
           <div>{{ scope.$index + 1 + (queryForm.page.currentPage - 1) * queryForm.page.pageSize }}</div>
         </template>
       </el-table-column>
-
-      <el-table-column label="摘要信息" sortable="custom" :sort-orders="['ascending', 'descending']" prop="info" width="300"
-        v-if="tableFieldsInfo['摘要信息']">
-        <template #default="{ row }">
-          <div>账号： <span class="user-select">{{ row.account_name }}</span></div>
-          <div>编号：<span class="user-select">{{ row.sn }}</span></div>
-          <div>时间：<span class="user-select">{{ timestampToFormattedString(row.create_time) }}</span>
-            <div>创建：<span class="user-select">{{ row.creator + `(${row.department_name})` }}</span></div>
-          </div>
+      <el-table-column label='编号' prop="sn" class-name="cell-select" v-if="tableFieldsInfo['编号']" ></el-table-column>
+      <el-table-column label='银行' prop="account_name" class-name="cell-select" v-if="tableFieldsInfo['银行']" ></el-table-column>
+      <el-table-column label='姓名/部门' class-name="cell-select" v-if="tableFieldsInfo['姓名/部门']" >
+        <template #default="{row}">
+          <span class="user-select">{{ row.creator + `(${row.department_name})` }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label="创建" :show-overflow-tooltip="{ disabled: true }" v-if="tableFieldsInfo['创建']">
-        <template #default="{ row }">
-          <div>类型：<span class="user-select">{{ row.type_name }}</span></div>
-          <div>备注：
-            <el-tooltip hide-after="0" transition="none" v-if="row.account_record_note?.trim()?.length >= 11"
-              :content="row.account_record_note?.trim()" effect="dark" placement="right">
-              <!-- <span class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span> -->
-              <span class="user-select">{{ (row.account_record_note?.trim()) }}</span>
-            </el-tooltip>
-            <!-- <span v-else class="user-select">{{ maxText(row.account_record_note?.trim()) }}</span> -->
-            <span v-else class="user-select">{{ (row.account_record_note?.trim()) }}</span>
-          </div>
-          <div>打款备注：
-            <el-tooltip hide-after="0" transition="none" v-if="row.account_voucher_ext_note?.trim()?.length >= 11"
-              :content="row.account_voucher_ext_note?.trim()" effect="dark" placement="right">
-              <!-- <span class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span> -->
-              <span class="user-select">{{ (row.account_voucher_ext_note?.trim()) }}</span>
-            </el-tooltip>
-            <!-- <span v-else class="user-select">{{ maxText(row.account_voucher_ext_note?.trim()) }}</span> -->
-            <span v-else class="user-select">{{ (row.account_voucher_ext_note?.trim()) }}</span>
-          </div>
-
+      <el-table-column label='时间' prop="create_time" class-name="cell-select" sortable="custom" :sort-orders="['ascending', 'descending']" v-if="tableFieldsInfo['时间']">
+        <template #default="{row}">
+          <span class="user-select">{{ timestampToFormattedString(row.create_time) }}</span>
         </template>
       </el-table-column>
-
+      <el-table-column label='类型' prop="type_name" class-name="cell-select" v-if="tableFieldsInfo['类型']"></el-table-column>
+      <el-table-column label='备注' prop="account_record_note" class-name="cell-select" v-if="tableFieldsInfo['备注']"></el-table-column>
+      <el-table-column label='打款备注' prop="account_voucher_ext_note" class-name="cell-select" v-if="tableFieldsInfo['打款备注']"></el-table-column>
       <el-table-column label="初期" v-if="tableFieldsInfo['初期']" width="90">
         <template #default="{ row }">
           <div class="user-select">{{ numberFmt(row.beginning_balance) }}</div>
@@ -448,7 +418,11 @@ const rules = reactive({
   font-size: 10pt;
   user-select: text
 }
-
+:deep(.el-table__row .cell-select .cell){
+  color: black;
+  /* font-size: 10pt; */
+  user-select: text
+}
 .bold {
   font-weight: bold;
 }

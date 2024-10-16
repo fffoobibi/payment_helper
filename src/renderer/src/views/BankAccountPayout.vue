@@ -309,7 +309,7 @@ watch(() => form.post.account_id, async () => {
         const resp = await api.getAccountDetail({ user_id: store.user.id, account_id: form.post.account_id })
         formState.out_account_id_color = 'black'
         formState.out_account_id_loading = false
-        formState.out_account_id_balance = numberFmt(resp.available_balance)
+        formState.out_account_id_balance = numberFmt(resp.ending_balance)
         formState.out_account_id_currency = resp.currency
         // formState.available_balance= subNumbers(numberFmt(resp.available_balance), form.post.origin_amount)
         form.post.currency = resp.currency
@@ -398,15 +398,15 @@ watch(() => form.post.account_id, async () => {
                             </el-select>
 
                             <div style="display: flex;justify-content: space-between;align-items: center">
-                                <p><span :class="formState.out_account_id_color">实时余额 </span>
+                                <div><span :class="formState.out_account_id_color">实时余额 </span>
                                     <span style="color:black">{{ formState.out_account_id_balance }}</span>
                                     <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
-                                </p>
+                                </div>
 
-                                <p><span :class="formState.out_account_id_color">可用余额 </span>
+                                <div><span :class="formState.out_account_id_color">可用余额 </span>
                                     <span style="color:black">{{ formState.available_balance }}</span>
                                     <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
-                                </p>
+                                </div>
                             </div>
                         </div>
                     </el-form-item>

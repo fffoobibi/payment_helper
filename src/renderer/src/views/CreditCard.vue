@@ -1,7 +1,7 @@
 <script setup>
 import { reactive, ref, watch, onActivated, computed } from 'vue'
 import { useUserStore, useAccountStore } from "@/stores"
-import { timestampToFormattedString, numberFmt, formatDate } from "@/utils/format"
+import { timestampToFormattedString, numberFmt, formatDate, until } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { setUpExportToExcel, useFutureControl } from "@/utils/tools"
 import { computedAsync } from "@vueuse/core"
@@ -28,6 +28,7 @@ const accounts = computedAsync(async () => {
     }
 }, [], accountsLoading)
 
+// 0 核销 1 复核
 const mode = computed(() => {
     if (store.canCreditCardReview) {
         return 0
@@ -36,7 +37,16 @@ const mode = computed(() => {
         return 1
     }
 
-}) // 0 核销 1 复核
+})
+
+const modeTitle = computed(() => {
+    if (mode.value === 0) {
+        return "信用卡核销明细"
+    } else if (mode.value === 1) {
+        return "信用卡复核明细"
+    }
+    return ""
+})
 
 const selectable = row => {
     if (mode.value == 0) {
@@ -45,7 +55,9 @@ const selectable = row => {
     else if (mode.value == 1) {
         return row.is_review == 1
     }
+    return false
 }
+
 const checkRows = ref([])
 const dialog = reactive({
     visible: false,
@@ -63,7 +75,12 @@ const exportToExcel = async () => {
     try {
         exportLoading.value = true
         const post = { ...queryForm.search }
-        post.year_month = formatDate(post.year_month, { trancate: 'm', sep: "" })
+        if (!post.start_time && post.end_time) {
+            post.start_time = formatDate(until(post.end_time, 90), { trancate: 'd' })
+        }
+        if (!post.end_time) {
+            post.end_time = formatDate(new Date, { trancate: 'd' })
+        }
         const resp = await api.creditCard.exportList(post)
         const saveData = resp.list.map(v => {
             return {
@@ -76,7 +93,7 @@ const exportToExcel = async () => {
                 '金额': v.origin_total_amount,
                 '人民币总金额': v.cny_total_amount,
                 '账号名称': v.account_name,
-                '核销状态': v.is_review == 1 ? '已核销' : '未核销',
+                '核销状态': reviewMsg(v.is_review),
                 '核销人': v.operator,
                 '核销时间': timestampToFormattedString(v.update_time),
                 '备注': v.note,
@@ -87,7 +104,35 @@ const exportToExcel = async () => {
         exportLoading.value = false
     }
 }
-
+const shortcuts = [
+    {
+        text: '1周前',
+        value: () => {
+            const end = new Date()
+            const start = new Date()
+            start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
+            return start
+        },
+    },
+    {
+        text: '1月前',
+        value: () => {
+            const end = new Date()
+            const start = new Date()
+            start.setTime(start.getTime() - 3600 * 1000 * 24 * 30)
+            return start
+        },
+    },
+    {
+        text: '3月前',
+        value: () => {
+            const end = new Date()
+            const start = new Date()
+            start.setTime(start.getTime() - 3600 * 1000 * 24 * 90)
+            return start
+        },
+    },
+]
 const queryForm = reactive({
     page: {
         currentPage: 1,
@@ -95,10 +140,11 @@ const queryForm = reactive({
         totalCount: 0,
     },
     search: {
-        year_month: new Date,
+        start_time: formatDate(shortcuts[1].value(), { trancate: 'd' }),
+        end_time: formatDate(new Date, { trancate: 'd' }),
         account_id: null,
         content: '',
-        is_review: ''
+        is_review: ['0']
     },
     searching: true,
     statistics_currency: null,
@@ -106,6 +152,12 @@ const queryForm = reactive({
     statistics_settled: null,
     hasSearch: false,
     tableData: [],
+
+    editShow: false,
+    edit: {
+        note: '',
+        payment_id: null
+    }
 })
 
 const onSearch = async (page = null, pageSize = null) => {
@@ -122,7 +174,14 @@ const onSearch = async (page = null, pageSize = null) => {
     }
     queryForm.searching = true
     const post = { ...queryForm.search }
-    post.year_month = formatDate(post.year_month, { trancate: 'm', sep: "" })
+    if (!post.start_time && post.end_time) {
+        post.start_time = formatDate(until(post.end_time, 90), { trancate: 'd' })
+    }
+    if (!post.end_time) {
+        post.end_time = formatDate(new Date, { trancate: 'd' })
+    }
+    post.is_review = post.is_review.join(',')
+    console.log('post ', post);
     try {
         const resp = await api.creditCard.getList(post)
         queryForm.tableData = resp.list
@@ -132,7 +191,7 @@ const onSearch = async (page = null, pageSize = null) => {
         queryForm.page.totalCount = resp.count
         queryForm.page.pageSize = resp.limit
     } catch (err) {
-
+        console.log('err ==> ', err);
     } finally {
         queryForm.searching = false
     }
@@ -175,16 +234,37 @@ onActivated(() => {
     tableHeight.value = 1
 })
 
-// onMounted(async () => {
-//     await nextTick(() => {
-//         const h = queryFormRef.value.$el?.clientHeight || 0
-//         console.log('height ', h, queryFormRef.value.$el);
-//     })
-// })
+const reviewMsg = (is_review) => {
+    if (is_review == 0) {
+        return "未核销"
+    }
+    else if (is_review === 1) {
+        return "已核销"
+    }
+    else if (is_review === 2) {
+        return "已复核"
+    }
+    return ""
+}
+
+const reviewClass = (is_review) => {
+    if (is_review == 0) {
+        return "red"
+    }
+    else if (is_review === 1) {
+        return "green"
+    }
+    else if (is_review === 2) {
+        return "blue"
+    }
+    return ""
+}
+
 
 const onWriteOff = () => {
     if (checkRows.value.length == 0) {
-        message.warning('请选择要核销的记录')
+        const msg = mode.value == 0 ? '请选择要核销的记录' : '请选择要复核的记录'
+        message.warning(msg)
         return
     }
     dialog.visible = true
@@ -203,15 +283,76 @@ const tabs = reactive({
     currentTab: '信用卡管理'
 })
 
+// 新增
 const amountFormatter = value => `${value}`.replace(/[^\-?\d.]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 const amountParser = value => value.replace(/[^\-?\d.]/g, '')
 const formAddShow = ref(false)
+const formAddRef = ref(null)
 const formAdd = reactive({
     currency: '',
     account_id: null,
-    origin_total_amount: '',
+    amount: '',
     note: ''
 })
+const addDetail = () => {
+    formAdd.currency = ''
+    formAdd.account_id = null
+    formAdd.amount = ''
+    formAdd.note = ''
+    formAddShow.value = true
+}
+
+const onAddDetail = async () => {
+    formAddRef.value.validate(async valid => {
+        try {
+            if (valid) {
+                const post = { ...formAdd }
+                api.creditCard.addDetail(post)
+                formAddShow.value = false
+                message.success("账单已添加")
+                onSearch()
+            }
+        } catch (err) {
+
+        }
+
+    })
+
+}
+
+const rules = {
+    account_id: [{ required: true, message: '请选择账号', trigger: 'blur' }],
+    currency: [{ required: true, message: '请选择币种', trigger: 'blur' }],
+    amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
+    note: [{ required: true, message: '请填写备注', trigger: 'blur' }],
+}
+
+// 备注修改
+const editNote = (row) => {
+    queryForm.editShow = true
+    queryForm.edit.note = row.note
+    queryForm.edit.payment_id = row.payment_id
+}
+const onEditNote = async () => {
+    try {
+        await api.creditCard.modifyNote({ note: queryForm.edit.note, payment_id: queryForm.edit.payment_id })
+        queryForm.editShow = false
+        onSearch()
+        message.success("备注已修改！")
+    } catch (e) {
+
+    }
+}
+
+const goto = account_id => {
+    tabs.currentTab = '信用卡管理'
+    queryForm.search.account_id = account_id
+    queryForm.search.is_review = [
+        '1', '2'
+    ]
+    onSearch()
+}
+
 </script>
 
 <template>
@@ -228,28 +369,37 @@ const formAdd = reactive({
                                 </el-select>
                             </el-form-item>
                             <el-form-item>
-                                <el-date-picker v-model="queryForm.search.year_month" type="month" placeholder="选择月份" />
+                                <!-- <el-date-picker v-model="queryForm.search.year_month" type="month" placeholder="选择月份" /> -->
+                                <el-date-picker style="width: 110px;margin-right:5px"
+                                    v-model="queryForm.search.start_time" type="date" value-format="YYYY-MM-DD"
+                                    format="YY/MM/DD" placeholder="开始" :shortcuts="shortcuts" />
+                                <el-date-picker style="width: 110px" v-model="queryForm.search.end_time" type="date"
+                                    value-format="YYYY-MM-DD" format="YY/MM/DD" placeholder="结束"
+                                    :shortcuts="shortcuts" />
+
                             </el-form-item>
                             <el-form-item>
                                 <el-input v-model="queryForm.search.content" placeholder="钉钉编号/采购单号"
                                     style="width: 180px" clearable></el-input>
                             </el-form-item>
                             <el-form-item>
-                                <el-select v-model="queryForm.search.is_review" style="width: 120px">
-                                    <el-option label="全部" value=" "></el-option>
+                                <el-select multiple max-collapse-tags="2" collapse-tags collapse-tags-tooltip
+                                    v-model="queryForm.search.is_review" style="width: 230px">
+                                    <!-- <el-option label="全部" value="0,1,2"></el-option> -->
                                     <el-option label="待核销" value="0"></el-option>
                                     <el-option label="已核销" value="1"></el-option>
+                                    <el-option label="已复核" value="2"></el-option>
                                 </el-select>
                             </el-form-item>
                             <el-form-item>
                                 <el-button type="primary" @click="onSearch(1, null)">查询</el-button>
-                                <el-button type="primary" @click="formAddShow = true">添加</el-button>
+                                <el-button type="primary" @click="addDetail">添加</el-button>
                                 <el-button type="warning" @click="onWriteOff"
-                                    v-if="!store.canCreditCardReview">核销</el-button>
+                                    v-if="store.canCreditCardReview">核销</el-button>
                             </el-form-item>
                             <el-form-item>
                                 <el-button type="danger" @click="onWriteOff"
-                                    v-if="!store.canCreditCardCheckReview">复核</el-button>
+                                    v-if="store.canCreditCardCheckReview">复核</el-button>
                             </el-form-item>
                             <el-form-item>
                                 <el-button type="success" :loading="exportLoading" @click="exportToExcel">
@@ -257,7 +407,21 @@ const formAdd = reactive({
                                 </el-button>
                             </el-form-item>
                             <el-form-item>
-                                <div v-show="!queryForm.searching">
+                                <!-- <el-skeleton style="width: 240px" :loading="queryForm.searching" animated :throttle="1000" :rows="0">
+                                    <template #template>
+                                        <el-skeleton-item variant="text"/>
+                                    </template>
+<div>
+    <span style="background-color: #6DBEAD; color: white; padding: 4px 4px; margin-right: 10px; font-size: 10pt">待核销总额
+        {{ numberFmt(queryForm.statistics_pending) + " " + queryForm.statistics_currency
+        }}</span>
+    <span style="background-color: #9BA9E6; color: white; padding: 4px 4px; font-size: 10pt">核销总额
+        {{ numberFmt(queryForm.statistics_settled) + " " + queryForm.statistics_currency
+        }}</span>
+</div>
+
+</el-skeleton> -->
+                                <div v-loading="queryForm.searching">
                                     <span
                                         style="background-color: #6DBEAD; color: white; padding: 4px 4px; margin-right: 10px; font-size: 10pt">待核销总额
                                         {{ numberFmt(queryForm.statistics_pending) + " " + queryForm.statistics_currency
@@ -267,6 +431,15 @@ const formAdd = reactive({
                                         {{ numberFmt(queryForm.statistics_settled) + " " + queryForm.statistics_currency
                                         }}</span>
                                 </div>
+
+                                <el-tooltip content="农行：账单日17日，还款日6日<br>工行：账单日19日，还款日6日" raw-content>
+                                    <el-button link style="margin-left: 10px;">
+                                        <el-icon>
+                                            <QuestionFilled />
+                                        </el-icon>
+                                    </el-button>
+                                </el-tooltip>
+
 
                             </el-form-item>
                         </el-form>
@@ -280,9 +453,12 @@ const formAdd = reactive({
                             <el-table-column label="摘要信息" width="240">
                                 <template #default="{ row }">
                                     <div>
-                                        <div>钉钉编号： <span class="user-black">{{ row.approval_number }}</span></div>
-                                        <div>采购单号： <span class="user-black">{{ row.purchase_number }}</span></div>
-                                        <div>创建人：<span class="user-black">{{ row.creator + " - " + row.department_name
+                                        <div>钉钉编号： <span class="user-black">{{ row.approval_number || "一一" }}</span>
+                                        </div>
+                                        <div>采购单号： <span class="user-black">{{ row.purchase_number || "一一" }}</span>
+                                        </div>
+                                        <div>创建人：<span class="user-black">{{ row.creator + " - " + (row.department_name
+                || "一一")
                                                 }}</span>
                                         </div>
                                     </div>
@@ -296,10 +472,9 @@ const formAdd = reactive({
                                     <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)
                                             }}</span><span>{{
                 " " + "CNY" }}</span></div>
-                                    <div>状态：<span :class="['user-black', row.is_review == 1 ? 'green' : 'red']">{{
-                row.is_review
-                    == 1 ?
-                    '已核销' : '未核销' }}</span></div>
+                                    <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{
+                reviewMsg(row.is_review)
+            }}</span></div>
                                 </template>
                             </el-table-column>
                             <el-table-column label="时间">
@@ -316,6 +491,11 @@ const formAdd = reactive({
                                     <div class="user-black">{{ row.note }}</div>
                                 </template>
                             </el-table-column>
+                            <el-table-column label="操作" width="100">
+                                <template #default="{ row }">
+                                    <el-button link type="primary" @click="editNote(row)">备注</el-button>
+                                </template>
+                            </el-table-column>
 
                         </el-table>
 
@@ -325,53 +505,70 @@ const formAdd = reactive({
                             :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
                             :total="queryForm.page.totalCount" />
                     </div>
-
-                    <el-dialog width="400px" v-model="formAddShow" destroy-on-close title="新增报销" :close-on-click-modal="false">
-                        <el-form label-width="auto">
-                            <el-form-item label="账户">
-                                <el-select v-model="formAdd.account_id" placeholder="请选择" default-first-option>
-                                    <el-option v-for="(item, index) in accounts" :key="index" :label="item.account_name"
-                                        :value="item.account_id"></el-option>
-                                </el-select>
-                            </el-form-item>
-                            <el-form-item label="币种">
-                                <el-select v-model="formAdd.currency" placeholder="币种" filterable
-                                    :validate-event="false">
-                                    <el-option label="全部" value="" />
-                                    <el-option v-for="item in bank.currencies" :value="item.code" />
-                                </el-select>
-                            </el-form-item>
-                            <el-form-item label="金额">
-                                <el-input v-model="formAdd.origin_total_amount" placeholder="打款金额"
-                                    :formatter="amountFormatter" :parser="amountParser" clearable />
-                            </el-form-item>
-                            <el-form-item label="备注">
-                                <el-input v-model="formAdd.note" type="textarea" spellcheck="false" maxlength="100"
-                                    show-word-limit />
-
-                            </el-form-item>
-                        </el-form>
-                        <template #footer>
-                            <div class="dialog-footer">
-                                <el-button @click="formAddShow = false">关闭</el-button>
-                                <el-button type="primary" @click="formAddShow = false">
-                                    确认
-                                </el-button>
-                            </div>
-                        </template>
-                    </el-dialog>
-
                 </el-tab-pane>
 
-                <el-tab-pane label="信用卡报销管理" name="信用卡报销管理" v-if="features.gt('2.0.1')">
-                    <CreditCardReimbursement></CreditCardReimbursement>
+                <el-tab-pane label="信用卡报销管理" name="信用卡报销管理" v-if="store.canCreditCardReimburse">
+                    <CreditCardReimbursement @toCard="goto"></CreditCardReimbursement>
                 </el-tab-pane>
             </el-tabs>
         </template>
     </Layout>
 
-    <el-dialog title="信用卡核销明细" v-model="dialog.visible" width="90%" destroy-on-close :close-on-click-modal="false">
-        <CreditCardWriteOff :rows="checkRows" @close="onClose" />
+    <!-- 备注修改 -->
+    <el-dialog width="400px" title="备注修改" v-model="queryForm.editShow" destroy-on-close :close-on-click-modal="false">
+        <el-form label-width="auto">
+            <el-form-item label="备注">
+                <el-input type="textarea" v-model="queryForm.edit.note" :rows="3"></el-input>
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button @click="queryForm.editShow = false">关闭</el-button>
+                <el-button type="primary" @click="onEditNote">
+                    确认
+                </el-button>
+            </div>
+        </template>
+
+    </el-dialog>
+
+    <!-- 添加 -->
+    <el-dialog width="400px" v-model="formAddShow" destroy-on-close title="新增报销" :close-on-click-modal="false">
+        <el-form label-width="auto" :model="formAdd" :rules="rules" ref="formAddRef">
+            <el-form-item label="账户" prop="account_id">
+                <el-select v-model="formAdd.account_id" placeholder="请选择" default-first-option>
+                    <el-option v-for="(item, index) in accounts" :key="index" :label="item.account_name"
+                        :value="item.account_id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="币种" prop="currency">
+                <el-select v-model="formAdd.currency" placeholder="币种" filterable :validate-event="false">
+                    <el-option label="全部" value="" />
+                    <el-option v-for="item in bank.currencies" :value="item.code" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="金额" prop="amount">
+                <el-input v-model="formAdd.amount" placeholder="打款金额" :formatter="amountFormatter"
+                    :parser="amountParser" clearable />
+            </el-form-item>
+            <el-form-item label="备注" prop="note">
+                <el-input v-model="formAdd.note" type="textarea" spellcheck="false" maxlength="100" show-word-limit />
+
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <div class="dialog-footer">
+                <el-button @click="formAddShow = false">关闭</el-button>
+                <el-button type="primary" @click="onAddDetail">
+                    确认
+                </el-button>
+            </div>
+        </template>
+    </el-dialog>
+
+    <!-- 核销/复核 -->
+    <el-dialog :title="modeTitle" v-model="dialog.visible" width="90%" destroy-on-close :close-on-click-modal="false">
+        <CreditCardWriteOff :rows="checkRows" @close="onClose" :mode="mode" />
     </el-dialog>
 
 </template>
@@ -418,6 +615,10 @@ h4 {
 
 .green {
     color: green !important
+}
+
+.blue {
+    color: blue !important;
 }
 
 .user-black {

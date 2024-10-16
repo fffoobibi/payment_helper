@@ -3,7 +3,7 @@ import { ref, watch, computed, reactive } from "vue"
 import api from "@/api"
 import message from "@/utils/message"
 import { useUserStore, useAccountStore } from "@/stores/index"
-import { timestampToFormattedString, numberFmt } from "@/utils/format"
+import { timestampToFormattedString, numberFmt,addNumbers } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { viewImages, setUpCapture } from "@/utils/tools"
 import logger from "../utils/logger"
@@ -124,8 +124,9 @@ const formState = reactive({
     in_account_id_currency: '',
     out_account_id_currency: '',
     available_balance: computed(() => {
-        const rs = parseFloat(formState.out_account_id_balance || '0') - parseFloat(form.post.origin_amount || '0')
-        return numberFmt(rs)
+        return addNumbers(formState.out_account_id_balance, form.post.origin_amount)
+        // const rs = parseFloat(formState.out_account_id_balance || '0') - parseFloat(form.post.origin_amount || '0')
+        // return numberFmt(rs)
     }),
     available_color: computed(() => {
         if (form.post.origin_amount) {
@@ -244,7 +245,6 @@ const submitEditIncome = async () => {
             if (valid) {
                 const rs = await editUploadRef.value.uploadImage()
                 const data = { ...form.editPost }
-                console.log('upload rs ', rs);
                 if (rs) {
                     data.attachment_list = JSON.stringify(rs)
                 } else {
@@ -306,7 +306,7 @@ watch(() => form.post.account_id, async () => {
         const resp = await api.getAccountDetail({ user_id: store.user.id, account_id: form.post.account_id })
         formState.out_account_id_color = 'black'
         formState.out_account_id_loading = false
-        formState.out_account_id_balance = numberFmt(resp.available_balance)
+        formState.out_account_id_balance = numberFmt(resp.ending_balance)
         formState.out_account_id_currency = resp.currency
     } else {
         formState.out_account_id_color = 'transparent'
@@ -390,11 +390,22 @@ watch(() => form.post.account_id, async () => {
                                     :value="item.id" />
                             </el-select>
 
-                            <div style="display: flex;justify-content: flex-start;align-items: center">
+                            <!-- <div style="display: flex;justify-content: flex-start;align-items: center">
                                 <p><span :class="formState.out_account_id_color">实时余额 </span>
                                     <span style="color:black">{{ formState.out_account_id_balance }}</span>
                                     <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
                                 </p>
+                            </div> -->
+                            <div style="display: flex;justify-content: space-between;align-items: center">
+                                <div><span :class="formState.out_account_id_color">实时余额 </span>
+                                    <span style="color:black">{{ formState.out_account_id_balance }}</span>
+                                    <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
+                                </div>
+
+                                <div><span :class="formState.out_account_id_color">可用余额 </span>
+                                    <span style="color:black">{{ formState.available_balance }}</span>
+                                    <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
+                                </div>
                             </div>
                         </div>
                     </el-form-item>

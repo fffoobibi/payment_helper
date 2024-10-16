@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, ref, watch, computed, onMounted, onActivated } from 'vue'
-import { timestampToFormattedString, numberFmt, subNumbers } from "@/utils/format"
+import { timestampToFormattedString, numberFmt, subNumbers, addNumbers } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { setUpCapture } from "@/utils/tools"
 import { useUserStore, useAccountStore } from "@/stores"
@@ -154,10 +154,15 @@ const resetForm = () => {
   }
   formState.in_account_id_loading = false
   formState.out_account_id_loading = false
+  formState.in_account_id_balance_base = ''
+  formState.in_account_id_balance = ''
+  formState.out_account_id_balance = ''
   formRef.value?.clearValidate()
 }
 
 const formState = reactive({
+  in_account_id_balance_base: '',
+
   in_account_id_loading: false,
   out_account_id_loading: false,
   in_account_id_color: 'transparent',
@@ -223,9 +228,10 @@ watch(() => form.post.in_account_id, async () => {
   if (form.post.in_account_id) {
     formState.in_account_id_loading = true
     const resp = await api.getAccountDetail({ user_id: store.user.id, account_id: form.post.in_account_id })
+    formState.in_account_id_balance_base = resp.ending_balance
     formState.in_account_id_color = 'black'
     formState.in_account_id_loading = false
-    formState.in_account_id_balance = numberFmt(resp.available_balance)
+    formState.in_account_id_balance = addNumbers(resp.ending_balance, form.post.received_amount)
     formState.in_account_id_currency = resp.currency
     form.post.received_currency = resp.currency
   } else {
@@ -241,7 +247,7 @@ watch(() => form.post.out_account_id, async () => {
     const resp = await api.getAccountDetail({ user_id: store.user.id, account_id: form.post.out_account_id })
     formState.out_account_id_color = 'black'
     formState.out_account_id_loading = false
-    formState.out_account_id_balance = numberFmt(resp.available_balance)
+    formState.out_account_id_balance = numberFmt(resp.ending_balance)
     formState.out_account_id_currency = resp.currency
   } else {
     formState.out_account_id_color = 'transparent'
@@ -254,6 +260,16 @@ watch(() => form.post.received_amount, () => {
   form.post.commission = subNumbers(form.post.origin_amount, form.post.received_amount)
 })
 
+
+watch(() => form.post.received_amount, () => {
+  console.log('here');
+  formState.in_account_id_balance = addNumbers(formState.in_account_id_balance_base, form.post.received_amount)
+})
+
+
+const resetDetails = () => {
+  resetForm()
+}
 //新增
 const addTransit = () => {
   resetForm()
@@ -438,7 +454,7 @@ const onSubmitForm = async () => {
         console.log(form.post.attachment_list)
         data.attachment_list = form.attrs.attachment_list
         if (uploads) {
-          uploads.forEach(f => data.attachment_list.push({url: f}))
+          uploads.forEach(f => data.attachment_list.push({ url: f }))
         }
         data.attachment_list = JSON.stringify(data.attachment_list)
         data.currency = formState.in_account_id_currency
@@ -499,12 +515,6 @@ const crop = setUpCapture(src => {
         <template #title>
           <h4>在途资金</h4>
         </template>
-
-        <!-- <template #option>
-          <el-button size="small" class="option-add" link @click="onAdd">
-            <i class="iconfont icon-tianjia"></i>
-            新增</el-button>
-        </template> -->
       </Header>
 
       <div class="pannel">
@@ -549,8 +559,8 @@ const crop = setUpCapture(src => {
               <div :class="{ audit: scope.row.voucher_ext_last.is_audit == 1 }">
                 <div>编号：<span class="user-black">{{ scope.row.sn }}</span></div>
                 <div>状态：<span class="bold" :style="{ color: scope.row.status === 1 ? 'red' : 'green' }">{{
-            scope.row.status === 1 ? '在途中' :
-              '已到账' }}</span></div>
+          scope.row.status === 1 ? '在途中' :
+            '已到账' }}</span></div>
                 <div>备注：<span class="user-black">{{ scope.row.note }}</span></div>
               </div>
             </template>
@@ -602,41 +612,38 @@ const crop = setUpCapture(src => {
           :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
           :total="pageInfo.totalCount" />
 
-        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" destroy-on-close :close-on-click-modal="false"
-          ref="drawRef">
+        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" destroy-on-close
+          :close-on-click-modal="false" ref="drawRef" @closed="resetDetails">
           <template #default>
             <el-form :model="form" label-width="auto" style="width:100%" ref="formRef" :rules="formRules">
 
               <el-form-item label="提现账户" prop="post.out_account_id" required :show-message="false">
-                <div style=" display: flex;flex-direction: column;width: 100%;"
-                  v-loading="formState.out_account_id_loading">
+                <div class="form-item-row" v-loading="formState.out_account_id_loading">
                   <el-select v-model="form.post.out_account_id" filterable
                     :disabled="formState.getDisabledState('out_account_id')">
                     <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
                       :value="item.id" />
                   </el-select>
-
-                  <div style="display: flex;justify-content: flex-start;align-items: center">
-                    <p><span :class="formState.out_account_id_color">实时余额 </span>
-                      <span style="color:black">{{ formState.out_account_id_balance }}</span>
-                      <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
-                    </p>
+                  <div>
+                    <span :class="formState.out_account_id_color">实时余额 </span>
+                    <span style="color:black">{{ formState.out_account_id_balance }}</span>
+                    <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
                   </div>
                 </div>
               </el-form-item>
 
               <el-form-item label="提现支出金额" prop="post.origin_amount" required>
-                <div style=" display: flex;flex-direction: column;width: 100%;">
+                <div class="form-item-row">
                   <el-input-number v-model="form.post.origin_amount"
                     :disabled="formState.getDisabledState('origin_amount')" style="width: 100%;" :precision="2"
                     clearable :controls="false">
                   </el-input-number>
-                  <p>
+                  <div>
                     <span :class="formState.available_color">可用余额</span>
                     <span :class="formState.available_color">{{ " " + formState.available_balance }}</span>
                     <span :class="formState.available_color == 'transparent' ? 'transparent' : 'red'">{{ " " +
-            formState.out_account_id_currency }}</span>
-                  </p>
+          formState.out_account_id_currency }}</span>
+                  </div>
                 </div>
 
               </el-form-item>
@@ -648,27 +655,25 @@ const crop = setUpCapture(src => {
                 </el-select>
               </el-form-item>
 
-              <el-form-item label="提现手续费" prop="post.commission" :show-message="false">
-                <el-input-number v-model="form.post.commission" :disabled="formState.getDisabledState('commission')"
-                  style="width: 100%;" :precision="2" :controls="false">
-                </el-input-number>
-              </el-form-item>
-
               <el-form-item label="到账账户" prop="post.in_account_id" required :show-message="false">
-                <div style=" display: flex;flex-direction: column;width: 100%;"
-                  v-loading="formState.in_account_id_loading">
+                <div class="form-item-row" v-loading="formState.in_account_id_loading">
                   <el-select v-model="form.post.in_account_id" filterable
                     :disabled="formState.getDisabledState('in_account_id')">
                     <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
                       :value="item.id" />
                   </el-select>
-                  <div style="display: flex;justify-content: flex-start;align-items: center">
-                    <p><span :class="formState.in_account_id_color">实时余额 </span>
-                      <span style="color:black">{{ formState.in_account_id_balance }}</span>
-                      <span style="color:red">{{ " " + formState.in_account_id_currency }}</span>
-                    </p>
+                  <div>
+                    <span :class="formState.in_account_id_color">实时余额 </span>
+                    <span style="color:black">{{ formState.in_account_id_balance }}</span>
+                    <span style="color:red">{{ " " + formState.in_account_id_currency }}</span>
                   </div>
                 </div>
+              </el-form-item>
+
+              <el-form-item label="提现手续费" prop="post.commission" :show-message="false">
+                <el-input-number v-model="form.post.commission" :disabled="formState.getDisabledState('commission')"
+                  style="width: 100%;" :precision="2" :controls="false">
+                </el-input-number>
               </el-form-item>
 
               <el-form-item label="提现到账金额" prop="post.received_amount" required :show-message="false">
@@ -704,8 +709,6 @@ const crop = setUpCapture(src => {
           </template>
           <template #footer>
             <div style="flex: auto">
-
-
               <el-tooltip effect="dark" content="创建在途资金后, 系统会自动创建支出记录, 无需手动创建支出记录!" placement="top">
                 <el-button link>
                   <el-icon>
@@ -713,7 +716,6 @@ const crop = setUpCapture(src => {
                   </el-icon>
                 </el-button>
               </el-tooltip>
-
               <el-button v-show="!formState.getDisabledState('crop')" link type="danger" @click="crop">截图
                 <el-icon>
                   <PictureFilled />
@@ -739,7 +741,7 @@ const crop = setUpCapture(src => {
         </el-dialog>
 
 
-        <el-dialog v-model="form.cancelShow" title="撤销" width="500"  destroy-on-close :close-on-click-modal="false">
+        <el-dialog v-model="form.cancelShow" title="撤销" width="500" destroy-on-close :close-on-click-modal="false">
           <span>撤销修改审核么</span>
           <template #footer>
             <div class="dialog-footer">
@@ -777,6 +779,12 @@ h4 {
   padding: 0 10px;
   color: #333;
   font-weight: bold;
+}
+
+.form-item-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .pannel {

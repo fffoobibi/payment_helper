@@ -191,6 +191,61 @@ const maxText = (str, length = 10) => {
     }
     return s
 }
+
+
+const strToDate = (dateStr, format = 'YYYY-MM-DD') => {
+    // 解析格式字符串
+    const formatParts = format.split(/[^YMD]+/);
+    const separator = format.replace(/[YMD]/g, '')[0];
+
+    // 使用分隔符分割日期字符串
+    const dateParts = dateStr.split(separator);
+    if (dateParts.length !== 3) {
+        throw new Error('Date format does not match the separator or format parts count.');
+    }
+
+    // 映射年月日到相应的值
+    let year, month, day;
+    formatParts.forEach((part, index) => {
+        const value = parseInt(dateParts[index], 10);
+        if (part === 'YYYY') {
+            year = value;
+        } else if (part === 'MM') {
+            month = value;
+        } else if (part === 'DD') {
+            day = value;
+        }
+    });
+
+    // 创建Date对象，注意月份从0开始，所以需要减1
+    const date = new Date(year, month - 1, day);
+
+    // 检查日期是否有效
+    if (date.getFullYear() != year || date.getMonth() + 1 != month || date.getDate() != day) {
+        throw new Error('Invalid date.');
+    }
+
+    return date;
+}
+
+/**
+ * @param  {string | Date} scala
+ * @param {number} days
+ * @param {string} fmt
+ * @returns {Date}
+*/
+const until = (scala, days, fmt = 'YYYY-MM-DD') => {
+    let start
+    if (typeof scala === 'string') {
+        start = strToDate(scala, fmt)
+    } else {
+        start = scala
+    }
+    start.setTime(start.getTime() - 3600 * 1000 * 24 * days * 2)
+    return start
+}
+
+
 export {
     dateTimeFmt,
     numberFmt,
@@ -202,5 +257,7 @@ export {
     amountFormatter,
     amountParser,
     accountFormatter,
-    accountParser
+    accountParser,
+    strToDate,
+    until
 }

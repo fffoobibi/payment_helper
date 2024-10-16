@@ -7,11 +7,19 @@ import message from '../utils/message';
 
 
 const props = defineProps({
-  rows: Array
+  rows: Array,
+  mode: Number
 })
 
 const table = reactive({
   data: props.rows
+})
+
+const disabled = computed(() => {
+  if (props.mode === 0) {
+    return false
+  }
+  return true
 })
 
 watch(() => props.rows, () => {
@@ -25,22 +33,43 @@ const totalAmountCNY = computed(() => {
 const emit = defineEmits(['close'])
 
 const onSubmit = async () => {
-  const items = table.data.map(item => {
-    return {
-      payment_id: item.payment_id,
-      cny_amount: item.cny_total_amount,
-      note: item.note
-    }
-  })
-
-  try {
-    await api.creditCard.review({
-      item_list: JSON.stringify(items)
+  console.log('pp ', props.mode);
+  // 核销
+  if (props.mode === 0) {
+    const items = table.data.map(item => {
+      return {
+        payment_id: item.payment_id,
+        cny_amount: item.cny_total_amount,
+        note: item.note
+      }
     })
-    message.success('提交成功')
-  } finally {
-    emit('close')
+
+    try {
+      await api.creditCard.review({
+        item_list: JSON.stringify(items)
+      })
+      message.success('提交成功')
+    } finally {
+      emit('close')
+    }
   }
+  // 复核
+  else if (props.mode === 1) {
+    const items = table.data.map(item => {
+      return {
+        id: item.id,
+      }
+    })
+    try {
+      await api.creditCard.checkReview({
+        item_list: JSON.stringify(items)
+      })
+      message.success('提交成功')
+    } finally {
+      emit('close')
+    }
+  }
+
 }
 </script>
 
@@ -62,14 +91,15 @@ const onSubmit = async () => {
     </el-table-column>
     <el-table-column label="人民币金额" width="140" align="right">
       <template #default="scope">
-        <el-input v-model="scope.row.cny_total_amount" onkeyup="value=value.replace(/[^\-?\d.]/g,'')" class="input-amount">
+        <el-input v-model="scope.row.cny_total_amount" onkeyup="value=value.replace(/[^\-?\d.]/g,'')"
+          :disabled="disabled" class="input-amount">
           <template #append>元</template>
         </el-input>
       </template>
     </el-table-column>
     <el-table-column label="备注">
       <template #default="scope">
-        <el-input v-model="scope.row.note" spellcheck="false" maxlength="50"></el-input>
+        <el-input v-model="scope.row.note" spellcheck="false" maxlength="50" :disabled="disabled"></el-input>
       </template>
     </el-table-column>
     <el-table-column label="创建时间" width="110">
@@ -79,7 +109,7 @@ const onSubmit = async () => {
     </el-table-column>
   </el-table>
   <div class="total-amount">
-    <span class="label">本次核销金额：</span>
+    <span class="label">{{ props.mode === 0 ? '本次核销金额：' : '本次复核金额' }}</span>
     <span class="amount">{{ numberFmt(totalAmountCNY.toFixed(2)) }}</span>
     <span class="currency">CNY</span>
   </div>
@@ -97,31 +127,39 @@ h4 {
   padding: 0 10px;
   color: #333;
 }
+
 :deep(.cell) {
   padding: 0 5px;
 }
+
 :deep(.el-input-group__append) {
   padding: 0 6px;
   font-size: 0.8em;
 }
+
 .input-amount :deep(.el-input__wrapper) {
   padding: 0 10px 0 5px;
 }
+
 .input-amount :deep(.el-input__inner) {
   text-align: right;
 }
+
 .amount {
   padding-right: 5px;
   color: #303133;
   font-size: 1.1em;
 }
+
 .currency {
   color: #353535;
   font-weight: 600;
 }
+
 .total-amount {
   padding: 5px 0;
 }
+
 .btn-group {
   text-align: right;
 }

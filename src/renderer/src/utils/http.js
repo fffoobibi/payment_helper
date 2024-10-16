@@ -73,6 +73,7 @@ instance.interceptors.response.use(
     }
 
     const res = response.data
+
     if (responseType === 'blob' || responseType === 'arraybuffer') {
       return res
     }
@@ -169,9 +170,15 @@ const http = (config) => {
     token: token
   }
   if (method === 'post') {
-    const logParams = { ...params}
+    const logParams = { ...params }
     logParams.user_id = store.user.id
     logger.info(`[POST] ${url} data:`, logParams)
+    electron.operate.record({
+      url,
+      user_id: store.user.id,
+      create_time: new Date,
+      creator: store.user.username
+    })
     return instance.post(url, formData, {
       headers,
       showLoading,

@@ -8,7 +8,7 @@
         </div>
         <div v-else>
             <ul>
-                <li v-for="item in items" :key="item.id">
+                <li v-for="(item, index) in items" :key="item.id || index">
                     <slot :info="item">
                         {{ item }}
                     </slot>
@@ -50,7 +50,7 @@ const props = defineProps({
     },
     stopLoad: {
         type: Function,
-        required: true
+        required: false
     },
     maps: {
         type: Object,
@@ -72,6 +72,21 @@ const noMoreData = ref(false)
 const scrollContainer = ref(null)
 const totalCount = ref(null)
 
+const stop = (resp, current) => {
+    if (props.stopLoad) {
+        return props.stopLoad(resp, current)
+    } else {
+        if (resp.pages === null) {
+            return false
+        }
+        if (resp.pages === 0) {
+            return true
+        }
+        return current >= resp.pages
+    }
+}
+
+
 const fetchData = async () => {
     if (loading.value || noMoreData.value) {
         return
@@ -82,7 +97,7 @@ const fetchData = async () => {
     try {
         emit('on-fetch-start', { limit: limit.value, page: page.value, error: null })
         const response = await props.fetch(page.value, limit.value)
-        if (props.stopLoad(response, page.value)) {
+        if (stop(response, page.value)) {
             const rs = response[props.maps.data]
             const total = response[props.maps.total]
             emit('on-fetch-done', { total, page: page.value })
@@ -169,7 +184,6 @@ defineExpose({
 </script>
 
 <style scoped>
-
 :deep(.el-result) {
     /* height: calc(100vh - 130px)!important; */
     overflow-y: auto;
