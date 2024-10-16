@@ -1,11 +1,15 @@
 import { ipcMain } from "electron"
 import fs from "fs"
 import _ from "sqlite3"
+import { URL } from "url"
 
 export class OperateDataBase {
+    relations = {
+        '/url/sdfsdf': '',
+        '': ''
+    }
+
     constructor(dbPath) {
-        // const fs = require('fs')
-        // const sqlite3 = require('sqlite3').verbose()
         const sqlite3 = _.verbose()
         const dbDir = dbPath
         let is_init = fs.existsSync(dbDir)
@@ -18,6 +22,28 @@ export class OperateDataBase {
         })
         if (!is_init) {
             this.init()
+        }
+    }
+
+    record(data){
+        const {url} = data
+        let pathName
+        if(!url.startsWith('http')){
+            pathName = url
+        }else{
+            pathName = (new URL(url)).pathname
+        }
+        const title = this.relations[pathName]
+        if(title){
+            this.insert('operate_log', {
+                url: pathName,
+                title,
+                user_id: data.user_id,
+                create_time: data.create_time,
+                creator: data.creator,
+                status: data.status,
+                statusMsg: data.statusMsg
+            })
         }
     }
 
@@ -56,14 +82,17 @@ export class OperateDataBase {
             id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             url VARCHAR(80) NOT NULL,
-            operate_title VARCHAR(50) NOT NULL,
+            title VARCHAR(50) NOT NULL,
+            status TINYINT NOT NULL,
+            statusMsg VARCHAR(100) NULL,
             operate_data VARCHAR(400) NULL,
             create_time DATETIME NOT NULL,
             creator VARCHAR(20) NOT NULL
           );
         `)
-            await this.query(`CREATE INDEX idx_createtime ON operate_log (create_time);
-                        CREATE INDEX idx_user_id ON operate_log (user_id);
+            await this.query(`  CREATE INDEX idx_createtime ON operate_log (create_time);
+                                CREATE INDEX idx_user_id ON operate_log (user_id);
+                                CREATE INDEX idx_title ON operate_log (title);
         `)
             console.log("数据库初始化完成.")
         } catch (error) {

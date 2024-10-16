@@ -3,8 +3,8 @@ import { ElLoading } from 'element-plus'
 import Message from '@/utils/message'
 import logger from '@/utils/logger'
 import { useUserStore } from '@/stores'
-import { useLocalConfig } from "@/stores/config"
-import appInfo from "../../../../package.json"
+import { useLocalConfig } from '@/stores/config'
+import appInfo from '../../../../package.json'
 
 const env = import.meta.env
 const store = useUserStore()
@@ -64,7 +64,9 @@ instance.interceptors.response.use(
       errorCallback,
       showError = true,
       responseType,
-      onSuccess
+      onSuccess,
+      url,
+      method
     } = response.config
     if (showLoading && loading) {
       setTimeout(() => {
@@ -79,6 +81,18 @@ instance.interceptors.response.use(
     }
 
     if (res.code === 0) {
+      if (method === 'post') {
+        // 记录操作日志
+        electron.operate.record({
+          url,
+          status: 0,
+          statusMsg: null,
+          user_id: store.user.id,
+          create_time: new Date(),
+          creator: store.user.username
+        })
+      }
+
       if (env.DEV) {
         console.log(
           `[DEBUG] [${response.config?.method?.toUpperCase()}] ` + response.config.url + ' ===>',
@@ -95,10 +109,24 @@ instance.interceptors.response.use(
         returned = res.response
       }
       if (!cfgStore.mode) {
-        logger.debug(`[${response.config?.method?.toUpperCase()}] ${response.config.url}, response\n`, JSON.stringify(returned, null, 4))
+        logger.debug(
+          `[${response.config?.method?.toUpperCase()}] ${response.config.url}, response\n`,
+          JSON.stringify(returned, null, 4)
+        )
       }
       return Promise.resolve(returned || true)
     } else {
+      if (method === 'post') {
+        // 记录操作日志
+        electron.operate.record({
+          url,
+          status: res.code,
+          statusMsg: res.msg,
+          user_id: store.user.id,
+          create_time: new Date(),
+          creator: store.user.username
+        })
+      }
       if (res.code == 1007) {
         // 未登录，返回登录页
         location.href = '/login'
@@ -166,19 +194,13 @@ const http = (config) => {
     'Content-Type': contentType,
     'X-Requested-With': 'XMLHttpRequest',
     'target-url': targetUrl,
-    'version': appInfo.version,
+    version: appInfo.version,
     token: token
   }
   if (method === 'post') {
     const logParams = { ...params }
     logParams.user_id = store.user.id
     logger.info(`[POST] ${url} data:`, logParams)
-    electron.operate.record({
-      url,
-      user_id: store.user.id,
-      create_time: new Date,
-      creator: store.user.username
-    })
     return instance.post(url, formData, {
       headers,
       showLoading,
