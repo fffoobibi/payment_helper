@@ -7,7 +7,6 @@ import { URL } from "url"
 
 export class OperateDataBase {
     win = null
-    spFlag = ' <+++>'
     relations = {
 
         '/passport/changePws': '修改了密码',
@@ -100,16 +99,12 @@ export class OperateDataBase {
     _getRecordTitle(pathName, data) {
         const title = this.relations[pathName]
         if (!title) return
-        const log_text = data.log_text ? (this.spFlag + data.log_text) : ""
         if (typeof title === 'string') {
-            return title + log_text
+            return title
         }
         else if (typeof title === 'function') {
             const t = title(data.log_params ?? {}, data)
-            if (t instanceof Array) {
-                return t.join(this.spFlag) + log_text
-            }
-            return t + log_text
+            return t
         }
 
     }
@@ -124,9 +119,18 @@ export class OperateDataBase {
         }
         const title = this._getRecordTitle(pathName, data)
         if (title) {
+            let t
+            if(title instanceof Array){
+                t = title[0]
+                detail = title.slice(1).join(' ') + (data.log_text ?? '' )
+            }else{
+                t = title
+                detail = data.log_text ?? null
+            }
             const d = {
                 url: pathName,
-                title,
+                title: t,
+                detail,
                 user_id: data.user_id,
                 create_time: data.create_time,
                 creator: data.creator,
@@ -203,6 +207,7 @@ export class OperateDataBase {
             user_id INTEGER NOT NULL,
             url VARCHAR(80) NOT NULL,
             title VARCHAR(50) NOT NULL,
+            detail VARCHAR(50) NULL,
             status TINYINT NOT NULL,
             statusMsg VARCHAR(100) NULL,
             operate_data TEXT NULL,

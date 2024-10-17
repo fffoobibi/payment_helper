@@ -186,7 +186,7 @@ body {
   user-select: text;
 }
 
-.t-no-select {
+.t-n {
   user-select: none !important;
 }
 
@@ -263,9 +263,29 @@ body {
 }
 
 .m-b-2 {
-  margin-bottom: 2px !important;
+  margin-bottom: 2px;
 }
 
 .m-b-4 {
-  margin-bottom: 4px !important;
+  margin-bottom: 4px;
+}
+
+.p-l-10 {
+  padding-left: 10px;
+}
+
+.p-r-10 {
+  padding-right: 10px;
+}
+
+.p-l-6 {
+  padding-left: 6px;
+}
+
+.p-r-6 {
+  padding-right: 6px;
+}
+
+.p-10 {
+  padding: 10px;
 }

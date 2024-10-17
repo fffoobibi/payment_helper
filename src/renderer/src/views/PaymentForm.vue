@@ -470,7 +470,7 @@ watch(() => recordQuery.content, () => {
             <div class="flex flex-between w-full gap-8" style="margin-bottom: 10px; height:30px">
                 <div class="flex flex-c-center gap-4">
                     <h3 class="t-primary">打款记录</h3>
-                    <span class="t-gray f-13 b-500 t-no-select">(共{{ record.totalPage }}条记录)</span>
+                    <span class="t-gray f-13 b-500 t-n">(共{{ record.totalPage }}条记录)</span>
                     <el-button link @click="() => {
                 recordQuery.showSearch = !recordQuery.showSearch
                 if (recordQuery.showSearch === false) {
@@ -559,7 +559,7 @@ watch(() => recordQuery.content, () => {
                                 <span class="t-black f-14">{{ item.voucher_ext_last.account_name }}</span>
                                 <span class="t-black f-14">收款账号 {{ " " + item.voucher_ext_last.receiving_account
                                     }}</span>
-                                <span class="t-primary f-14 t-no-select c-pointer" @click="vieDetail(item.voucher_id, item.sn)"> 明细 {{ item.voucher_ext_count }}</span>
+                                <span class="t-primary f-14 t-n c-pointer" @click="vieDetail(item.voucher_id, item.sn)"> 明细 {{ item.voucher_ext_count }}</span>
                             </div>
 
                         </div>
