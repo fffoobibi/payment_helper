@@ -8,7 +8,7 @@ import trayIcon from '../../resources/favicon.ico?asset'
 import log from 'electron-log'
 import fs from 'fs'
 import db from './db.js'
-import {OperateDataBase} from './operatedb.js'
+import { OperateDataBase } from './operatedb.js'
 import * as XLSX from 'xlsx'
 
 import _ from 'electron-updater'
@@ -18,7 +18,7 @@ const autoUpdater = _.autoUpdater
 // 配置文件
 const store = new Store()
 console.log(store.path)
-const getCurrentConfig = (key, defaultValue) =>{
+const getCurrentConfig = (key, defaultValue) => {
   const v = store.get('currentUserId', null)
   if (v === null || v === undefined) {
     return null
@@ -26,7 +26,7 @@ const getCurrentConfig = (key, defaultValue) =>{
   const field = `${v}.${key}`
   const rs = store.get(field)
   let r = rs || {}
-  if(r.value === undefined){
+  if (r.value === undefined) {
     return defaultValue
   }
   return r.value
@@ -323,8 +323,8 @@ const operateDb = new OperateDataBase(join(directoryPath, dbPath))
 
 const loginWidth = 360
 const loginHeight = 400
-const mainWidth = 950+20
-const mainHeight = 700+200
+const mainWidth = 950 + 20
+const mainHeight = 700 + 200
 
 function createWindow() {
   // Create the browser window.
@@ -692,23 +692,23 @@ function createWindow() {
   })
 
   ipcMain.on('open-excel', (event, user, config, hash) => {
-      try {
-        const excelData = stoxNoFile(config)
-        manager.createWindow(
-          'excel',
-          (frame) => {
-            console.log('success ');
-            frame.webContents.send('open-excel:success', user, 'temp.xlsx', excelData)
-            mainWindow.webContents.send('open-excel:ok')
-          },
-          { title: 'excel', hash },
-          true
-        )
-      } catch (error) {
-        console.log('open excel fail ', error)
-        log.error('Excel加载失败', error)
-        mainWindow.webContents.send('open-excel:error', error.message)
-      }
+    try {
+      const excelData = stoxNoFile(config)
+      manager.createWindow(
+        'excel',
+        (frame) => {
+          console.log('success ');
+          frame.webContents.send('open-excel:success', user, 'temp.xlsx', excelData)
+          mainWindow.webContents.send('open-excel:ok')
+        },
+        { title: 'excel', hash },
+        true
+      )
+    } catch (error) {
+      console.log('open excel fail ', error)
+      log.error('Excel加载失败', error)
+      mainWindow.webContents.send('open-excel:error', error.message)
+    }
   })
 
   // dialog
@@ -746,6 +746,9 @@ function createWindow() {
   //   .catch((err) => {
   //     log.error('保存excel失败', err)
   //   })
+
+  operateDb.initHandles(mainWindow)
+
 }
 
 ipcMain.on('log-event', (event, level, ...args) => {
@@ -817,7 +820,6 @@ ipcMain.handle('sql-delete', async (event, table, where) => {
   if (result) return result
 })
 
-operateDb.initHandles()
 
 
 // This method will be called when Electron has finished

@@ -3,7 +3,7 @@ import { ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useRouter, useRoute } from 'vue-router'
 import { useImageStore } from '@/stores/images'
-import { useLogStore, useUpdateStore, useUserStore, useExcelStore, useScreenShortStore } from './stores';
+import { useLogStore, useUpdateStore, useUserStore, useExcelStore, useScreenShortStore, useOperateRecords } from './stores';
 import message from './utils/message';
 import { useIntervalFn } from "@vueuse/core"
 import updater from "@/utils/update"
@@ -17,6 +17,8 @@ const imgStore = useImageStore()
 const logStore = useLogStore()
 const wStore = useExcelStore()
 const updateStore = useUpdateStore()
+const recordStore = useOperateRecords()
+
 const router = useRouter()
 const route = useRoute()
 
@@ -141,6 +143,10 @@ electron.onShortCutCapture(async src => {
   shortStore.image = src
 })
 
+// 操作事件
+electron.operate.onRecordEvent(data=>{
+  recordStore.append(data)
+})
 
 
 </script>

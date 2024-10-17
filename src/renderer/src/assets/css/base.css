@@ -237,3 +237,35 @@ body {
 .b-600 {
   font-weight: 600;
 }
+
+.m-2 {
+  margin: 2px;
+}
+
+.m-4 {
+  margin: 4px;
+}
+
+.m-l-2 {
+  margin-left: 2px;
+}
+
+.m-l-4 {
+  margin-left: 4px;
+}
+
+.m-r-2 {
+  margin-right: 2px;
+}
+
+.m-r-4 {
+  margin-right: 4px;
+}
+
+.m-b-2 {
+  margin-bottom: 2px !important;
+}
+
+.m-b-4 {
+  margin-bottom: 4px !important;
+}

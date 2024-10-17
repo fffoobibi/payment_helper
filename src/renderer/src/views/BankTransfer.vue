@@ -284,7 +284,7 @@ const onSubmit = async () => {
           message.success('银行转账已添加!')
           onSearch(1, null)
         } catch (err) {
-          logger.error("银行转账添加失败", err)
+          // logger.error("银行转账添加失败", err)
         }
       }
     })
@@ -427,7 +427,7 @@ const submitAuditTransfer = async () => {
       <div class="pannel">
         <el-form :inline="true" :model="queryForm.search" class="query-form-inline" ref="queryFormRef">
           <el-form-item label="银行账户">
-            <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable />
+            <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable @keyup.enter="onSearch(1, null)" />
           </el-form-item>
           <el-form-item label="日期">
             <el-select v-model="queryForm.search.condition" placeholder="">

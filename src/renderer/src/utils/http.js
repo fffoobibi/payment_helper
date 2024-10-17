@@ -66,7 +66,9 @@ instance.interceptors.response.use(
       responseType,
       onSuccess,
       url,
-      method
+      method,
+      log_text,
+      log_params,
     } = response.config
     if (showLoading && loading) {
       setTimeout(() => {
@@ -89,7 +91,9 @@ instance.interceptors.response.use(
           statusMsg: null,
           user_id: store.user.id,
           create_time: new Date(),
-          creator: store.user.username
+          creator: store.user.username,
+          log_text,
+          log_params
         })
       }
 
@@ -124,7 +128,9 @@ instance.interceptors.response.use(
           statusMsg: res.msg,
           user_id: store.user.id,
           create_time: new Date(),
-          creator: store.user.username
+          creator: store.user.username,
+          log_text,
+          log_params
         })
       }
       if (res.code == 1007) {
@@ -208,6 +214,8 @@ const http = (config) => {
       showError,
       responseType,
       onSuccess,
+      log_params: logParams,
+      log_text: params.log_text,
       errorCallback: config.errorCallback
     })
   } else {

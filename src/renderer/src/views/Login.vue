@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from "pinia"
 import Toolbar from '@/components/Toolbar.vue'
 import api from "@/api"
-import { useUserStore, useAccountStore, useUpdateStore, useAirwallexStore } from '@/stores'
+import { useUserStore, useAccountStore, useUpdateStore, useAirwallexStore, useOperateRecords } from '@/stores'
 import { Keys, useLocalConfig } from "@/stores/config"
 
 import app_info from '../../../../package.json'
@@ -18,6 +18,7 @@ const accountStore = useAccountStore()
 const configStore = useLocalConfig()
 const updateStore = useUpdateStore()
 const airwallexStore = useAirwallexStore()
+const recordStore = useOperateRecords()
 const errorText = ref('')
 
 const { currentUserName: username, currentUserPasswd: password, currentUserRemeber: remember } = storeToRefs(configStore)
@@ -83,7 +84,7 @@ const onSubmit = async () => {
         userStore.setUser(res)
         localStorage.setItem('token', res.token)
         electron.login({ username: formData.username, password: formData.password, remember: formData.remember })
-        router.replace({ name: 'home' })
+        router.push({ name: 'home' })
 
         if (formData.remember) {
           configStore.setConfig(Keys.username, username.value)
@@ -94,6 +95,10 @@ const onSubmit = async () => {
           configStore.setConfig(Keys.password, null)
           configStore.setConfig(Keys.remmber, remember.value)
         }
+
+        // 加载操作日志
+        recordStore.loadRecords(res.id)
+
         // await nextTick(() => formRef.value.resetFields())
         api.getAccountList({ user_id: res.id, limit: 500 }).then(resp => {
           accountStore.setAccounts(resp.list)
@@ -134,7 +139,7 @@ const onSubmit = async () => {
 
 <template>
   <div class="login-panel">
-    <Toolbar :closeType="0" onlyClose />
+    <Toolbar :closeType="0" onlyClose :show-records="false" />
 
     <el-form :model="formData" :rules="formRules" ref="formRef" style="width: 240px;">
       <div class="logo">
@@ -142,17 +147,18 @@ const onSubmit = async () => {
       </div>
 
       <el-form-item prop="username">
-        <el-input v-model="username" placeholder="请输入用户名" maxLength="10" clearable @keyup.enter="()=>{
-          pwdRef.focus()
-        }">
+        <el-input v-model="username" placeholder="请输入用户名" maxLength="10" clearable @keyup.enter="() => {
+      pwdRef.focus()
+    }">
           <template #prefix><i class="iconfont icon-user" style="font-size: 0.9em"></i></template>
         </el-input>
       </el-form-item>
 
       <el-form-item prop="password">
-        <el-input ref="pwdRef" v-model="password" type="password" placeholder="请输入密码" maxLength="20" show-password clearable @keyup.enter="()=>{
-          onSubmit()
-        }">
+        <el-input ref="pwdRef" v-model="password" type="password" placeholder="请输入密码" maxLength="20" show-password
+          clearable @keyup.enter="() => {
+      onSubmit()
+    }">
           <template #prefix><i class="iconfont icon-password" style="font-size: 0.9em"></i></template>
         </el-input>
       </el-form-item>
@@ -171,7 +177,9 @@ const onSubmit = async () => {
 
       <el-form-item>
         <div class="message-box" v-show="errorText">
-          <el-icon color="#f56c6c"><CircleCloseFilled /></el-icon>
+          <el-icon color="#f56c6c">
+            <CircleCloseFilled />
+          </el-icon>
           <el-text type="danger">{{ errorText }}</el-text>
         </div>
         <div class="message-empty" v-show="!errorText"></div>
@@ -182,7 +190,8 @@ const onSubmit = async () => {
       <p>
         {{ configStore.mode ? '' : '测试服' }}
         <span style="font-weight: 600" v-if="!updateStore.update_available">{{ "v" + app_info.version }}</span>
-        <span style="font-size: 10pt" v-else :class="[updateStore.update_available || updateStore.update_err ? 'red' : 'trans']">{{ checkMsg }}</span>
+        <span style="font-size: 10pt" v-else
+          :class="[updateStore.update_available || updateStore.update_err ? 'red' : 'trans']">{{ checkMsg }}</span>
       </p>
     </div>
   </div>
@@ -224,6 +233,7 @@ const onSubmit = async () => {
   border-radius: 16px;
   box-shadow: 0 0 0 1px #fcfcfc;
 }
+
 :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 1px #409eff;
 }
@@ -254,6 +264,7 @@ const onSubmit = async () => {
   border-radius: 18px;
   font-size: 1em;
 }
+
 .message-empty {
   width: 100%;
   height: 34px;

@@ -73,6 +73,21 @@ const dateTimeFmt = (date, type = 1) => {
         return `${Y}年${m}月${d}日 ${autoZero(H)}:${autoZero(i)}`
     } else if (type == 5) {
         return `${autoZero(m)}${autoZero(d)}${autoZero(H)}${autoZero(i)}${autoZero(s)}`
+    } else if (type === 6) {
+        let _y = curDate.getFullYear()
+        let _m = curDate.getMonth() + 1
+        let _d = curDate.getDate()
+        if (_y === Y && _m === m && _d === d) {
+            return `${autoZero(H)}:${autoZero(i)}:${autoZero(s)}`
+        }
+        // yesterday
+        let mewDate = new Date((curSecond - 86400) * 1000)
+        if (mewDate.getFullYear() === Y && mewDate.getMonth() + 1 === m && mewDate.getDate() === d) {
+            return `昨天 ${autoZero(H)}:${autoZero(i)}`
+        } else if (curDate.getFullYear() === Y) {
+            return `${m}月${d}日 ${autoZero(H)}:${autoZero(i)}`
+        }
+        return `${Y}年${m}月${d}日 ${autoZero(H)}:${autoZero(i)}`
     }
 }
 

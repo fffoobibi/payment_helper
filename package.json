@@ -38,6 +38,7 @@
     "pinia": "^2.2.2",
     "sqlite3": "^5.1.7",
     "vue-router": "^4.4.3",
+    "vue3-json-viewer": "^2.2.2",
     "x-data-spreadsheet": "^1.1.9",
     "xlsx": "^0.18.5"
   },

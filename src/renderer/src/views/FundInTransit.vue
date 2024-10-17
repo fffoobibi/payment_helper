@@ -520,7 +520,7 @@ const crop = setUpCapture(src => {
       <div class="pannel">
         <el-form :inline="true" :model="queryForm" class="demo-form-inline" ref="queryFormRef">
           <el-form-item label="提现银行">
-            <el-input v-model="queryForm.out_account_alias_name" placeholder="支持模糊查找" clearable />
+            <el-input v-model="queryForm.out_account_alias_name" placeholder="支持模糊查找" clearable  @keyup.enter="onSearch(1, null)"/>
           </el-form-item>
           <el-form-item label="日期">
             <el-select v-model="queryForm.condition" placeholder="">

@@ -201,7 +201,7 @@ const exportLoading = ref(false)
 const editVoucherNo = async (row) => {
   try {
     row._vo_loading = true
-    const data = { account_record_id: row.id, voucher_no: row._vo_number }
+    const data = { account_record_id: row.id, voucher_no: row._vo_number, log_text: '日志凭证号' }
     const resp = await api.bank_account.editVoucherNo(data)
     row.voucher_no = row._vo_number
     row._vo_loading = false

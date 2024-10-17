@@ -42,7 +42,13 @@ const electron = {
     insert: (table, data) => ipcRenderer.invoke('operate-sql-insert', table, data),
     update: (table, data, where) => ipcRenderer.invoke('operate-sql-update', table, data, where),
     delete: (table, where) => ipcRenderer.invoke('operate-sql-delete', table, where),
-    record: (data)=>ipcRenderer.send('operate-sql:record', url, data)
+    record: (data) => ipcRenderer.send('operate-sql:record', data),
+    getRecords: userId => ipcRenderer.invoke('operate-sql:getRecords', userId),
+    onRecordEvent: callback => {
+      ipcRenderer.on('operate-sql:record-event', (_event, data) => {
+        callback(data)
+      })
+    }
   },
   // excel
   openExcel: (user, config) => ipcRenderer.send('open-excel', user, config, 'excel',),

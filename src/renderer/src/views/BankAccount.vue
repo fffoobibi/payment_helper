@@ -203,10 +203,30 @@ const hiddenAccountShow = () => {
   nodeRef.value?.setCheckedKeys(hiddenAccounts.value)
 }
 
+//余额变动排序
+const sortMode = ref(false)
+const sortLabel = computed(() => {
+  if (sortMode.value === false) {
+    return '点击排序'
+  }
+  return '点击恢复'
+})
+const sortResp = () => {
+  sortMode.value = !sortMode.value
+  onSearch(1, null)
+}
+const sortType = computed(() => {
+  if (sortMode.value === false) {
+    return "info"
+  }
+  return "danger"
+})
 
 const onResponsePinnedProcess = async (resp) => {
   const returned = []
   const pinned = []
+  const balance_change_time = []
+  const sets = new Set()
   resp.list.forEach((v, index) => {
     v.__index = index
     if (hiddenAccounts.value.includes(v.id)) {
@@ -214,6 +234,12 @@ const onResponsePinnedProcess = async (resp) => {
     } else {
       v.__hidden = false
     }
+
+    if (v.balance_change_time) {
+      sets.add(v.id)
+      balance_change_time.push(v)
+    }
+
     if (accountIndexs.value.includes(v.id)) {
       v.__pinned = true
       pinned.push(v)
@@ -222,6 +248,16 @@ const onResponsePinnedProcess = async (resp) => {
       returned.push(v)
     }
   })
+  if (sortMode.value === true) {
+    const unique = pinned.filter(item => {
+      return !sets.has(item.id)
+    })
+    const uniqueReturned = returned.filter(item => {
+      return !sets.has(item.id)
+    })
+    resp.list = balance_change_time.concat(unique).concat(uniqueReturned)
+    return resp
+  }
   resp.list = pinned.concat(returned)
   return resp
 }
@@ -614,6 +650,7 @@ const exportForm = reactive({
 })
 
 
+
 </script>
 
 <template>
@@ -637,9 +674,12 @@ const exportForm = reactive({
             <span class="h4">银行账户</span>
           </template>
           <div class="pannel">
-            <el-form :inline="true" :model="queryForm.search" class="demo-form-inline" ref="queryFormRef">
+            <el-form :inline="true" :model="queryForm.search" class="demo-form-inline" ref="queryFormRef"
+              @submit.prevent>
               <el-form-item label="银行名称">
-                <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable />
+                <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable @keyup.enter="() => {
+        onSearch(1, null)
+      }" />
               </el-form-item>
               <el-form-item>
                 <el-space alignment="center">
@@ -672,6 +712,9 @@ const exportForm = reactive({
                   </el-popover>
                   <el-button type="success" @click="exportDetails" v-if="store.canExportDetails">打款明细导出</el-button>
 
+                  <el-tooltip content="排序按照今日余额最后变动时间显示" placement="right">
+                    <el-button :type="sortType" @click="sortResp">{{ sortLabel }}</el-button>
+                  </el-tooltip>
                 </el-space>
 
               </el-form-item>
@@ -699,22 +742,21 @@ const exportForm = reactive({
               </el-table-column>
               <el-table-column label="摘要信息" width="380">
                 <template #default="scope">
-                  <div>名称：<span class="user-select black">{{ scope.row.account_name }}</span></div>
-                  <div>类型：<span class="user-select black">{{ `${scope.row.type_name} (${scope.row.company_name})`
-                      }}</span>
-                  </div>
+                  <div class="t-black">{{ scope.row.account_name }}</div>
+                  <div class="t-gray">{{ `${scope.row.type_name} (${scope.row.company_name})` }}</div>
                 </template>
               </el-table-column>
               <el-table-column label="账户余额">
                 <template #default="scope">
-                  <div><span class="user-select light black">{{ numberFmt(scope.row.ending_balance)
+                  <div><span class="t-black b-600">{{ numberFmt(scope.row.ending_balance)
                       }}</span> <span class="light">{{ " " + scope.row.currency }}</span></div>
+                  <div class="t-primary" v-if="scope.row.balance_change_time">
+                    {{ timestampToFormattedString(scope.row.balance_change_time) }}</div>
                 </template>
               </el-table-column>
               <el-table-column label="今日盘账">
                 <template #default="scope">
-                  <div :class="tableState.getAccountState(scope.row)[1]">{{ tableState.getAccountState(scope.row)[0]
-                    }}
+                  <div :class="tableState.getAccountState(scope.row)[1]">{{ tableState.getAccountState(scope.row)[0] }}
                   </div>
                 </template>
               </el-table-column>
@@ -746,7 +788,8 @@ const exportForm = reactive({
               background="true" :page-sizes="[10, 50, 100, 300]" layout="total, sizes, prev, pager, next, jumper"
               :total="queryForm.page.totalCount" />
 
-            <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500" @opened="menuInputRef.focus()" :close-on-click-modal="false">
+            <el-dialog v-model="form.menuShow" title="新建隐藏目录" width="500" @opened="menuInputRef.focus()"
+              :close-on-click-modal="false">
               <template #footer>
                 <el-form-item label="目录名称">
                   <el-input v-model.trim="form.menuData.menuDir" clearable ref="menuInputRef"></el-input>
@@ -763,12 +806,13 @@ const exportForm = reactive({
               </template>
             </el-dialog>
 
-            <el-dialog v-model="detailsExportShow" title="打款明细导出" width="400" destroy-on-close :close-on-click-modal="false">
+            <el-dialog v-model="detailsExportShow" title="打款明细导出" width="400" destroy-on-close
+              :close-on-click-modal="false">
 
               <el-form label-width="auto" :model="exportForm" ref="exportRef">
                 <el-form-item label="日期" required prop="date" :rules="[{ message: '请选择截止时间', required: true, }]">
                   <el-date-picker v-model="exportForm.date" type="daterange" range-separator="-" start-placeholder="开始"
-                   :shortcuts="shortcuts" end-placeholder="结束" />
+                    :shortcuts="shortcuts" end-placeholder="结束" />
                 </el-form-item>
                 <el-form-item label="类型" required>
                   <el-select v-model="exportForm.is_business_system" disabled>
@@ -852,7 +896,10 @@ const exportForm = reactive({
             :type-name="form.history.typeName" :available="form.history.available" :balance="form.history.balance" />
         </el-tab-pane>
       </el-tabs>
-      <el-drawer destroy-on-close v-model="form.panzhangShow" size="50%" :title="form.pangZhangTitle" :close-on-click-modal="false">
+
+      <!-- 盘账 -->
+      <el-drawer destroy-on-close v-model="form.panzhangShow" size="50%" :title="form.pangZhangTitle"
+        :close-on-click-modal="false">
         <el-form :model="form.panzhangPost" label-width="auto" :rules="rules" ref="formRef">
           <p style="font-size: 11pt; color:blue; margin-bottom: 10px; margin-top: -20px;">
             {{ form.panzhangState.account_name }}
@@ -918,8 +965,8 @@ const exportForm = reactive({
 <style scoped>
 .h4 {
   padding: 0 10px;
-  color: #333;
-  font-weight: bold;
+  /* color: #333; */
+  /* font-weight: bold; */
   line-height: 30px !important;
 }
 

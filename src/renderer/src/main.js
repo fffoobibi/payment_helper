@@ -15,6 +15,10 @@ import Upload from './components/Upload.vue'
 import ContextMenu from './components/ContextMenu.vue'
 import LoadingList from './components/LoadingList.vue'
 import MonaCoEditor from './components/MonaCoEditor.vue'
+import MonaCoJson from "./components/MonaCoJson.vue"
+//
+import JsonViewer from "vue3-json-viewer";
+import "vue3-json-viewer/dist/index.css"; // 引入样式
 
 const pinia = createPinia()
 const app = createApp(App)
@@ -24,12 +28,15 @@ app.use(ElementPlus, { locale: zhCn })
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
+app.use(JsonViewer)
+
 app.component('Layout', defineAsyncComponent(() => import('./components/Layout.vue')))
 app.component('Header', Header)
 app.component('Upload', Upload)
 app.component('ContextMenu', ContextMenu)
 app.component('LoadingList', LoadingList)
 app.component('MonaCoEditor', MonaCoEditor)
+app.component('MonaCoJson', MonaCoJson)
 app.directive('feathers', {
   mounted: (el, bind) => {
     // 判断是否有根元素，存在，则移除

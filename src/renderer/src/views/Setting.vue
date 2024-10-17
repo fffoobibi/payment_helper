@@ -202,6 +202,9 @@ const download = () => {
                 <el-option :value="1" label="隐藏至系统托盘"></el-option>
               </el-select>
             </el-form-item>
+            <el-form-item label="操作日志">
+              <el-checkbox label="显示" v-model="cfgStore.operate"></el-checkbox>
+            </el-form-item>
           </el-form>
         </div>
 

@@ -1,12 +1,12 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch, computed, onMounted } from 'vue'
+import { reactive, ref, watch, computed, onMounted } from 'vue'
 import { useUserStore, useAccountStore, useAirwallexStore, useScreenShortStore, useDingdingSubmitStore, useExcelStore } from '@/stores'
 import { useLocalConfig } from "@/stores/config"
 import { storeToRefs } from "pinia"
 import { useCycleList } from '@vueuse/core'
 import api from '@/api'
 import { Check, Close } from '@element-plus/icons-vue'
-import { accountFormatter, accountParser, amountFormatter, amountParser, numberFmt, timestampToFormattedString } from '@/utils/format'
+import { amountFormatter, amountParser, numberFmt, timestampToFormattedString } from '@/utils/format'
 import { viewImages } from "@/utils/tools"
 import Message from '@/utils/message'
 import Airwallex from './Airwallex.vue'
@@ -315,6 +315,12 @@ const onCopy = async text => {
     await navigator.clipboard.writeText(text)
     Message.success("复制成功")
 }
+const vieDetail = (voucher_id, sn)=>{
+    showRecordCondition.value = recordQuery.condition
+    showRecordContent.value = sn
+    showRecordExpands.value = [voucher_id]
+    showRecordDrawer.value = true
+}
 
 watch(() => recordQuery.condition, () => {
     listRef.value.reload()
@@ -331,7 +337,7 @@ watch(() => recordQuery.content, () => {
 
 
 <template>
-    <Header>
+   <Header>
         <template #title>
             <h4>钉钉打款</h4>
         </template>
@@ -518,13 +524,15 @@ watch(() => recordQuery.content, () => {
                 </div>
             </div> -->
 
-            <LoadingList :fetch="onSearchRecord" ref="listRef" :height="listHeight" @on-fetch-start="onFetchStart"
+            <LoadingList :fetch="onSearchRecord" ref="listRef" :height="listHeight"
+                :maps="{ data: 'list', total: 'count', key: 'voucher_id' }" @on-fetch-start="onFetchStart"
                 @on-fetch-done="onFetchDone">
                 <template #empty>
                     <el-empty :image-size="120" />
                 </template>
                 <template #default="{ info: item }">
-                    <div class="flex-col gap-4 record-container">
+                    <div
+                        :class="['flex-col', 'gap-4', 'record-container', item.voucher_ext_last.is_audit ? 'record-audit' : '']" >
                         <div class="flex flex-between">
                             <div>
                                 <span class="t-black f-14 b-500">编号 {{ item.sn }} </span>
@@ -551,12 +559,7 @@ watch(() => recordQuery.content, () => {
                                 <span class="t-black f-14">{{ item.voucher_ext_last.account_name }}</span>
                                 <span class="t-black f-14">收款账号 {{ " " + item.voucher_ext_last.receiving_account
                                     }}</span>
-                                <span class="t-primary f-14 t-no-select c-pointer" @click="() => {
-                                        showRecordCondition = recordQuery.condition
-                                        showRecordContent = item.sn
-                                        showRecordExpands = [item.voucher_id]
-                                        showRecordDrawer = true
-                                    }">明细 {{ item.voucher_ext_count }}</span>
+                                <span class="t-primary f-14 t-no-select c-pointer" @click="vieDetail(item.voucher_id, item.sn)"> 明细 {{ item.voucher_ext_count }}</span>
                             </div>
 
                         </div>
@@ -668,7 +671,7 @@ watch(() => recordQuery.content, () => {
                 showRecordCondition = '1'
                 showRecordContent = ''
                 showRecordExpands = []
-            }" :close-on-click-modal="false">
+            }" :close-on-click-modal="false" >
             <PaymentRecord :condition="showRecordCondition" :content="showRecordContent" :expands="showRecordExpands" />
         </el-drawer>
     </div>
@@ -691,6 +694,13 @@ watch(() => recordQuery.content, () => {
     margin-bottom: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     /* width: calc(100% - 10px) */
+}
+
+.record-audit {
+    background-image: url('../assets/images/shenpi.svg');
+    background-repeat: no-repeat;
+    background-position: 44% 10%;
+    background-size: 50px 50px;
 }
 
 .value {

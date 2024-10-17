@@ -1,11 +1,15 @@
 <script setup>
 import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from "@/stores/index"
+import { useUserStore, useOperateRecords } from "@/stores/index"
 import { useLocalConfig } from "@/stores/config"
+import { onMounted } from 'vue';
 const store = useUserStore()
-const router = useRouter()
 const cfg = useLocalConfig()
+const record = useOperateRecords()
+
+const router = useRouter()
+
 const menuItems = reactive([
   { display: '打款', icon: 'dingdingdingd', text: '钉钉打款', name: 'payment' },
   { display: '在途', icon: 'fund-intransit', text: '在途资金', name: 'fundInTransit' },
@@ -20,6 +24,7 @@ const optionItems = computed(() => {
 
 const switchAccount = () => {
   store.logOut()
+  record.reset()
   router.push({ name: 'login' })
   electron.toLogin()
 }
@@ -33,6 +38,7 @@ const onMenu = (item) => {
     router.push({ name: item.name })
   }
 }
+
 
 </script>
 

@@ -16,6 +16,7 @@ const Keys = {
   accountMenus: 'accountMenus',
   layout: 'layout',
   closeMode: 'closeMode',
+  operate: 'operate',
 
   formalUrl: 'formalUrl',
   testUrl: 'testUrl',
@@ -312,6 +313,11 @@ const useLocalConfig = defineStore('localConfig', () => {
     return await getConfig(Keys.records, undefined)
   }, Keys.records)
 
+  // 操作日志
+  const { refV: operate, update: updateOperate } = makeScope(true, async () => {
+    return await getConfig(Keys.operate)
+  }, Keys.operate, { autoSave: true })
+
   // 布局
   const { refV: layout, update: updateLayout } = makeScope(true, async () => {
     return await getConfig(Keys.layout)
@@ -356,6 +362,7 @@ const useLocalConfig = defineStore('localConfig', () => {
   const { refV: versionFormalUrl, update: updateVersion } = makeGlobal('https://bd.baizhoucn.com/upload', async () => {
     return await getGlobalConfig(Globals.versionFormalUrl)
   }, Globals.versionFormalUrl, { debounced: true, autoSave: true })
+
 
   //更新测试服
   const r = 'http://192.168.0.10:20010/upload'
@@ -407,6 +414,9 @@ const useLocalConfig = defineStore('localConfig', () => {
     currentUserName,
     currentUserPasswd,
     currentUserRemeber,
+
+    operate,
+    updateOperate,
 
     layout,
     updateLayout,

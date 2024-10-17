@@ -1,5 +1,6 @@
-import { computed, ref } from 'vue'
+import { computed, customRef, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { dateTimeFmt } from "@/utils/format"
 
 // 用户信息
 const useUserStore = defineStore('user', () => {
@@ -242,6 +243,106 @@ const useDingdingSubmitStore = defineStore('dingdingStore', () => {
   }
 })
 
+const useOperateRecords = defineStore('operateRecords', () => {
+  const s = ref(new Set())
+  const indexs = ref({})
+
+  const treeData = ref([])
+  const treeProps = ref({
+    value: 'id',
+    label: 'title',
+    children: 'children',
+  })
+  const treeExpand = ref([])
+
+  const records = ref([])
+  const totalCount = computed(() => {
+    return records.value.length
+  })
+  const todayCount = computed(() => {
+    const dayKey = dateTimeFmt(Date.now(), 3)
+    const dayIndex = indexs.value[dayKey]
+    const ts = treeData.value[dayIndex]
+    if (ts) {
+      return ts.children.length
+    }
+    return 0
+  })
+
+  const reset = () => {
+    s.value = new Set()
+    indexs.value = {}
+
+    treeData.value = []
+    records.value = []
+    treeExpand.value = []
+
+  }
+  const append = data => {
+    records.value.push(data)
+    const dayKey = dateTimeFmt(data.create_time / 1000, 3)
+    if (!s.value.has(dayKey)) {
+      treeData.value.push({
+        id: -(Object.keys(indexs.value).length + 1),
+        title: dayKey,
+        children: [data]
+      })
+    } else {
+      treeData.value[indexs.value[dayKey]].children.push(data)
+    }
+
+  }
+
+  const current = computed(() => {
+    if (records.value.length) {
+      return records.value[records.value.length - 1]
+    }
+  })
+
+
+  const loadRecords = async (userId) => {
+    const r = await electron.operate.getRecords(userId)
+    records.value.slice(0)
+    records.value.push(...r)
+    const values = {}
+    const td = dateTimeFmt(new Date, 3)
+    let tdIndex
+
+    r.forEach((v, index) => {
+      const dayKey = dateTimeFmt(v.create_time / 1000, 3)
+      if (!s.value.has(dayKey)) {
+        values[dayKey] = [v]
+        s.value.add(dayKey)
+      } else {
+        values[dayKey].push(v)
+      }
+    })
+
+    treeData.value = Object.keys(values).map((k, i) => {
+      indexs.value[k] = i
+      if (td === k) {
+        tdIndex = -i
+      }
+      return { id: -i, title: k, children: values[k] }
+    })
+    treeExpand.value = [tdIndex]
+
+  }
+
+  return {
+    reset,
+    totalCount,
+    todayCount,
+    treeData,
+    treeProps,
+    treeExpand,
+    append,
+    records,
+    current,
+    loadRecords
+  }
+})
+
 export {
   useUserStore,
   useAccountStore,
@@ -250,5 +351,6 @@ export {
   useUpdateStore,
   useExcelStore,
   useScreenShortStore,
-  useDingdingSubmitStore
+  useDingdingSubmitStore,
+  useOperateRecords
 }

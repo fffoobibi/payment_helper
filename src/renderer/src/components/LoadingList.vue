@@ -8,7 +8,7 @@
         </div>
         <div v-else>
             <ul>
-                <li v-for="(item, index) in items" :key="item.id || index">
+                <li v-for="(item, index) in items" :key="item[maps.key]|| index">
                     <slot :info="item">
                         {{ item }}
                     </slot>
@@ -55,7 +55,7 @@ const props = defineProps({
     maps: {
         type: Object,
         default: () => {
-            return { data: 'list', total: 'count' }
+            return { data: 'list', total: 'count', key: 'id' }
         }
     }
 })

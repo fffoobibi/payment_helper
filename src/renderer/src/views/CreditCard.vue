@@ -208,6 +208,11 @@ watch(() => queryForm.page.pageSize, async () => {
     await onSearch(1, null)
 })
 
+watch(() => queryForm.search.account_id, async () => {
+    queryForm.page.currentPage = 1
+    await onSearch(1, null)
+})
+
 const queryFormRef = ref(null)
 const tableHeight = computed(
     {
