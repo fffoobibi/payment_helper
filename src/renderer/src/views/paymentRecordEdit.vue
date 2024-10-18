@@ -4,7 +4,7 @@ import { Check, Close } from '@element-plus/icons-vue'
 import { useAccountStore } from '@/stores'
 import Message from '@/utils/message'
 import api from '@/api'
-import { accountFormatter, accountParser, amountFormatter, amountParser } from '@/utils/format'
+import { amountFormatter, amountParser } from '@/utils/format'
 
 const props = defineProps({
   ext: Object
@@ -48,6 +48,9 @@ const rules = reactive({
   ],
   currency: [
     { required: true, message: '请选择币种', trigger: 'change' }
+  ],
+  application_reason: [
+    {required: true, message: '请输入修改原因', trigger: 'change'}
   ]
 })
 
@@ -68,20 +71,24 @@ const onSubmit = async (el) => {
   await el.validate(async (valid, _) => {
     if (!valid) return false
 
-    form.attachment_list = JSON.stringify((await uploadRef.value.uploadImage()) ?? [])
+    // form.attachment_list = JSON.stringify((await uploadRef.value.uploadImage()) ?? [])
     try {
-      await Promise.all([
-        api.updatePaymentRecordExt(form),
-        api.updatePaymentAttachments({
-          attachment_list: form.attachment_list,
-          voucher_ext_id: form.voucher_ext_id
-        })
-      ])
+      // await Promise.all([
+      //   api.updatePaymentRecordExt(form),
+      //   // api.updatePaymentAttachments({
+      //   //   attachment_list: form.attachment_list,
+      //   //   voucher_ext_id: form.voucher_ext_id
+      //   // })
+      // ])
+      
+      const data = {...form}
+      delete data.attachment_list
+      await api.updatePaymentRecordExt(data)
       Message.success("申请修改已提交")
       el.resetFields()
       emit('close')
     } catch (error) {
-      console.log(error)
+
     }
   })
 }
@@ -97,7 +104,7 @@ const onSubmit = async (el) => {
       </el-select>
     </el-form-item>
     <el-form-item label="收款账号" prop="receiving_account" required>
-      <el-input v-model="form.receiving_account" :formatter="accountFormatter" :parser="accountParser" clearable />
+      <el-input v-model="form.receiving_account"  clearable />
     </el-form-item>
     <el-form-item label="交易流水" prop="transaction_number" required>
       <el-input v-model="form.transaction_number" clearable />
@@ -120,11 +127,11 @@ const onSubmit = async (el) => {
     <el-form-item label="备注">
       <el-input v-model="form.note" type="textarea" spellcheck="false" />
     </el-form-item>
-    <el-form-item label="修改原因">
+    <el-form-item label="修改原因" prop="application_reason">
       <el-input v-model="form.application_reason" type="textarea" spellcheck="false" />
     </el-form-item>
-    <el-form-item label="附件" class="mb">
-      <Upload action="upload" ref="uploadRef" v-model="form.attachment_list" :limit="10" dir="payment" :size="66">
+    <el-form-item label="附件" class="mb" >
+      <Upload action="upload" ref="uploadRef" disabled v-model="form.attachment_list" :limit="10" dir="payment" :size="66">
       </Upload>
     </el-form-item>
     <el-form-item class="mb">

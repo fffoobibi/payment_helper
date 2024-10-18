@@ -112,6 +112,7 @@ const onConfirm = async () => {
     const data = {
       account_id: form.account_id,
       approval_number_item: JSON.stringify(props.approves.map(item => item.approval_number)),
+      log_text: '合并打款'
     }
     await api.autoComplete(data, false)
     Message.success("自动点单成功")

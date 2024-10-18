@@ -323,8 +323,7 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column label='类型' prop="type_name" class-name="cell-select" v-if="tableFieldsInfo['类型']"></el-table-column>
-      <el-table-column label='备注' prop="account_record_note" class-name="cell-select" v-if="tableFieldsInfo['备注']"></el-table-column>
-      <el-table-column label='打款备注' prop="account_voucher_ext_note" class-name="cell-select" v-if="tableFieldsInfo['打款备注']"></el-table-column>
+
       <el-table-column label="初期"  v-if="tableFieldsInfo['初期']" width="90" class-name="cell-select" >
         <template #default="{ row }">
           <div class="user-select">{{ numberFmt(row.beginning_balance) }}</div>
@@ -344,6 +343,8 @@ onMounted(() => {
           <div class="red">{{ " " + row.base_currency }}</div>
         </template>
       </el-table-column>
+      <el-table-column label='备注' prop="account_record_note" class-name="cell-select" v-if="tableFieldsInfo['备注']"></el-table-column>
+      <el-table-column label='打款备注' prop="account_voucher_ext_note" class-name="cell-select" v-if="tableFieldsInfo['打款备注']"></el-table-column>
 
       <el-table-column label="凭证号" v-if="tableFieldsInfo['凭证号']" class-name="cell-select">
         <template #header>

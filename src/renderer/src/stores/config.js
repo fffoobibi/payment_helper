@@ -275,11 +275,11 @@ const useLocalConfig = defineStore('localConfig', () => {
     { value: true, label: '编号' },
     { value: true, label: '时间' },
     { value: true, label: '类型' },
-    { value: true, label: '备注' },
-    { value: true, label: '打款备注' },
     { value: true, label: '初期' },
     { value: true, label: '本期' },
     { value: true, label: '期末' },
+    { value: true, label: '备注' },
+    { value: true, label: '打款备注' },
     { value: true, label: '凭证号' },
     { value: true, label: '操作' },
   ], async () => {
@@ -288,25 +288,18 @@ const useLocalConfig = defineStore('localConfig', () => {
 
   // 银行账号日志
   const { refV: records, update: updateRecords } = makeScope([
-    // { value: true, label: '序号' },
-    // { value: true, label: '摘要信息' },
-    // { value: true, label: '创建' },
-    // { value: true, label: '初期' },
-    // { value: true, label: '本期' },
-    // { value: true, label: '期末' },
-    // { value: true, label: '凭证号' },
-    // { value: true, label: '操作' },
     { value: true, label: '#' },
     { value: true, label: '编号' },
     { value: true, label: '银行' },
     { value: true, label: '姓名/部门' },
     { value: true, label: '时间' },
     { value: true, label: '类型' },
-    { value: true, label: '备注' },
-    { value: true, label: '打款备注' },
+
     { value: true, label: '初期' },
     { value: true, label: '本期' },
     { value: true, label: '期末' },
+    { value: true, label: '备注' },
+    { value: true, label: '打款备注' },
     { value: true, label: '凭证号' },
     { value: true, label: '操作' },
   ], async () => {

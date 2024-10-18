@@ -195,39 +195,39 @@ body {
 }
 
 .t-primary {
-  color: #5F89DF;
+  color: #5F89DF !important;
   user-select: text;
 }
 
 .t-black {
-  color: black;
+  color: black !important;
   user-select: text;
 }
 
 .t-gray {
-  color: gray;
+  color: gray !important;
   user-select: text;
 }
 
 .t-red {
-  color: rgb(250, 58, 58);
+  color: rgb(250, 58, 58) !important;
   user-select: text;
 }
 
 .f-12 {
-  font-size: 12px;
+  font-size: 12px !important;
 }
 
 .f-13 {
-  font-size: 13px;
+  font-size: 13px !important;
 }
 
 .f-14 {
-  font-size: 14px;
+  font-size: 14px !important;
 }
 
 .f-15 {
-  font-size: 15px;
+  font-size: 15px !important;
 }
 
 .b-500 {
@@ -244,6 +244,14 @@ body {
 
 .m-4 {
   margin: 4px;
+}
+
+.m-t-2 {
+  margin-top: 2px;
+}
+
+.m-t-4 {
+  margin-top: 4px;
 }
 
 .m-l-2 {

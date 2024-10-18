@@ -1,13 +1,15 @@
 <script setup>
-import { onBeforeMount, reactive,ref } from 'vue'
+import { onBeforeMount, reactive, ref } from 'vue'
 import api from '@/api'
 import { Check, DocumentDelete, Edit, Picture, RefreshLeft } from '@element-plus/icons-vue'
 import Message from '@/utils/message'
 import { dateTimeFmt, numberFmt, timestampToFormattedString } from '@/utils/format'
 import PaymentRecordEdit from './paymentRecordEdit.vue'
 import * as XLSX from "xlsx"
-import { getExcelColumnLetter } from '@/utils/tools'
+import { getExcelColumnLetter, setUpCapture } from '@/utils/tools'
 import { useUserStore } from "@/stores/index"
+import message from '@/utils/message'
+import  {debounce} from "lodash"
 
 const props = defineProps({
   condition: {
@@ -23,6 +25,8 @@ const props = defineProps({
     default: () => []
   }
 })
+
+const emits = defineEmits(['freshHistory'])
 
 const store = useUserStore()
 
@@ -69,7 +73,7 @@ const onSubmit = async () => {
     const data = await api.getPaymentRecordList(form)
     table.data = data.list
     table.total = data.count
-    if(props.expands.length){
+    if (props.expands.length) {
       tableRef.value.toggleRowExpansion(table.data[0])
     }
   } catch (error) {
@@ -77,10 +81,14 @@ const onSubmit = async () => {
   }
 }
 
-const onInputChange = val => {
-  form.content = val.trim()
+// const onInputChange = val => {
+//   form.content = val.trim()
+//   onSubmit()
+// }
+
+const onInputChange = debounce(()=>{
   onSubmit()
-}
+}, 500)
 
 const onExport = async () => {
   try {
@@ -145,9 +153,9 @@ const onExpandRow = async (row, _) => {
   try {
     const data = await api.getPaymentRecordExtList({ voucher_id: row.voucher_id })
     row.voucher_ext_list = data.list
-  } catch(err){
+  } catch (err) {
     console.log('err ==> ', err)
-  }finally {
+  } finally {
     row.isLoading = false
   }
 }
@@ -181,7 +189,7 @@ const onCancel = async () => {
       voucher_ext_id: dialog.ext.voucher_ext_id
     })
     Message.success("撤销成功")
-    onSubmit()
+    emits('freshHistory')
   } finally {
     dialog.cancelVisible = false
     onSubmit()
@@ -195,6 +203,7 @@ const onAudit = async () => {
       voucher_ext_id: dialog.ext.voucher_ext_id
     })
     Message.success("审核成功")
+    emits('freshHistory')
   } finally {
     dialog.auditVisible = false
     onSubmit()
@@ -204,6 +213,89 @@ const onAudit = async () => {
 onBeforeMount(() => {
   onSubmit()
 })
+
+const showNote = ref(false)
+const currentExt = ref(null)
+const noteForm = reactive(
+  {
+    voucher_ext_id: null,
+    note: ''
+  }
+)
+
+const submitNote = async () => {
+  try {
+    await api.voucherModifyNote({
+      voucher_ext_id: noteForm.voucher_ext_id,
+      note: noteForm.note,
+      log_text: '收款账号: ' + currentExt.value.receiving_account + '金额: ' + currentExt.value.origin_total_amount
+    })
+    currentExt.value.note = noteForm.note
+    message.success('备注已修改')
+
+    noteForm.voucher_ext_id = null
+    noteForm.note = ''
+    currentExt.value = null
+    showNote.value = false
+
+  } catch (err) {
+
+  }
+}
+
+const onEditNote = ext => {
+  currentExt.value = ext
+  noteForm.voucher_ext_id = ext.voucher_ext_id
+  noteForm.note = ext.note
+  showNote.value = true
+  console.log('edit note ', ext)
+}
+
+
+const uploadRef = ref(null)
+const showAddPicture = ref(false)
+const addPictureForm = reactive(
+  {
+    voucher_ext_id: null,
+    attachment_list: []
+  }
+)
+const onAddPicture = ext => {
+  currentExt.value = ext
+  addPictureForm.voucher_ext_id = ext.voucher_ext_id
+  addPictureForm.attachment_list = []
+  showAddPicture.value = true
+  console.log('add pic ', ext)
+}
+
+const submitPicture = async () => {
+  try {
+    const attachment_list = JSON.stringify(await uploadRef.value.uploadImage())
+    api.updatePaymentAttachments({
+      voucher_ext_id: addPictureForm.voucher_ext_id,
+      attachment_list: attachment_list,
+      log_text: '收款账号: ' + currentExt.value.receiving_account + '金额: ' + currentExt.value.origin_total_amount
+    })
+    message.success('凭证已上传和更新')
+
+    currentExt.value = null
+    addPictureForm.voucher_ext_id = null
+    showAddPicture.value = false
+
+  } catch (err) {
+
+  }
+}
+
+
+const crop = setUpCapture(src => {
+  if (showAddPicture.value) {
+    addPictureForm.attachment_list.push({
+      url: src
+    })
+  }
+})
+
 </script>
 
 
@@ -219,7 +311,7 @@ onBeforeMount(() => {
       </el-select>
     </el-form-item>
     <el-form-item>
-      <el-input v-model="form.content" placeholder="请输入流水编号" @change="onInputChange" clearable />
+      <el-input v-model="form.content" placeholder="请输入流水编号" @input="onInputChange" clearable @keyup.enter="onSubmit"/>
     </el-form-item>
     <el-form-item>
       <el-button type="primary" :icon="DocumentDelete" @click="onExport" plain>导出</el-button>
@@ -282,6 +374,23 @@ onBeforeMount(() => {
 
             <!-- 操作 -->
             <div class="options" v-show="ext.is_audit == 0">
+
+              <el-tooltip content="修改备注" placement="left">
+                <el-button type="primary" link class="wrap-edit" @click="onEditNote(ext)">
+                  <el-icon>
+                    <ChatLineSquare />
+                  </el-icon>
+                </el-button>
+              </el-tooltip>
+
+              <el-tooltip content="补充凭证图片" placement="left">
+                <el-button type="primary" link class="wrap-edit" @click="onAddPicture(ext)">
+                  <el-icon>
+                    <PictureFilled />
+                  </el-icon>
+                </el-button>
+              </el-tooltip>
+
               <el-tooltip content="编辑" placement="left">
                 <el-button type="primary" :icon="Edit" class="wrap-edit" @click="onEditExt(props.$index, subIndex)"
                   link></el-button>
@@ -383,12 +492,18 @@ onBeforeMount(() => {
     layout="total, sizes, prev, pager, next" :total="table.total" @size-change="onLimitChange"
     @current-change="onPageChange" />
 
-  <el-dialog v-model="dialog.editVisible" title="修改打款记录" width="540" :close-on-click-modal="false"
+  <!-- 修改 -->
+  <el-dialog v-model="dialog.editVisible" title="修改打款记录" width="540" :close-on-click-modal="false" destroy-on-close
     :close-on-press-escape="false" align-center>
-    <PaymentRecordEdit :ext="dialog.ext" @close="dialog.editVisible = false" />
+    <PaymentRecordEdit :ext="dialog.ext" @close="() => {
+        dialog.editVisible = false
+        emits('freshHistory')
+        onSubmit()
+      }" />
   </el-dialog>
 
-  <el-dialog v-model="dialog.cancelVisible" title="撤销提示" width="400" :close-on-click-modal="false"
+  <!-- 撤销修改 -->
+  <el-dialog v-model="dialog.cancelVisible" title="撤销提示" width="400" :close-on-click-modal="false" destroy-on-close
     :close-on-press-escape="false">
     <span>确定要撤销修改审核吗？</span>
     <template #footer>
@@ -399,7 +514,8 @@ onBeforeMount(() => {
     </template>
   </el-dialog>
 
-  <el-dialog v-model="dialog.auditVisible" title="审核提示" width="400" :close-on-click-modal="false"
+  <!-- 审核 -->
+  <el-dialog v-model="dialog.auditVisible" title="审核提示" width="400" :close-on-click-modal="false" destroy-on-close
     :close-on-press-escape="false">
     <div class="dialog-content">
       <div class="item">
@@ -422,6 +538,43 @@ onBeforeMount(() => {
       </div>
     </template>
   </el-dialog>
+
+  <!-- 备注修改 -->
+  <el-dialog v-model="showNote" title="修改备注" width="400" destroy-on-close :close-on-click-modal="false"
+    :close-on-press-escape="false">
+    <el-form>
+      <el-form-item label="备注">
+        <el-input v-model="noteForm.note" type="textarea" rows="3"> </el-input>
+      </el-form-item>
+    </el-form>
+
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="showNote = false">关闭</el-button>
+        <el-button type="primary" @click="submitNote">确定</el-button>
+      </div>
+    </template>
+  </el-dialog>
+
+  <!-- 补图 -->
+  <el-dialog v-model="showAddPicture" title="补充凭证图片" width="400" destroy-on-close :close-on-click-modal="false"
+    :close-on-press-escape="false">
+    <el-form>
+      <el-form-item label="凭证图片">
+        <Upload action="upload" ref="uploadRef" v-model="addPictureForm.attachment_list" :limit="10" dir="payment"
+          :size="66"></Upload>
+      </el-form-item>
+    </el-form>
+
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button type="danger" link @click="crop">截图</el-button>
+        <el-button @click="showAddPicture = false">关闭</el-button>
+        <el-button type="primary" @click="submitPicture">确定</el-button>
+      </div>
+    </template>
+  </el-dialog>
+
 </template>
 
 

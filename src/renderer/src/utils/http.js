@@ -5,10 +5,12 @@ import logger from '@/utils/logger'
 import { useUserStore } from '@/stores'
 import { useLocalConfig } from '@/stores/config'
 import appInfo from '../../../../package.json'
+import { shouldRecord } from "../../../main/record_filter"
 
 const env = import.meta.env
 const store = useUserStore()
 const cfgStore = useLocalConfig()
+
 const contentTypeForm = 'application/x-www-form-urlencoded;charset=UTF-8'
 const contentTypeJson = 'application/json'
 const instance = axios.create({
@@ -18,6 +20,7 @@ const instance = axios.create({
 })
 
 let loading = null
+
 
 // 添加请求拦截器
 instance.interceptors.request.use(
@@ -85,16 +88,19 @@ instance.interceptors.response.use(
     if (res.code === 0) {
       if (method === 'post') {
         // 记录操作日志
-        electron.operate.record({
-          url,
-          status: 0,
-          statusMsg: null,
-          user_id: store.user.id,
-          create_time: new Date(),
-          creator: store.user.username,
-          log_text,
-          log_params
-        })
+        if (shouldRecord(url)) {
+          electron.operate.record({
+            url,
+            status: 0,
+            statusMsg: null,
+            user_id: store.user.id,
+            create_time: new Date(),
+            creator: store.user.username,
+            log_text,
+            log_params,
+            log_resp: res.response
+          })
+        }
       }
 
       if (env.DEV) {
@@ -122,16 +128,20 @@ instance.interceptors.response.use(
     } else {
       if (method === 'post') {
         // 记录操作日志
-        electron.operate.record({
-          url,
-          status: res.code,
-          statusMsg: res.msg,
-          user_id: store.user.id,
-          create_time: new Date(),
-          creator: store.user.username,
-          log_text,
-          log_params
-        })
+        if (shouldRecord(url)) {
+          electron.operate.record({
+            url,
+            status: res.code,
+            statusMsg: res.msg,
+            user_id: store.user.id,
+            create_time: new Date(),
+            creator: store.user.username,
+            log_text,
+            log_params,
+            log_resp: res.response
+          })
+        }
+
       }
       if (res.code == 1007) {
         // 未登录，返回登录页

@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import fs from "fs"
+import { recordUrls } from "../main/record_filter"
+
 const electron = {
   // 渲染进程 -> 主进程的调用
   login: (data) => ipcRenderer.invoke('login', data),
@@ -42,6 +44,7 @@ const electron = {
     insert: (table, data) => ipcRenderer.invoke('operate-sql-insert', table, data),
     update: (table, data, where) => ipcRenderer.invoke('operate-sql-update', table, data, where),
     delete: (table, where) => ipcRenderer.invoke('operate-sql-delete', table, where),
+    recordUrls,
     record: (data) => ipcRenderer.send('operate-sql:record', data),
     getRecords: userId => ipcRenderer.invoke('operate-sql:getRecords', userId),
     onRecordEvent: callback => {

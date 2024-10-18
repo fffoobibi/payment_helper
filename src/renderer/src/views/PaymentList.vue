@@ -1,7 +1,7 @@
 <script setup>
 import { onBeforeMount, reactive, ref, watch, onActivated, onDeactivated } from 'vue'
 import { Check, Delete, Files, Warning, Remove, Search, RefreshLeft } from '@element-plus/icons-vue'
-import { dateTimeFmt, numberFmt } from '@/utils/format'
+import { dateTimeFmt, numberFmt, subNumbers } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
 import Message from '@/utils/message'
@@ -177,6 +177,14 @@ const onSearch = async () => {
   }
 }
 
+const paymentDetail = item => {
+  const st = subNumbers(item.origin_total_amount, item.voucher_total_amount)
+  const delta = parseFloat(st)
+  if (parseFloat(item.voucher_total_amount) > 0 && delta > 0) {
+    return "分批打款, 剩余款项：" + st + " " + item.currency
+  }
+}
+
 const onDetail = (id, item) => {
   if (form.type === 'pending') {
     firstItem.value = item.items[0]
@@ -314,7 +322,6 @@ const onBatchReview = async status => {
 }
 
 // const showRecordDrawer = ref(false)
-const showRecordDrawer = ref(false)
 const activeItem = ref(null)
 const passSingleDialogVisible = ref(false)
 const rejectSingleDialogVisible = ref(false)
@@ -352,24 +359,6 @@ const onCopy = async text => {
 }
 const feePayers = { 0: '--', 1: '我方', 2: '顾客', 3: '双方平摊' }
 
-const fetchData = async () => {
-  const data = await api.getPaymentDetail({
-    id: props.detailId
-  })
-  approve.value = data.payment_detail.detail
-  approve.value.cashier = data.payment_cashier.cashier
-  approve.value.payment_error_msg = data.payment_cashier.payment_error_msg
-  approve.value.payment_status = data.payment_cashier.payment_status
-  approve.value.fee_payer_str = feePayers[data.payment_detail.detail?.fee_payer]
-
-  tableData.value = data.payment_detail.items
-  if (data.payment_detail.items.length > 0) {
-    firstItem.value = data.payment_detail.items[0]
-    if (bankAccountTitleIds.includes(firstItem.value.account_title_id)) {
-      isBankTransfer.value = true
-    }
-  }
-}
 
 const detailsShow = ref(false)
 const detailId = ref(null)
@@ -380,7 +369,6 @@ const viewPaymentDetails = id => {
 
 const onShowDialog = (status, item) => {
   console.log('item ', item)
-  console.log('dd ', dd.approve);
   activeItem.value = item
   dialogSingleForm.status = status
   switch (status) {
@@ -411,7 +399,8 @@ const onReview = async () => {
     await api.review({
       id: activeItem.value.id,
       status: dialogSingleForm.status,
-      comment: dialogSingleForm.comment.trim()
+      comment: dialogSingleForm.comment.trim(),
+      log_text: activeItem.value.approval_number
     })
     Message.success('审批完成')
     onSearch()
@@ -445,6 +434,9 @@ const onAbnoraml = async () => {
   }
 }
 
+defineExpose({
+  onSearch
+})
 
 </script>
 
@@ -562,23 +554,22 @@ const onAbnoraml = async () => {
             :icon="Delete" link></el-button>
           <div class="space" v-if="form.type == 'processed'"></div>
           <div class="row-content" @click="() => {
-              if (form.type != 'pending') {
-                onDetail(item.id, item)
-              }
-              if (!cfg.layout) {
-                onDetail(item.id, item)
-              }
-            }">
+      if (form.type != 'pending') {
+        onDetail(item.id, item)
+      }
+      if (!cfg.layout) {
+        onDetail(item.id, item)
+      }
+    }">
             <div class="row-top">
               <div class="row-title">{{ item.process_name }}</div>
               <div class="row-time">{{ dateTimeFmt(item.create_time) }}</div>
             </div>
             <div class="row-bottom">
               <div class="row-subtitle user-select">{{ item.approval_number }}</div>
-              <div class="row-other">{{ numberFmt(item.origin_total_amount) }} <span>{{ item.currency }}</span></div>
+              <div class="f-14 b-500">{{ numberFmt(item.origin_total_amount) }} <span class="t-red f-12 b-500">{{ item.currency }}</span></div>
             </div>
-            <div style="display: flex; width: 100%; flex-direction: column;gap:2px;margin-top:2px; " v-if="cfg.layout">
-              <!-- <span class="user-select more error" v-if="item.payment_error_msg"><span class="error">审批异常：</span>{{ item.payment_error_msg }}</span> -->
+            <div class="flex flex-col gap-2 m-t-2 w-full" v-if="cfg.layout">
               <span class="user-select more gray"><span class="gray">银行账号：</span>{{ item.bank_account || "--" }}</span>
               <span class="user-select more gray"><span class="gray">采购单号：</span>{{ item.purchase_number || "--"
                 }}</span>
@@ -587,9 +578,10 @@ const onAbnoraml = async () => {
 
               <span class="user-select more gray"><span class="gray">申请人/部门：</span>{{ item.creator || "--" }} <span
                   class="more" style="color:#5BA3ED">{{ item.department_name }}</span> </span>
-              <!-- <span class="user-select more gray"><span class="gray">所属部门：</span>{{ item.department_name || "--"}}</span> -->
               <span class="user-select more error" v-if="item.payment_error_msg"><span class="error"></span>{{
       item.payment_error_msg }}</span>
+
+              <span class="b-600 f-12 t-red">{{ paymentDetail(item) }}</span>
 
               <div v-show="form.type === 'pending'" style="display: flex; justify-content: flex-start;margin-top: 5px ">
                 <el-button size="small" type="warn" @click="viewPaymentDetails(item.id)" link>查看</el-button>
@@ -997,7 +989,7 @@ const onAbnoraml = async () => {
 }
 
 .row-other {
-  color: rgb(78, 72, 72) !important;
+  /* color: rgb(78, 72, 72) !important; */
   font-weight: 500;
   /* color: black !important; */
 }
@@ -1010,7 +1002,7 @@ const onAbnoraml = async () => {
 
 .row-other {
   font-size: 0.8em;
-  color: #675757;
+  /* color: #675757; */
   text-wrap: nowrap;
 }
 

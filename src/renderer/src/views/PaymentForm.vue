@@ -71,7 +71,7 @@ onMounted(() => {
     }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'freshPending'])
 
 const cfgStore = useLocalConfig()
 const { autoClick, autoConfirm } = storeToRefs(cfgStore)
@@ -114,6 +114,11 @@ const formReset = () => {
     form.airwallex_status = ''
     form.attachment_list = []
     form.is_binding = false
+}
+
+const formClear = () => {
+    dd.reset()
+    formReset()
 }
 
 const airwallexVisible = ref(false)
@@ -168,9 +173,13 @@ const onSubmit = async el => {
         }
         data.account_items = JSON.stringify(data.account_items)
         try {
-            await api.addPaymentRecord(data)
+            const resp = await api.addPaymentRecord(data)
             Message.success("打款提交成功")
+            emit('freshPending')
             listRef.value?.reload()
+            
+            const account_id = form.account_id
+            const approval_number = form.approval_number
 
             if (form.transaction_number_airwallex) {
                 if (form.is_binding) {  // 更新本地airwallex记录
@@ -194,21 +203,31 @@ const onSubmit = async el => {
             }
             dd.reset()
             formReset()
-            // 是否自动点单
-            if (autoClick.value) {
-                // 是否需要确认
-                if (autoConfirm.value) {
-                    confirmDialogVisible.value = true
-                } else {
-                    onConfirm()
-                }
-            } else {
-                if (props.batch) {
-                    nextData()
-                } else {
-                    emit('close')
-                }
+            // 剩余金额为0, 自动点单
+            if (resp.left_origin_amount === 0) {
+                onConfirm(account_id, approval_number)
             }
+            if (props.batch) {
+                nextData()
+            } else {
+                emit('close')
+            }
+
+            // 是否自动点单
+            // if (autoClick.value) {
+            //     // 是否需要确认
+            //     if (autoConfirm.value) {
+            //         confirmDialogVisible.value = true
+            //     } else {
+            //         onConfirm()
+            //     }
+            // } else {
+            //     if (props.batch) {
+            //         nextData()
+            //     } else {
+            //         emit('close')
+            //     }
+            // }
         } catch (error) {
         }
     })
@@ -216,11 +235,11 @@ const onSubmit = async el => {
 const errorMsg = ref('')
 const centerDialogVisible = ref(false)
 
-const onConfirm = async () => {
+const onConfirm = async (account_id, approval_number ) => {
     try {
         await api.autoComplete({
-            account_id: form.account_id,
-            approval_number_item: JSON.stringify([form.approval_number]),
+            account_id: account_id,
+            approval_number_item: JSON.stringify([approval_number]),
         }, false)
         Message.success("自动点单成功")
         confirmDialogVisible.value = false
@@ -315,7 +334,7 @@ const onCopy = async text => {
     await navigator.clipboard.writeText(text)
     Message.success("复制成功")
 }
-const vieDetail = (voucher_id, sn)=>{
+const vieDetail = (voucher_id, sn) => {
     showRecordCondition.value = recordQuery.condition
     showRecordContent.value = sn
     showRecordExpands.value = [voucher_id]
@@ -337,12 +356,15 @@ watch(() => recordQuery.content, () => {
 
 
 <template>
-   <Header>
+    <Header>
         <template #title>
             <h4>钉钉打款</h4>
         </template>
 
         <template #option>
+            <el-button link class="option-btn" size="small">
+                <el-icon><Hide /></el-icon>
+            </el-button>
             <el-tooltip content="批量打款" placement="bottom" hide-after="0" transition="none" :disabled="ws.excelLoading">
                 <el-button link @click="emit('openBatch')" :loading="ws.excelLoading">
                     <template #loading>
@@ -446,9 +468,9 @@ watch(() => recordQuery.content, () => {
                         <el-text type="primary">提示：Ctrl + Q 快速截图</el-text>
                         <div>
                             <el-button :icon="Close" @click="() => {
-                formReset()
-                formRef.clearValidate()
-            }">
+                            formClear()
+                            formRef.clearValidate()
+                        }">
                                 重置
                             </el-button>
                             <el-button type="primary" :icon="Check" @click="onSubmit(formRef)">提交</el-button>
@@ -472,20 +494,20 @@ watch(() => recordQuery.content, () => {
                     <h3 class="t-primary">打款记录</h3>
                     <span class="t-gray f-13 b-500 t-n">(共{{ record.totalPage }}条记录)</span>
                     <el-button link @click="() => {
-                recordQuery.showSearch = !recordQuery.showSearch
-                if (recordQuery.showSearch === false) {
-                    recordQuery.content = ''
-                }
-            }"><el-icon>
-                            <Search />
+                        recordQuery.showSearch = !recordQuery.showSearch
+                        if (recordQuery.showSearch === false) {
+                            recordQuery.content = ''
+                        }
+                        }"><el-icon>
+                                        <Search />
                         </el-icon></el-button>
-                    <el-input v-if="recordQuery.showSearch" style="width: 240px" clearable placeholder="输入编号"
+                    <el-input v-if="recordQuery.showSearch" style="flex: 1" clearable placeholder="输入编号"
                         v-model="recordQuery.content" @keyup.esc="() => {
-                recordQuery.showSearch = !recordQuery.showSearch
-                if (recordQuery.showSearch === false) {
-                    recordQuery.content = ''
-                }
-            }"></el-input>
+                        recordQuery.showSearch = !recordQuery.showSearch
+                        if (recordQuery.showSearch === false) {
+                            recordQuery.content = ''
+                        }
+                    }" />
                 </div>
                 <div>
                     <el-button link @click="listRef.reload()">
@@ -532,7 +554,7 @@ watch(() => recordQuery.content, () => {
                 </template>
                 <template #default="{ info: item }">
                     <div
-                        :class="['flex-col', 'gap-4', 'record-container', item.voucher_ext_last.is_audit ? 'record-audit' : '']" >
+                        :class="['flex-col', 'gap-4', 'record-container', item.voucher_ext_last.is_audit ? 'record-audit' : '']">
                         <div class="flex flex-between">
                             <div>
                                 <span class="t-black f-14 b-500">编号 {{ item.sn }} </span>
@@ -542,7 +564,7 @@ watch(() => recordQuery.content, () => {
                         </div>
                         <div class="flex flex-between">
                             <div class="flex flex-col">
-                                <span class="t-black f-14">{{ item.creator }} ({{ item.department_name }})</span>
+                                <span class="t-black f-14">{{ item.payment_creator }} ({{ item.payment_department_name }})</span>
                                 <div>
                                     <span class="t-black f-14">支出金额 </span>
                                     <span class="t-red f-14">{{ numberFmt(item.origin_total_amount) + " " }}</span>
@@ -559,7 +581,8 @@ watch(() => recordQuery.content, () => {
                                 <span class="t-black f-14">{{ item.voucher_ext_last.account_name }}</span>
                                 <span class="t-black f-14">收款账号 {{ " " + item.voucher_ext_last.receiving_account
                                     }}</span>
-                                <span class="t-primary f-14 t-n c-pointer" @click="vieDetail(item.voucher_id, item.sn)"> 明细 {{ item.voucher_ext_count }}</span>
+                                <span class="t-primary f-14 t-n c-pointer" @click="vieDetail(item.voucher_id, item.sn)">
+                                    明细 {{ item.voucher_ext_count }}</span>
                             </div>
 
                         </div>
@@ -671,8 +694,11 @@ watch(() => recordQuery.content, () => {
                 showRecordCondition = '1'
                 showRecordContent = ''
                 showRecordExpands = []
-            }" :close-on-click-modal="false" >
-            <PaymentRecord :condition="showRecordCondition" :content="showRecordContent" :expands="showRecordExpands" />
+            }" :close-on-click-modal="false">
+            <PaymentRecord :condition="showRecordCondition" :content="showRecordContent" :expands="showRecordExpands"
+                @fresh-history="() => {
+                listRef?.reload()
+            }" />
         </el-drawer>
     </div>
 

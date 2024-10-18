@@ -15,7 +15,7 @@ win:
   icon: resources/icon.png
 nsis:
   oneClick: false
-  allowToChangeInstallationDirectory: true
+  allowToChangeInstallationDirectory: false
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}

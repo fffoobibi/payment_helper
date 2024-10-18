@@ -2,7 +2,9 @@
 import PaymentList from './PaymentList.vue'
 import PaymentAdd from './PaymentAdd.vue'
 import { useExcelBatchPayment } from "@/utils/tools"
+import {ref} from "vue"
 const { title, show, openBatch, close, batch, batchData } = useExcelBatchPayment()
+const listRef = ref(null)
 
 </script>
 
@@ -10,14 +12,16 @@ const { title, show, openBatch, close, batch, batchData } = useExcelBatchPayment
 <template>
   <Layout hasList>
     <template #layout-list-inner>
-      <PaymentList />
+      <PaymentList ref="listRef"/>
     </template>
 
     <template #layout-main-inner>
       <RouterView v-slot="{ Component }">
         <transition name="fade">
           <keep-alive>
-            <component :is="Component" :detail-id="$route.params.id" @open-batch="openBatch"></component>
+            <component :is="Component" :detail-id="$route.params.id" @open-batch="openBatch" @freshPending="()=>{
+                listRef?.onSearch()
+            }"></component> 
           </keep-alive>
         </transition>
       </RouterView>

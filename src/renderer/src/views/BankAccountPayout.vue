@@ -280,7 +280,7 @@ const onSubmit = () => {
             const data = { ...form.post }
             data.attachment_list = JSON.stringify(uploads)
             try {
-                const resp = await api.payouts.savePayout(data)
+                await api.payouts.savePayout(data)
                 message.success("支出已添加!")
                 formRef.value.resetFields()
                 listRef.value.reload()

@@ -1,6 +1,7 @@
 import { computed, customRef, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { dateTimeFmt } from "@/utils/format"
+import { computedAsync } from '@vueuse/core'
 
 // 用户信息
 const useUserStore = defineStore('user', () => {
@@ -279,18 +280,22 @@ const useOperateRecords = defineStore('operateRecords', () => {
 
   }
   const append = data => {
-    records.value.push(data)
+    const td = dateTimeFmt(new Date, 3)
     const dayKey = dateTimeFmt(data.create_time / 1000, 3)
+    records.value.push(data)
+
     if (!s.value.has(dayKey)) {
+      indexs.value[dayKey] = Object.keys(indexs.value).length
+      s.value.add(dayKey)
       treeData.value.push({
-        id: -(Object.keys(indexs.value).length + 1),
+        id: - indexs.value[dayKey],
         title: dayKey,
         children: [data]
       })
     } else {
       treeData.value[indexs.value[dayKey]].children.push(data)
     }
-
+    treeExpand.value = [-indexs.value[dayKey]]
   }
 
   const current = computed(() => {
@@ -325,8 +330,9 @@ const useOperateRecords = defineStore('operateRecords', () => {
       }
       return { id: -i, title: k, children: values[k] }
     })
-    treeExpand.value = [tdIndex]
-
+    if (tdIndex !== undefined) {
+      treeExpand.value = [tdIndex]
+    }
   }
 
   return {
@@ -343,6 +349,17 @@ const useOperateRecords = defineStore('operateRecords', () => {
   }
 })
 
+const useRecordFilterStore = defineStore('recordFilterStore', () => {
+
+  const urls = computedAsync(async () => {
+    return await electron.operate.recordUrls()
+  })
+  return {
+    urls
+  }
+
+})
+
 export {
   useUserStore,
   useAccountStore,
@@ -352,5 +369,6 @@ export {
   useExcelStore,
   useScreenShortStore,
   useDingdingSubmitStore,
-  useOperateRecords
+  useOperateRecords,
+  useRecordFilterStore
 }

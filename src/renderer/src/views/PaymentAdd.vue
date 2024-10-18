@@ -68,7 +68,7 @@ onMounted(() => {
   }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'freshPending'])
 
 const cfgStore = useLocalConfig()
 const { autoClick, autoConfirm } = storeToRefs(cfgStore)
@@ -174,8 +174,11 @@ const onSubmit = async el => {
     }
     data.account_items = JSON.stringify(data.account_items)
     try {
-      await api.addPaymentRecord(data)
+      const resp = await api.addPaymentRecord(data)
       Message.success("打款提交成功")
+      emit('freshPending')
+      const account_id = form.account_id
+      const approval_number = form.approval_number
 
       if (form.transaction_number_airwallex) {
         if (form.is_binding) {  // 更新本地airwallex记录
@@ -197,23 +200,31 @@ const onSubmit = async el => {
           })
         }
       }
-
+      
       formReset()
-      // 是否自动点单
-      if (autoClick.value) {
-        // 是否需要确认
-        if (autoConfirm.value) {
-          confirmDialogVisible.value = true
-        } else {
-          onConfirm()
-        }
-      } else {
-        if (props.batch) {
-          nextData()
-        } else {
-          emit('close')
-        }
+      if (resp.left_origin_amount === 0) {
+        onConfirm(account_id, approval_number)
       }
+      if (props.batch) {
+        nextData()
+      } else {
+        emit('close')
+      }
+      // 是否自动点单
+      // if (autoClick.value) {
+      //   // 是否需要确认
+      //   if (autoConfirm.value) {
+      //     confirmDialogVisible.value = true
+      //   } else {
+      //     onConfirm()
+      //   }
+      // } else {
+      //   if (props.batch) {
+      //     nextData()
+      //   } else {
+      //     emit('close')
+      //   }
+      // }
     } catch (error) {
     }
   })
@@ -221,11 +232,11 @@ const onSubmit = async el => {
 const errorMsg = ref('')
 const centerDialogVisible = ref(false)
 
-const onConfirm = async () => {
+const onConfirm = async (account_id, approval_number ) => {
   try {
     await api.autoComplete({
-      account_id: form.account_id,
-      approval_number_item: JSON.stringify([form.approval_number]),
+      account_id: account_id,
+      approval_number_item: JSON.stringify([approval_number]),
     }, false)
     Message.success("自动点单成功")
     confirmDialogVisible.value = false
@@ -395,7 +406,8 @@ onMounted(async () => {
     </template>
   </el-dialog>
 
-  <el-dialog :title="histories.title" v-model="histories.show" width="80%" destroy-on-close :close-on-click-modal="false">
+  <el-dialog :title="histories.title" v-model="histories.show" width="80%" destroy-on-close
+    :close-on-click-modal="false">
     <el-table :data="histories.list">
       <el-table-column label="#" width="20">
         <template #default="scope">
@@ -458,9 +470,9 @@ onMounted(async () => {
     <template #footer>
       <div class="dialog-footer">
         <el-button type="primary" @click="() => {
-            centerDialogVisible = false
-            emit('close')
-          }">
+    centerDialogVisible = false
+    emit('close')
+  }">
           关闭
         </el-button>
       </div>

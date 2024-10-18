@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import Toolbar from './Toolbar.vue';
 
 const props = defineProps({
@@ -9,6 +10,9 @@ const props = defineProps({
 })
 const onSubmit = () => {
 }
+const fulled = computed(()=>{
+  return !props.hasList
+})
 </script>
 
 
@@ -20,7 +24,7 @@ const onSubmit = () => {
     </div>
 
     <div class="layout-main">
-      <Toolbar />
+      <Toolbar :fulled="fulled"/>
       <slot name="layout-main-inner"></slot>
     </div>
   </div>

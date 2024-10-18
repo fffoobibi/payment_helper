@@ -19,6 +19,7 @@ const payment = {
   getPaymentRecordItemList: data => http({ url: '/voucher/getPaymentItemsList', params: data, showLoading: false }),
   updatePaymentRecordExt: data => http({ url: '/voucher/modifyVoucher', params: data }),
   updatePaymentAttachments: data => http({ url: '/voucher/replenishVoucher', params: data, showLoading: false }),
+  voucherModifyNote: data=> http({url: '/voucher/modifyNote', params: data}),
   autoComplete: (data, showError = true) => {
     logger.info('自动点单数据', data)
     return http({ url: '/paymentCashier/autoCompletePuchasement', params: data, showError })

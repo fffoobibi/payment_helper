@@ -10,7 +10,9 @@ const configStore = useLocalConfig()
 const store = useUserStore()
 const { isPin } = storeToRefs(configStore)
 import appInfo from "../../../../package.json"
+import { useClient } from '../utils/client'
 
+const { width } = useClient()
 const recordStore = useOperateRecords()
 const recordRef = ref(null)
 const { current, treeData, treeProps, treeExpand, totalCount, todayCount } = storeToRefs(recordStore)
@@ -35,6 +37,10 @@ const props = defineProps({
     default: 'config'
   },
   showRecords: {
+    type: Boolean,
+    default: true
+  },
+  fulled: {
     type: Boolean,
     default: true
   }
@@ -81,6 +87,8 @@ const onWindow = (action, data) => {
 }
 const showOperateRecords = () => {
   console.log(treeData.value)
+  console.log(current.value);
+  console.log(treeExpand.value)
 }
 
 watch(current, () => {
@@ -97,21 +105,40 @@ const onCopy = async text => {
 const showDebug = ref(false)
 const showValues = ref(null)
 const showDebugTitle = ref('')
-const showDebugContent = () => {
-  showDebug = true
-  showValues = JSON.parse(node.data.operate_data)
-  showDebugTitle = node.data.url
+const showDebugError = ref(false)
+const showErrMsg = ref('')
+const showDebugContent = (operate_data, url, data) => {
+  // if (!configStore.mode) {
+  showDebug.value = true
+  showValues.value = JSON.parse(operate_data)
+  showDebugTitle.value = url
+  if (data.status == 0) {
+    showErrMsg.value = ''
+    showDebugError.value = false
+  } else {
+    showErrMsg.value = data.statusMsg
+    showDebugError.value = true
+  }
+  // }
+
 }
 
 defineExpose({
   onClose
 })
-
+const toolbarRef = ref(null)
+const maxTitleLabelWidth = computed(() => {
+  if (props.fulled) {
+    return 500
+  } else {
+    return width.value - 50 - 320 - 6 * 60 - 100
+  }
+})
 </script>
 
 
 <template>
-  <div class="toolbar" :class="{ 'only-close': onlyClose }">
+  <div class="toolbar" :class="{ 'only-close': onlyClose }" ref="toolbarRef">
     <div class="drag" :class="{ 'title': onlyClose }">
 
       <slot>
@@ -125,7 +152,9 @@ defineExpose({
 
       <el-popover placement="bottom" title="操作记录（近15天）" :width="520" trigger="click" hide-after="0" transition="none"
         :persistent="false" v-if="configStore.operate && showRecords" @after-enter="() => {
-    recordRef?.scrollToNode(current.id)
+    if (current) {
+      recordRef?.scrollToNode(current.id)
+    }
   }">
         <el-space alignment="flex-start">
           <span class="t-gray f-12  m-b-4">总计 <span class="t-red f-12 m-b-4">{{ totalCount }}</span>条</span>
@@ -134,26 +163,28 @@ defineExpose({
 
         <el-tree-v2 :data="treeData" :props="treeProps" :default-expanded-keys="treeExpand" ref="recordRef" indent="4">
           <template #default="{ node }">
-            <span v-if="!node.isLeaf">{{ node.label }} {{ `( ${node.data.children.length})` }}</span>
+            <span v-if="!node.isLeaf">{{ node.label }} {{ ` (${node.data.children.length})` }}</span>
             <div v-if="node.isLeaf" class="flex gap-4 flex-between w-full p-r-10">
-              <el-space>
+              <div class="flex flex-center gap-4">
                 <span class="t-gray t-n">{{ dateTimeFmt(node.data.create_time, 6) }}</span>
-                <!-- <div v-if="node.label.split('<+++>').length > 1"> -->
                 <span class="t-primary t-n"> {{ node.data.title }}</span>
-                <span class="t-black t-n"> {{ node.data.detail }}</span>
-                <!-- </div> -->
-                <!-- <span v-else class="t-primary t-n">{{ node.label }}</span> -->
+                <el-text v-if="node.data.status == 0" class="t-black t-n" :style="{ maxWidth: '220px' }" truncated> {{
+    node.data.detail?.replaceAll('<br>', '\n') }}</el-text>
+                <el-text v-else class="t-red t-n" :style="{ maxWidth: '220px' }" truncated> {{
+    node.data.statusMsg.replaceAll('<br>', '\n')
+  }}</el-text>
 
-              </el-space>
-              <el-space>
-                <el-button type="danger" link v-if="!configStore.mode" @click="showDebugContent">
-                  查看数据
+              </div>
+              <div class="flex flex-center gap-2">
+                <el-button type="info" link @click="showDebugContent(node.data.operate_data, node.data.url, node.data)">
+                  {{ "查看 " }}
+                  <el-icon>
+                    <SuccessFilled v-if="node.data.status == 0" style="color: #55AA55" />
+                    <CircleCloseFilled v-else color="red" />
+                  </el-icon>
                 </el-button>
-                <el-icon>
-                  <SuccessFilled v-if="node.data.status == 0" style="color: #55AA55" />
-                  <CircleCloseFilled v-else color="red" />
-                </el-icon>
-              </el-space>
+
+              </div>
             </div>
           </template>
         </el-tree-v2>
@@ -162,12 +193,17 @@ defineExpose({
           <el-button link @click="showOperateRecords">
             <el-space alignment="center" v-if="showRecords && current">
               <span class="t-black f-12  t-n">{{ dateTimeFmt(current.create_time / 1000, 6) }}</span>
-              <!-- <div v-if="current.title.split('<+++>').length > 1"> -->
               <span class="t-primary t-n f-12"> {{ current.title }}</span>
-              <span class="t-black t-n f-12"> {{ current.detail }}</span>
-              <!-- </div> -->
-              <!-- <span v-else class="t-primary t-n">{{ current.title }}</span> -->
-
+              <el-tooltip v-if="current.status == 0" :content="current.detail" show-after='0' :hide-after='0'
+                transition="none" raw-content>
+                <el-text class="t-black t-n f-12" :style="{ maxWidth: maxTitleLabelWidth + 'px' }" truncated> {{
+    current.detail?.replaceAll('<br>', ' ') }}</el-text>
+              </el-tooltip>
+              <el-tooltip v-else :content="current.statusMsg" raw-content>
+                <el-text class="t-red t-n f-12" :style="{ maxWidth: maxTitleLabelWidth + 'px' }" truncated>
+                  {{ current.statusMsg?.replaceAll('<br>', ' ') }}
+                </el-text>
+              </el-tooltip>
               <el-icon>
                 <SuccessFilled v-if="current.status == 0" style="color: #55AA55" />
                 <CircleCloseFilled v-else color="red" />
@@ -206,25 +242,33 @@ defineExpose({
       </el-button>
     </div>
   </div>
+
+  <!-- 日志详情 -->
   <el-dialog v-model="showDebug" width="600" destroy-on-close title="数据" lock-scroll :append-to="recordRef?.$el">
-    <div class="flex flex-between flex-center">
-      <div>
-        <span v-if="!configStore.mode" class="t-black f-14 b-600">{{ showDebugTitle }}
-        </span>
-        <el-button link>
-          <el-icon @click="onCopy(showDebugTitle)">
-            <CopyDocument />
-          </el-icon>
-        </el-button>
+    <div class="flex flex-col">
+      <div class="flex flex-between flex-center">
+        <div>
+          <span v-if="!configStore.mode" class="t-black f-14 b-600">{{ showDebugTitle }}
+          </span>
+          <el-button link>
+            <el-icon @click="onCopy(showDebugTitle)">
+              <CopyDocument />
+            </el-icon>
+          </el-button>
+        </div>
+
+        <el-button type="danger" link @click="async () => {
+            let r = ''
+            Object.keys(showValues).forEach(k => {
+              r += `${k}:${showValues[k]}\n`
+            })
+            onCopy(r)
+          }">复制为FormData</el-button>
+      </div>
+      <div v-if="showDebugError">
+        <span class="t-red f-12" v-html="showErrMsg"></span>
       </div>
 
-      <e-button type="danger" link @click="async () => {
-    let r = ''
-    Object.keys(showValues).forEach(k => {
-      r += `${k}:${showValues[k]}\n`
-    })
-    onCopy(r)
-  }">复制为formData</e-button>
     </div>
 
     <json-viewer copyable :value="showValues" expanded></json-viewer>

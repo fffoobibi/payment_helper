@@ -179,7 +179,7 @@ const download = () => {
           </el-form>
         </div>
 
-        <div class="pannel">
+        <!-- <div class="pannel">
           <span class="black" style="font-size: 11pt;border-bottom: 2px solid purple;">点单设置</span>
           <el-form label-width="auto">
             <el-form-item label="自动点单">
@@ -191,7 +191,7 @@ const download = () => {
                 }" />
             </el-form-item>
           </el-form>
-        </div>
+        </div> -->
 
         <div class="pannel">
           <span class="black" style="font-size: 11pt;border-bottom: 2px solid purple;">其他设置</span>
