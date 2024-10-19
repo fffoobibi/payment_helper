@@ -1,4 +1,4 @@
-import { computed, customRef, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { dateTimeFmt } from "@/utils/format"
 import { computedAsync } from '@vueuse/core'
@@ -128,23 +128,15 @@ const useAccountStore = defineStore('accounts', () => {
 const useAirwallexStore = defineStore('airwallex', () => {
   const config = ref({})
 
+  const airwallex_binding = computed(()=>{
+    return config.value.airwallex_binding ?? []
+  })
+
   const setConfig = data => {
     config.value = data
-    localStorage.setItem('airwallexConfig', JSON.stringify(data))
   }
 
-  const getConfig = () => {
-    if (config.value.length > 0) {
-      return config
-    }
-    const rs = localStorage.getItem('airwallexConfig')
-    if (rs) {
-      config.value = JSON.parse(rs)
-    }
-    return config
-  }
-
-  return { config, setConfig, getConfig }
+  return { config, setConfig, airwallex_binding }
 })
 
 const useLogStore = defineStore('logStore', () => {

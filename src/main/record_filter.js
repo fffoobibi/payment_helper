@@ -1,7 +1,7 @@
 export const relations = {
 
     '/passport/changePws': '修改了密码',
-    '/voucher/uploadVoucher': (form, data, resp) => {
+    '/voucher/uploadVoucher': (form, resp) => {
         const { left_origin_amount } = resp
         if (left_origin_amount > 0) {
             return ['新增钉钉分批打款', form.approval_number + ' 剩余款项: ' + left_origin_amount + " " + form.currency]

@@ -1,12 +1,12 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { useUserStore, useAccountStore, useAirwallexStore, useScreenShortStore } from '@/stores'
 import { useLocalConfig } from "@/stores/config"
 import { storeToRefs } from "pinia"
 import { useCycleList } from '@vueuse/core'
 import api from '@/api'
 import { Check, Close } from '@element-plus/icons-vue'
-import { accountFormatter, accountParser, amountFormatter, amountParser, numberFmt, timestampToFormattedString } from '@/utils/format'
+import { amountFormatter, amountParser, numberFmt, timestampToFormattedString } from '@/utils/format'
 import { viewImages } from "@/utils/tools"
 import Message from '@/utils/message'
 import Airwallex from './Airwallex.vue'
@@ -33,7 +33,6 @@ const currencies = accountStore.currencies
 const accounts = accountStore.accounts.map(item => Object.assign({}, { 'label': item.account_name, 'value': item.id }))
 
 const airwallexStore = useAirwallexStore()
-const airwallexConfig = airwallexStore.getConfig()
 const airwallexTypes = [{ label: 'airwallex', value: 1 }, { label: 'paypal', value: 2 }]
 
 const { state, next, prev, index } = useCycleList(props.batchData)
@@ -133,13 +132,6 @@ const rules = reactive({
 
 const confirmDialogVisible = ref(false)
 
-// const getAirwallexConfig = async () => {
-//   if (!airwallexConfig?.airwallex_binding || airwallexConfig.airwallex_binding.length == 0) {
-//     const data = await api.getAirwallexConfig({})
-//     airwallexStore.setConfig(data)
-//     airwallexConfig.airwallex_binding = data.airwallex_binding
-//   }
-// }
 
 // setUpCapture(src => {
 //   form.attachment_list.push({ url: src })
@@ -261,9 +253,7 @@ const onSelectAirwallex = (row, isBinding) => {
   form.is_binding = isBinding
 }
 
-// onBeforeMount(() => {
-//   getAirwallexConfig()
-// })
+
 const loading = ref(false)
 const histories = reactive({
   count: null,
@@ -323,7 +313,7 @@ onMounted(async () => {
         <el-option v-for="item in accounts" :label="item.label" :value="item.value"></el-option>
       </el-select>
     </el-form-item>
-    <el-form-item label="支付方式" v-if="airwallexConfig.airwallex_binding.includes(form.account_id)" required>
+    <el-form-item label="支付方式" v-if="airwallexStore.airwallex_binding.includes(form.account_id)" required>
       <el-col :span="17">
         <el-select v-model="form.pay_type">
           <el-option v-for="item in airwallexTypes" :label="item.label" :value="item.value"></el-option>

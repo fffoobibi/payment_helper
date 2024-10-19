@@ -32,11 +32,14 @@ const shortStore = useScreenShortStore()
 const store = useUserStore()
 const accountStore = useAccountStore()
 const currencies = accountStore.currencies
-const accounts = accountStore.accounts.map(item => Object.assign({}, { 'label': item.account_name, 'value': item.id }))
+const accounts = computed(() => {
+    return accountStore.accounts.map(item => Object.assign({}, { 'label': item.account_name, 'value': item.id }))
+})
+
+// const accounts = accountStore.accounts.map(item => Object.assign({}, { 'label': item.account_name, 'value': item.id }))
 const ws = useExcelStore()
 
 const airwallexStore = useAirwallexStore()
-const airwallexConfig = airwallexStore.getConfig()
 const airwallexTypes = [{ label: 'airwallex', value: 1 }, { label: 'paypal', value: 2 }]
 
 const { state, next, prev, index } = useCycleList(props.batchData)
@@ -177,7 +180,7 @@ const onSubmit = async el => {
             Message.success("打款提交成功")
             emit('freshPending')
             listRef.value?.reload()
-            
+
             const account_id = form.account_id
             const approval_number = form.approval_number
 
@@ -235,7 +238,7 @@ const onSubmit = async el => {
 const errorMsg = ref('')
 const centerDialogVisible = ref(false)
 
-const onConfirm = async (account_id, approval_number ) => {
+const onConfirm = async (account_id, approval_number) => {
     try {
         await api.autoComplete({
             account_id: account_id,
@@ -363,7 +366,9 @@ watch(() => recordQuery.content, () => {
 
         <template #option>
             <el-button link class="option-btn" size="small">
-                <el-icon><Hide /></el-icon>
+                <el-icon>
+                    <Hide />
+                </el-icon>
             </el-button>
             <el-tooltip content="批量打款" placement="bottom" hide-after="0" transition="none" :disabled="ws.excelLoading">
                 <el-button link @click="emit('openBatch')" :loading="ws.excelLoading">
@@ -383,10 +388,11 @@ watch(() => recordQuery.content, () => {
             </el-tooltip>
         </template>
     </Header>
-    <div class="wrapper">
-        <el-scrollbar :height="height - 86">
+    <div class="wrapper flex flex-col w-full">
+        <!-- :height="height - 86" -->
+        <el-scrollbar>
 
-            <el-form :model="form" :rules="rules" ref="formRef" label-width="auto" @submit.prevent>
+            <el-form :model="form" :rules="rules" ref="formRef" label-width="auto" @submit.prevent v-if="true">
                 <el-form-item label="钉钉编号" prop="approval_number" required>
                     <div style="width: 100%;display: flex;gap: 10px;justify-content: space-between">
                         <el-input v-model.trim="form.approval_number" @input="handleDingding" :validate-event="false"
@@ -409,7 +415,7 @@ watch(() => recordQuery.content, () => {
                         <el-option v-for="item in accounts" :label="item.label" :value="item.value"></el-option>
                     </el-select>
                 </el-form-item>
-                <el-form-item label="支付方式" v-if="airwallexConfig.airwallex_binding.includes(form.account_id)" required>
+                <el-form-item label="支付方式" v-if="airwallexStore.airwallex_binding.includes(form.account_id)" required>
                     <el-col :span="17">
                         <el-select v-model="form.pay_type" :validate-event="false">
                             <el-option v-for="item in airwallexTypes" :label="item.label"
@@ -468,9 +474,9 @@ watch(() => recordQuery.content, () => {
                         <el-text type="primary">提示：Ctrl + Q 快速截图</el-text>
                         <div>
                             <el-button :icon="Close" @click="() => {
-                            formClear()
-                            formRef.clearValidate()
-                        }">
+                formClear()
+                formRef.clearValidate()
+            }">
                                 重置
                             </el-button>
                             <el-button type="primary" :icon="Check" @click="onSubmit(formRef)">提交</el-button>
@@ -489,25 +495,25 @@ watch(() => recordQuery.content, () => {
                 </el-form-item>
             </el-form>
 
-            <div class="flex flex-between w-full gap-8" style="margin-bottom: 10px; height:30px">
+            <div class="flex flex-between w-full gap-8 m-r-10 m-b-10" style="height:30px;" v-if="true">
                 <div class="flex flex-c-center gap-4">
                     <h3 class="t-primary">打款记录</h3>
                     <span class="t-gray f-13 b-500 t-n">(共{{ record.totalPage }}条记录)</span>
                     <el-button link @click="() => {
-                        recordQuery.showSearch = !recordQuery.showSearch
-                        if (recordQuery.showSearch === false) {
-                            recordQuery.content = ''
-                        }
-                        }"><el-icon>
-                                        <Search />
+                recordQuery.showSearch = !recordQuery.showSearch
+                if (recordQuery.showSearch === false) {
+                    recordQuery.content = ''
+                }
+            }"><el-icon>
+                            <Search />
                         </el-icon></el-button>
                     <el-input v-if="recordQuery.showSearch" style="flex: 1" clearable placeholder="输入编号"
                         v-model="recordQuery.content" @keyup.esc="() => {
-                        recordQuery.showSearch = !recordQuery.showSearch
-                        if (recordQuery.showSearch === false) {
-                            recordQuery.content = ''
-                        }
-                    }" />
+                recordQuery.showSearch = !recordQuery.showSearch
+                if (recordQuery.showSearch === false) {
+                    recordQuery.content = ''
+                }
+            }" />
                 </div>
                 <div>
                     <el-button link @click="listRef.reload()">
@@ -564,7 +570,8 @@ watch(() => recordQuery.content, () => {
                         </div>
                         <div class="flex flex-between">
                             <div class="flex flex-col">
-                                <span class="t-black f-14">{{ item.payment_creator }} ({{ item.payment_department_name }})</span>
+                                <span class="t-black f-14">{{ item.payment_creator }} ({{ item.payment_department_name
+                                    }})</span>
                                 <div>
                                     <span class="t-black f-14">支出金额 </span>
                                     <span class="t-red f-14">{{ numberFmt(item.origin_total_amount) + " " }}</span>
@@ -709,8 +716,15 @@ watch(() => recordQuery.content, () => {
 <style scoped>
 .wrapper {
     padding: 10px;
-    /* background-color: white; */
-    height: 100%
+    margin-bottom: 10px;
+    /* height: 100%; */
+}
+
+:deep(.custom-loading-list) {
+    /* height: none !important; */
+    flex: 1;
+    /* margin-bottom: 20px; */
+    /* overflow-y: scroll; */
 }
 
 .record-container {
@@ -719,7 +733,6 @@ watch(() => recordQuery.content, () => {
     border-radius: 10px;
     margin-bottom: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    /* width: calc(100% - 10px) */
 }
 
 .record-audit {

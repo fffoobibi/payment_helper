@@ -1,9 +1,7 @@
 import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin, loadEnv } from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
-// import info from "./package.json?assets=json"
-// const packageJson = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
-// console.log('info ===> ', info.version)
+
 const root = process.cwd()
 
 export default ({ mode }) => {
@@ -36,6 +34,9 @@ export default ({ mode }) => {
               // 使用自定义的代理逻辑
               const originalWeb = proxy.web
               proxy.web = (req, res, ...args) => {
+                if (mode === 'development') {
+                  req.headers['ngrok-skip-browser-warning'] = 'test'
+                }
                 // 根据请求头或其他信息动态设置目标
                 if (req.headers['target-url']) {
                   options.target = req.headers['target-url']
@@ -55,6 +56,9 @@ export default ({ mode }) => {
               // 使用自定义的代理逻辑
               const originalWeb = proxy.web
               proxy.web = (req, res, ...args) => {
+                if (mode === 'development') {
+                  req.headers['ngrok-skip-browser-warning'] = 'test'
+                }
                 // 根据请求头或其他信息动态设置目标
                 if (req.headers['target-url']) {
                   options.target = req.headers['target-url']
@@ -68,6 +72,6 @@ export default ({ mode }) => {
           }
         }
       }
-    },
+    }
   })
 }

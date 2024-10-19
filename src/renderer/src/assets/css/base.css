@@ -254,6 +254,10 @@ body {
   margin-top: 4px;
 }
 
+.m-t-10 {
+  margin-top: 10px;
+}
+
 .m-l-2 {
   margin-left: 2px;
 }
@@ -276,6 +280,10 @@ body {
 
 .m-b-4 {
   margin-bottom: 4px;
+}
+
+.m-b-10 {
+  margin-bottom: 10px;
 }
 
 .p-l-10 {

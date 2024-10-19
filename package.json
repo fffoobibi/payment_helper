@@ -34,7 +34,6 @@
     "element-plus": "^2.8.0",
     "lodash": "^4.17.21",
     "monaco-editor": "^0.51.0",
-    "node-gyp": "^10.2.0",
     "pinia": "^2.2.2",
     "sqlite3": "^5.1.7",
     "vue-router": "^4.4.3",
@@ -53,6 +52,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.26.0",
     "less": "^4.2.0",
+    "node-gyp": "^10.2.0",
     "prettier": "^3.3.2",
     "vite": "^5.3.1",
     "vue": "^3.4.30"

@@ -22,7 +22,7 @@ export class OperateDataBase {
             return title
         }
         else if (typeof title === 'function') {
-            const t = title(data.log_params ?? {}, data, data.log_resp)
+            const t = title(data.log_params ?? {}, data.log_resp, data)
             return t
         }
 

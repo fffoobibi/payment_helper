@@ -102,6 +102,9 @@ const onSubmit = async () => {
         // await nextTick(() => formRef.value.resetFields())
         api.getAccountList({ user_id: res.id, limit: 500 }).then(resp => {
           accountStore.setAccounts(resp.list)
+          console.log('fetch accounts success ', resp)
+        }).catch(err=>{
+          console.log('fetch accounts err', err)
         })
 
         api.getPayOutList().then(resp => {
@@ -119,8 +122,6 @@ const onSubmit = async () => {
 
         api.getAirwallexConfig({}).then(resp => {
           airwallexStore.setConfig(resp)
-          const airwallexConfig = airwallexStore.getConfig()
-          airwallexConfig.airwallex_binding = resp.airwallex_binding
         })
 
       } catch (error) {

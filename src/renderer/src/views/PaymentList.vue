@@ -403,11 +403,11 @@ const onReview = async () => {
       log_text: activeItem.value.approval_number
     })
     Message.success('审批完成')
-    onSearch()
     // fetchData()
   } catch (error) {
     Message.success('审批失败')
   } finally {
+    onSearch()
     dialogSingleFormReset()
   }
 }
@@ -426,10 +426,11 @@ const onAbnoraml = async () => {
       purchase_number: activeItem.value.purchase_number,
       payment_error_msg: dialogSingleForm.comment.trim()
     })
-    onSearch()
+    // onSearch()
   } catch (error) {
     console.log('err ', error)
   } finally {
+    onSearch()
     dialogSingleFormReset()
   }
 }

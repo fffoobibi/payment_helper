@@ -1,5 +1,5 @@
 <template>
-    <div class="infinite-scroll-container" ref="scrollContainer" v-loading="firstLoading && loading"
+    <div class="infinite-scroll-container custom-loading-list" ref="scrollContainer" v-loading="firstLoading && loading"
         @wheel="handleWheel" element-loading-text="加载中" element-loading-background="transparent">
         <div v-if="empty" style="display: flex; justify-content: center; align-items: center; height: 100%;">
             <slot name="empty">
