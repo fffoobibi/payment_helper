@@ -365,11 +365,12 @@ watch(() => recordQuery.content, () => {
         </template>
 
         <template #option>
+            <!--
             <el-button link class="option-btn" size="small">
                 <el-icon>
                     <Hide />
                 </el-icon>
-            </el-button>
+            </el-button> -->
             <el-tooltip content="批量打款" placement="bottom" hide-after="0" transition="none" :disabled="ws.excelLoading">
                 <el-button link @click="emit('openBatch')" :loading="ws.excelLoading">
                     <template #loading>
