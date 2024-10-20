@@ -134,6 +134,27 @@ const maxTitleLabelWidth = computed(() => {
     return width.value - 50 - 320 - 6 * 60 - 100
   }
 })
+const advance = ref(false)
+const query = ref('')
+const success = ref('-1')
+const filterMethod = (query, node) => {
+  let search
+  if (success.value == "-1") {
+    // 全部
+    search = node.title + (node.detail ?? "") + (node.statusMsg ?? "")
+    console.log('dd ', node, label);
+  } else if (success.value == '0') {
+    //成功
+    search = node.title + (node.detail ?? "")
+    return node.status === 0 && search.includes(query)
+  } else {
+    // 失败
+    search = node.title + (node.detail ?? "") + (node.statusMsg ?? "")
+    return node.status !== 0 && search.includes(query)
+  }
+  return search.includes(query)
+}
+
 </script>
 
 
@@ -150,18 +171,40 @@ const maxTitleLabelWidth = computed(() => {
 
       </slot>
 
-      <el-popover placement="bottom" title="操作记录（近15天）" :width="520" trigger="click" hide-after="0" transition="none"
-        :persistent="false" v-if="configStore.operate && showRecords" @after-enter="() => {
-    if (current) {
-      recordRef?.scrollToNode(current.id)
-    }
-  }">
-        <el-space alignment="flex-start">
-          <span class="t-gray f-12  m-b-4">总计 <span class="t-red f-12 m-b-4">{{ totalCount }}</span>条</span>
-          <span class="t-gray f-12 m-b-4">今日 <span class="t-red f-12 m-b-4">{{ todayCount }}</span>条</span>
+      <el-popover 
+        v-if="configStore.operate && showRecords"
+        placement="bottom" title="操作记录（近15天）" trigger="click" hide-after="0" transition="none" 
+        :width="520"
+        :persistent="false" 
+         @after-enter="() => {
+        if (current) {
+          recordRef?.scrollToNode(current.id)
+        }
+        }">
+        <el-space alignment="center" style="margin-bottom: 4px; height: 32px">
+          <span class="t-gray f-12 ">总计 <span class="t-red f-12">{{ totalCount }}</span>条</span>
+          <span class="t-gray f-12 ">今日 <span class="t-red f-12 ">{{ todayCount }}</span>条</span>
+          <el-button link @click="advance = !advance">
+            <el-icon>
+              <Search />
+            </el-icon>
+          </el-button>
+          <template v-if="advance">
+            <el-input v-model="query" placeholder="搜索" clearable
+              @keyup.enter="() => recordRef?.filter(query)"></el-input>
+            <el-select style="width: 100px;" :teleported="false" v-model="success"
+              @change="() => recordRef?.filter(query)">
+              <el-option label="全部" value="-1"></el-option>
+              <el-option label="成功" value="0"></el-option>
+              <el-option label="失败" value="1"></el-option>
+            </el-select>
+
+          </template>
+
         </el-space>
 
-        <el-tree-v2 :data="treeData" :props="treeProps" :default-expanded-keys="treeExpand" ref="recordRef" indent="4">
+        <el-tree-v2 :data="treeData" :props="treeProps" :default-expanded-keys="treeExpand" ref="recordRef" indent="4"
+          :filter-method="filterMethod">
           <template #default="{ node }">
             <span v-if="!node.isLeaf">{{ node.label }} {{ ` (${node.data.children.length})` }}</span>
             <div v-if="node.isLeaf" class="flex gap-4 flex-between w-full p-r-10">
@@ -258,12 +301,12 @@ const maxTitleLabelWidth = computed(() => {
         </div>
 
         <el-button type="danger" link @click="async () => {
-            let r = ''
-            Object.keys(showValues).forEach(k => {
-              r += `${k}:${showValues[k]}\n`
-            })
-            onCopy(r)
-          }">复制为FormData</el-button>
+    let r = ''
+    Object.keys(showValues).forEach(k => {
+      r += `${k}:${showValues[k]}\n`
+    })
+    onCopy(r)
+  }">复制为FormData</el-button>
       </div>
       <div v-if="showDebugError">
         <span class="t-red f-12" v-html="showErrMsg"></span>

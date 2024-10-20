@@ -8,6 +8,7 @@ import { useExcelStore } from "@/stores/index"
 import { useLocalConfig } from "@/stores/config"
 import { toRaw } from "vue"
 import { getExcelColumnLetter } from "../utils/tools";
+import message from "../utils/message";
 const { height } = useClient()
 const cfgStore = useLocalConfig()
 Spreadsheet.locale("zh-cn", zhCN);
@@ -88,9 +89,14 @@ const getFormatedData = () => {
         })
         rs.push(rowResult)
     })
-    electron.sendSelectData(rs)
-    console.log('rs ===> ', rs);
-    toolBar.value.onClose()
+    if (rs.length) {
+        electron.sendSelectData(rs)
+        console.log('rs ===> ', rs);
+        toolBar.value.onClose()
+    }else{
+        message.warning('请选中有效数据!')
+    }
+
 }
 
 const getStyleIndex = c => {

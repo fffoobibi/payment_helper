@@ -29,9 +29,9 @@ const props = defineProps({
 const shortStore = useScreenShortStore()
 const store = useUserStore()
 const accountStore = useAccountStore()
-const currencies = accountStore.currencies
-const accounts = accountStore.accounts.map(item => Object.assign({}, { 'label': item.account_name, 'value': item.id }))
-
+const accounts = computed(() => {
+    return accountStore.accounts.map(item => ({ 'label': item.account_name, 'value': item.id }))
+})
 const airwallexStore = useAirwallexStore()
 const airwallexTypes = [{ label: 'airwallex', value: 1 }, { label: 'paypal', value: 2 }]
 
@@ -40,18 +40,21 @@ const showOrder = computed(() => {
   return "  " + (index.value + 1 + " / " + props.batchData.length)
 })
 const updateCurrent = () => {
-  formReset()
-  Object.keys(state.value).forEach(k => {
-    form[k] = state.value[k]
-  })
-  form.account_id = accountStore.getAccountId(form.account_id)
-  if (accountStore.currencyCodes.includes(form.currency?.toUpperCase())) {
-    form.currency = form.currency.toUpperCase()
-  } else {
-    form.currency = ''
+  console.log('state value', state.value)
+  if (state.value !== null && state.value !== undefined) {
+    formReset()
+    Object.keys(state.value).forEach(k => {
+      form[k] = state.value[k]
+    })
+    form.account_id = accountStore.getAccountId(form.account_id)
+    if (accountStore.currencyCodes.includes(form.currency?.toUpperCase())) {
+      form.currency = form.currency.toUpperCase()
+    } else {
+      form.currency = ''
+    }
   }
-
 }
+
 const previewData = () => {
   prev()
   updateCurrent()
@@ -192,7 +195,7 @@ const onSubmit = async el => {
           })
         }
       }
-      
+
       formReset()
       if (resp.left_origin_amount === 0) {
         onConfirm(account_id, approval_number)
@@ -224,7 +227,7 @@ const onSubmit = async el => {
 const errorMsg = ref('')
 const centerDialogVisible = ref(false)
 
-const onConfirm = async (account_id, approval_number ) => {
+const onConfirm = async (account_id, approval_number) => {
   try {
     await api.autoComplete({
       account_id: account_id,
@@ -342,7 +345,7 @@ onMounted(async () => {
         <el-form-item prop="currency">
           <el-select v-model="form.currency" placeholder="币种" filterable :validate-event="false">
             <el-option label="全部" value="" />
-            <el-option v-for="item in currencies" :value="item.code" />
+            <el-option v-for="item in accountStore.currencies" :value="item.code" />
           </el-select>
         </el-form-item>
       </el-col>

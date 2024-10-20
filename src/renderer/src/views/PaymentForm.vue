@@ -31,12 +31,9 @@ const dd = useDingdingSubmitStore()
 const shortStore = useScreenShortStore()
 const store = useUserStore()
 const accountStore = useAccountStore()
-const currencies = accountStore.currencies
 const accounts = computed(() => {
-    return accountStore.accounts.map(item => Object.assign({}, { 'label': item.account_name, 'value': item.id }))
+    return accountStore.accounts.map(item => ({ 'label': item.account_name, 'value': item.id }))
 })
-
-// const accounts = accountStore.accounts.map(item => Object.assign({}, { 'label': item.account_name, 'value': item.id }))
 const ws = useExcelStore()
 
 const airwallexStore = useAirwallexStore()
@@ -445,7 +442,7 @@ watch(() => recordQuery.content, () => {
                         <el-form-item prop="currency">
                             <el-select v-model="form.currency" placeholder="币种" filterable :validate-event="false">
                                 <el-option label="全部" value="" />
-                                <el-option v-for="item in currencies" :value="item.code" />
+                                <el-option v-for="item in accountStore.currencies" :value="item.code" />
                             </el-select>
                         </el-form-item>
                     </el-col>
