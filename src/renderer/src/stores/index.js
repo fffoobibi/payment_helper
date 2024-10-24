@@ -1,7 +1,8 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { dateTimeFmt } from "@/utils/format"
 import { computedAsync } from '@vueuse/core'
+import { useRoute } from 'vue-router'
 
 // 用户信息
 const useUserStore = defineStore('user', () => {
@@ -18,43 +19,43 @@ const useUserStore = defineStore('user', () => {
   }
   // 审核权限
   const canAudit = computed(() => {
-    return user.value.auth_list.includes('/payment_assistant_apply_modify')
+    return (user.value?.auth_list ?? []).includes('/payment_assistant_apply_modify')
   })
   // 修改权限
   const canModify = computed(() => {
-    return user.value.auth_list.includes('/payment_assistant_apply_modify')
+    return (user.value?.auth_list ?? []).includes('/payment_assistant_apply_modify')
   })
   // 撤销权限
   const canCancel = computed(() => {
-    return user.value.auth_list.includes('/payment_assistant_cancel_modify')
+    return (user.value?.auth_list ?? []).includes('/payment_assistant_cancel_modify')
   })
   // 删除权限
   const canDelete = computed(() => {
-    return user.value.auth_list.includes('/payment_assistant_delete')
+    return (user.value?.auth_list ?? []).includes('/payment_assistant_delete')
   })
   // 修改备注权限
   const canModifyNote = computed(() => {
-    return user.value.auth_list.includes('/payment_assistant_note_modify')
+    return (user.value?.auth_list ?? []).includes('/payment_assistant_note_modify')
   })
 
   // 打款明细导出权限
   const canExportDetails = computed(() => {
-    return user.value.auth_list.includes('/payment_assistant_detail')
+    return (user.value?.auth_list ?? []).includes('/payment_assistant_detail')
   })
 
   //信用卡核销权限
   const canCreditCardReview = computed(() => {
-    return user.value.auth_list.includes('/payment_assistant_credit_card_review')
+    return (user.value?.auth_list ?? []).includes('/payment_assistant_credit_card_review')
   })
 
   // 信用卡复核权限
   const canCreditCardCheckReview = computed(() => {
-    return user.value.auth_list.includes('/payment_assistant_credit_card_check_review')
+    return (user.value?.auth_list ?? []).includes('/payment_assistant_credit_card_check_review')
   })
 
   // 信用卡报销权限
   const canCreditCardReimburse = computed(() => {
-    return user.value.auth_list.includes('/payment_assistant_credit_card_reimburse')
+    return (user.value?.auth_list ?? []).includes('/payment_assistant_credit_card_reimburse')
   })
   return {
     user, setUser, canAudit, canModify, canCancel, canDelete, canModifyNote, canExportDetails, canCreditCardReview,
@@ -128,7 +129,7 @@ const useAccountStore = defineStore('accounts', () => {
 const useAirwallexStore = defineStore('airwallex', () => {
   const config = ref({})
 
-  const airwallex_binding = computed(()=>{
+  const airwallex_binding = computed(() => {
     return config.value.airwallex_binding ?? []
   })
 
@@ -210,15 +211,24 @@ const useExcelStore = defineStore('windowStore', () => {
 
 const useScreenShortStore = defineStore('screenShortCutStore', () => {
   const image = ref('')
-  // const flag = localStorage.getItem('global-short-cut')
-  // if (flag === null) {
-  //   electron.onShortCutCapture(async src => {
-  //     console.log('get short cut ===> ');
-  //     image.value = src
-  //   })
-  //   localStorage.setItem('global-short-cut', 'true')
-  // }
-  return { image }
+  const shortTag = ref('unset')
+  const reSetTag = () => {
+    shortTag.value = 'unset'
+  }
+  const route = useRoute()
+  const _setTag = (v) => {
+    shortTag.value = v
+  }
+  const onImageShortCutDown = (callback, tagName) => {
+    watch(image, src => {
+      const t = shortTag.value
+      callback(route, src, t, reSetTag)
+    })
+    return () => {
+      // todo
+    }
+  }
+  return { image, onImageShortCutDown, setTag: _setTag}
 })
 
 const useDingdingSubmitStore = defineStore('dingdingStore', () => {
@@ -352,6 +362,21 @@ const useRecordFilterStore = defineStore('recordFilterStore', () => {
 
 })
 
+const useDialogStore = defineStore('dialogStore', () => {
+  const user = ref({})
+  const setUser = data => {
+    user.value = data
+    localStorage.setItem('user', JSON.stringify(data))
+  }
+  const dynamic = ref({
+    fetchDetailFlag: false
+  })
+  return {
+    user, setUser, dynamic
+  }
+})
+
+
 export {
   useUserStore,
   useAccountStore,
@@ -362,5 +387,6 @@ export {
   useScreenShortStore,
   useDingdingSubmitStore,
   useOperateRecords,
-  useRecordFilterStore
+  useRecordFilterStore,
+  useDialogStore
 }

@@ -77,7 +77,7 @@ const queryForm = reactive({
     start_time: formatDate(shortcuts[1].value(), { start: true }),
     end_time: formatDate(new Date, { end: true }),
     content: '',  // 凭证号
-    rank: 'DESC',  // 倒叙，顺序 ASC DESC
+    rank: 'ASC',  // 倒叙，顺序 ASC DESC
     voucher_no: '', // 编号
     page: 1,
     limit: 10,
@@ -277,9 +277,9 @@ const rules = reactive({
             <el-dropdown-menu>
               <el-dropdown-item v-for=" (item, index) in tableFields" :key="index">
                 <el-checkbox :checked="item.value" @change="(v) => {
-      cfg.records[index] = { label: item.label, value: v }
-      cfg.updateRecords()
-    }">
+                      cfg.records[index] = { label: item.label, value: v }
+                      cfg.updateRecords()
+                    }">
                   {{ item.label }}
                 </el-checkbox>
               </el-dropdown-item>
@@ -289,7 +289,7 @@ const rules = reactive({
       </el-form-item>
     </el-form>
     <el-table row-key="id" ref="tableRef" highlight-current-row :data="queryForm.tableData" :height="tableHeight"
-      :row-class-name="renderTableRowClass" :default-sort="{ prop: 'create_time', order: 'descending' }" @sort-change="(d) => {
+      :row-class-name="renderTableRowClass" :default-sort="{ prop: 'create_time', order: 'ascending' }" @sort-change="(d) => {
       if (d.order == 'ascending') {
         queryForm.search.rank = 'ASC'
       } else {
@@ -310,45 +310,89 @@ const rules = reactive({
           <div>{{ scope.$index + 1 + (queryForm.page.currentPage - 1) * queryForm.page.pageSize }}</div>
         </template>
       </el-table-column>
-      <el-table-column label='编号' prop="sn" class-name="cell-select" v-if="tableFieldsInfo['编号']" ></el-table-column>
-      <el-table-column label='银行' prop="account_name" class-name="cell-select" v-if="tableFieldsInfo['银行']" ></el-table-column>
-      <el-table-column label='姓名/部门' class-name="cell-select" v-if="tableFieldsInfo['姓名/部门']" >
-        <template #default="{row}">
+      <el-table-column label='编号' prop="sn" class-name="cell-select" v-if="tableFieldsInfo['编号']"></el-table-column>
+      <el-table-column label='银行' prop="account_name" class-name="cell-select"
+        v-if="tableFieldsInfo['银行']"></el-table-column>
+      <el-table-column label='姓名/部门' class-name="cell-select" v-if="tableFieldsInfo['姓名/部门']">
+        <template #default="{ row }">
           <span class="user-select">{{ row.creator + `(${row.department_name})` }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label='时间' prop="create_time" class-name="cell-select" sortable="custom" :sort-orders="['ascending', 'descending']" v-if="tableFieldsInfo['时间']">
-        <template #default="{row}">
-          <span class="user-select">{{ timestampToFormattedString(row.create_time) }}</span>
+      <el-table-column label='时间' prop="create_time" class-name="cell-select" sortable="custom"
+        :sort-orders="['ascending', 'descending']" v-if="tableFieldsInfo['时间']">
+        <template #default="{ row }">
+          <span class="user-select f-t">{{ timestampToFormattedString(row.create_time) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label='类型' prop="type_name" class-name="cell-select" v-if="tableFieldsInfo['类型']"></el-table-column>
-      
-           
-      <el-table-column label="初期" v-if="tableFieldsInfo['初期']" width="90">
+      <el-table-column label='类型' prop="type_name" class-name="cell-select"
+        v-if="tableFieldsInfo['类型']"></el-table-column>
+
+
+      <el-table-column label="初期" v-if="tableFieldsInfo['初期']" >
         <template #default="{ row }">
-          <div class="user-select">{{ numberFmt(row.beginning_balance) }}</div>
-          <div class="red">{{ " " + row.base_currency }}</div>
+          <div class="flex gap-2">
+            <div class="user-select f-t">{{ numberFmt(row.beginning_balance) }}</div>
+            <div class="red">{{ " " + row.base_currency }}</div>
+          </div>
         </template>
       </el-table-column>
 
-      <el-table-column label="本期" v-if="tableFieldsInfo['本期']" width="90">
+      <el-table-column label="本期" v-if="tableFieldsInfo['本期']" >
         <template #default="{ row }">
-          <div class="user-select">{{ numberFmt(row.current_amount) }}</div>
-          <div class="red">{{ " " + row.base_currency }}</div>
+          <div class="flex gap-2">
+            <div class="user-select f-t">{{ numberFmt(row.current_amount) }}</div>
+            <div class="red">{{ " " + row.base_currency }}</div>
+          </div>
         </template>
       </el-table-column>
-      <el-table-column label="期末" v-if="tableFieldsInfo['期末']" width="90">
+      <el-table-column label="期末" v-if="tableFieldsInfo['期末']" >
         <template #default="{ row }">
-          <div class="user-select">{{ numberFmt(row.ending_balance) }}</div>
-          <div class="red">{{ " " + row.base_currency }}</div>
+          <div class="flex gap-2">
+            <div class="user-select f-t">{{numberFmt(row.ending_balance) }}</div>
+            <div class="red">{{ " " + row.base_currency }}</div>
+          </div>
         </template>
       </el-table-column>
 
-      <el-table-column label='备注' prop="account_record_note" class-name="cell-select" v-if="tableFieldsInfo['备注']"></el-table-column>
-      <el-table-column label='打款备注' prop="account_voucher_ext_note" class-name="cell-select" v-if="tableFieldsInfo['打款备注']"></el-table-column>
+      <el-table-column label='备注' prop="account_record_note" class-name="cell-select"
+        v-if="tableFieldsInfo['备注']"></el-table-column>
+      <el-table-column label='打款备注' prop="account_voucher_ext_note" class-name="cell-select"
+        v-if="tableFieldsInfo['打款备注']"></el-table-column>
 
+      <el-table-column label="操作"  v-if="tableFieldsInfo['操作']">
+        <template #default="{ row }">
+          <el-space >
+            <el-button link type='primary' v-if="row.attachment_list?.length" @click="() => {
+              viewImages(row.attachment_list.map(v => v.path), 0)
+            }">凭证[{{ row.attachment_list.length }}]</el-button>
+            <el-popover v-if="row.payment_items.length" v-model:visibl="row._vo_show_details" :transition="none"
+              title="明细" :width="330" trigger="click" :hide-after="0">
+              <template #reference>
+                <el-button link type="success" @click="() => {
+      row._vo_show_details = true
+    }">明细[{{ row.payment_items.length }}]</el-button>
+              </template>
+              <el-scrollbar :max-height="300" :height="250">
+                <div style="border-bottom:1px solid lightgray;margin-bottom: 4px; padding-bottom: 4px;">
+                  <p>合计： <span> {{ numberFmt(row._vo_total) }} </span><span class="red">{{ " " +
+      row.payment_items[0].currency
+                      }}</span></p>
+                </div>
+                <div v-for="item in row.payment_items" :key="item.item_id"
+                  style="padding-bottom: 4px; border-bottom:1px solid lightgray; margin-bottom: 4px;">
+                  <p><span class="black">{{ item.account_title_parent }} - {{ item.account_title }}:</span> <span
+                      class="user-select">{{ numberFmt(item.cny_amount) }}</span><span class="red user-select">{{ " " +
+      item.currency }}</span></p>
+                  <p><span class="black">备注:</span> <span class="user-select">{{ item.note }}</span></p>
+                </div>
+              </el-scrollbar>
+
+            </el-popover>
+          </el-space>
+
+        </template>
+      </el-table-column>
 
       <el-table-column label="凭证号" v-if="tableFieldsInfo['凭证号']">
         <template #header>
@@ -368,44 +412,14 @@ const rules = reactive({
           <span class="user-select" v-if="!row._vo_show">{{ row.voucher_no }}</span>
           <el-input v-if="row._vo_show" v-model.trim="row._vo_number" v-loading="row._vo_loading" v-focus clearable
             :rows="2" type="textarea" @keyup.enter="async () => {
-      await editVoucherNo(row)
-    }" @keyup.esc="() => {
-      row._vo_show = !row._vo_show
-      row._vo_number = row.voucher_no
-    }"></el-input>
+                await editVoucherNo(row)
+              }" @keyup.esc="() => {
+                row._vo_show = !row._vo_show
+                row._vo_number = row.voucher_no
+            }"></el-input>
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="170" v-if="tableFieldsInfo['操作']">
-        <template #default="{ row }">
-          <el-button link type='primary' v-if="row.attachment_list?.length" @click="() => {
-      viewImages(row.attachment_list.map(v => v.path), 0)
-    }">凭证[{{ row.attachment_list.length }}]</el-button>
-          <el-popover v-if="row.payment_items.length" v-model:visibl="row._vo_show_details" :transition="none"
-            title="明细" :width="330" trigger="click" :hide-after="0">
-            <template #reference>
-              <el-button link type="success" @click="() => {
-      row._vo_show_details = true
-    }">明细[{{ row.payment_items.length }}]</el-button>
-            </template>
-            <el-scrollbar :max-height="300" :height="250">
-              <div style="border-bottom:1px solid lightgray;margin-bottom: 4px; padding-bottom: 4px;">
-                <p>合计： <span> {{ numberFmt(row._vo_total) }} </span><span class="red">{{ " " +
-      row.payment_items[0].currency
-                    }}</span></p>
-              </div>
-              <div v-for="item in row.payment_items" :key="item.item_id"
-                style="padding-bottom: 4px; border-bottom:1px solid lightgray; margin-bottom: 4px;">
-                <p><span class="black">{{ item.account_title_parent }} - {{ item.account_title }}:</span> <span
-                    class="user-select">{{ numberFmt(item.cny_amount) }}</span><span class="red user-select">{{ " " +
-      item.currency }}</span></p>
-                <p><span class="black">备注:</span> <span class="user-select">{{ item.note }}</span></p>
-              </div>
-            </el-scrollbar>
-
-          </el-popover>
-        </template>
-      </el-table-column>
 
     </el-table>
     <el-pagination size="default" style="padding-top: 5px; position: fixed;bottom: 20px" :default-page-size="50"
@@ -422,11 +436,13 @@ const rules = reactive({
   font-size: 10pt;
   user-select: text
 }
-:deep(.el-table__row .cell-select .cell){
+
+:deep(.el-table__row .cell-select .cell) {
   color: black;
   /* font-size: 10pt; */
   user-select: text
 }
+
 .bold {
   font-weight: bold;
 }

@@ -2,7 +2,7 @@
 import { reactive, onMounted, ref } from "vue"
 import { useClient } from "../utils/client"
 import api from "@/api"
-import { formatDate, numberFmt, amountFormatter, amountParser, until } from "@/utils/format"
+import { formatDate, numberFmt, amountFormatter, amountParser, until, getMonthDaysFromDate } from "@/utils/format"
 import message from "../utils/message";
 const { height } = useClient()
 
@@ -34,12 +34,19 @@ const shortcuts = [
         },
     },
 ]
+const days = getMonthDaysFromDate(shortcuts[1].value())
+
+const st = formatDate(days.firstDay, { trancate: 'd' })
+const ed = formatDate(getMonthDaysFromDate(new Date).lastDay, { trancate: 'd' })
+
 const queryForm = reactive({
     search: {
         // start_time: "",
         // end_time: "",
-        start_time: formatDate(shortcuts[1].value(), { trancate: 'd' }),
-        end_time: formatDate(new Date, { trancate: 'd' }),
+        // start_time: formatDate(shortcuts[1].value(), { trancate: 'd' }),
+        // end_time: formatDate(new Date, { trancate: 'd' }),
+        start_time: st,
+        end_time: ed,
         content: ''
     }
 })
@@ -162,8 +169,20 @@ const submitReimburse = async () => {
                         <div style="display: flex;">
                             <el-radio class="item-title" :value="item" :disabled="item.disabled">{{ item.account_name
                                 }}</el-radio>
+
+                            <!-- <el-option label="待核销" value="0"></el-option>
+                            <el-option label="已核销" value="1"></el-option>
+                            <el-option label="已复核" value="2"></el-option>  -->
+
                             <el-button link @click="() => {
-                                    emits('toCard', item.account_id)
+                                    const args = []
+                                    if (item.un_reviewed_count){
+                                        args.push('1')
+                                    }
+                                    if(item.reviewed_count){
+                                        args.push('2')
+                                    }
+                                    emits('toCard', item.account_id, args)
                                 }">
                                 查看记录
                             </el-button>
@@ -176,33 +195,27 @@ const submitReimburse = async () => {
                             </p>
                             <div class="sub-content">
 
-                                <p class="sub-value-un">未复核: {{ info.un_reviewed_count }}笔; {{
-                    numberFmt(info.un_reviewed_amount)
-                }}<span>{{ " " + info.currency }}</span> (<span>{{ " " +
-                    numberFmt(info.un_reviewed_amount_cny)
-                                        }}</span>
-                                    <span>{{ " CNY" }}</span>)
-                                </p>
-                                <p class="sub-value">已复核: {{ info.reviewed_count }}笔; {{ numberFmt(info.reviewed_amount)
-                                    }}<span>{{ " " + info.currency }}</span> (<span>{{ " " +
-                    numberFmt(info.reviewed_amount_cny)
-                                        }}</span>
-                                    <span>{{ " CNY" }}</span>)
-                                </p>
+                                <div class="sub-value-un f-12 flex flex-between gap-4">
+                                    <span class="f-13 b-500">
+                                        未复核: {{ info.un_reviewed_count}}笔; {{numberFmt(info.un_reviewed_amount)}}
+                                        <span class="b-600">{{ " " + info.currency }}</span> 
+                                    </span>
+                                    <span class="p-r-10 f-13 b-500">
+                                        已复核: {{ info.reviewed_count }}笔; {{ numberFmt(info.reviewed_amount)}}
+                                        <span class="b-600">{{ " " + info.currency }}</span>
+                                    </span>
+                                </div>
+                                <!-- <p class="sub-value">已复核: {{ info.reviewed_count }}笔; {{ numberFmt(info.reviewed_amount)}}
+                                    <span>{{ " " + info.currency }}</span>
+                                </p> -->
                             </div>
                         </div>
                         <div class="line"></div>
                         <div class="total">
                             <div style="color:red;font-size:12px">合计：</div>
                             <div style="display: flex; align-items: center; justify-content: space-between;flex: 1;">
-                                <p class="total-header">未复核: {{ item.un_reviewed_count }}笔;
-                                    <span>{{ numberFmt(item.un_reviewed_amount_cny) }}</span><span
-                                        style="font-weight: 500;">{{ " CNY" }}</span>
-                                </p>
-                                <p class="total-footer" style="color:darkgreen">已复核: {{ item.reviewed_count }}笔;
-                                    <span>{{ numberFmt(item.reviewed_amount_cny) }}</span>
-                                    <span style="font-weight: 500;">{{ " CNY" }}</span>
-                                </p>
+                                <p class="total-header">未复核: {{ item.un_reviewed_count }}笔;</p>
+                                <p class="total-footer" style="color:darkgreen">已复核: {{ item.reviewed_count }}笔;</p>
                             </div>
                         </div>
                     </div>

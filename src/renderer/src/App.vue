@@ -3,7 +3,7 @@ import { ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useRouter, useRoute } from 'vue-router'
 import { useImageStore } from '@/stores/images'
-import { useLogStore, useUpdateStore, useUserStore, useExcelStore, useScreenShortStore, useOperateRecords } from './stores';
+import { useLogStore, useUpdateStore, useUserStore, useExcelStore, useScreenShortStore, useOperateRecords, useDialogStore } from './stores';
 import message from './utils/message';
 import { useIntervalFn } from "@vueuse/core"
 import updater from "@/utils/update"
@@ -19,6 +19,7 @@ const logStore = useLogStore()
 const wStore = useExcelStore()
 const updateStore = useUpdateStore()
 const recordStore = useOperateRecords()
+const dialogStore = useDialogStore()
 
 const router = useRouter()
 const route = useRoute()
@@ -145,10 +146,18 @@ electron.onShortCutCapture(async src => {
 })
 
 // 操作事件
-electron.operate.onRecordEvent(data=>{
+electron.operate.onRecordEvent(data => {
   recordStore.append(data)
 })
 
+// 打款详情查看
+electron.onOpenDetailDialog((user, detailId) => {
+  store.setUser(user)
+  dialogStore.setUser(user)
+  dialogStore.dynamic.detailId = detailId
+  dialogStore.dynamic.fetchDetailFlag= true
+  router.push({ name: "detail" })
+})
 
 </script>
 

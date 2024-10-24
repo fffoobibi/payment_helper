@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
-import { dateTimeFmt, numberFmt } from '@/utils/format'
+import { addNumbers, dateTimeFmt, numberFmt } from '@/utils/format'
 import { Close, Check } from '@element-plus/icons-vue'
 import api from '@/api';
 import message from '../utils/message';
@@ -27,19 +27,37 @@ watch(() => props.rows, () => {
 })
 
 const totalAmountCNY = computed(() => {
-  return table.data.reduce((acc, cur) => acc + parseFloat(cur.cny_total_amount), 0)
+  const rs = {}
+  const s = new Set()
+  table.data.forEach(v => {
+    if (!s.has(v.currency)) {
+      s.add(v.currency)
+      rs[v.currency] = [v.origin_total_amount]
+    } else {
+      rs[v.currency].push(v.origin_total_amount)
+    }
+  })
+  const ret = []
+  Object.keys(rs).forEach(key => {
+    ret.push({ value: numberFmt(rs[key].reduce((acc, cur) => addNumbers(acc, cur), 0)), currency: key })
+    // return table.data.reduce((acc, cur) => acc + parseFloat(cur.origin_total_amount), 0)
+  })
+  console.log('ret ==> ', ret, rs)
+  return ret
+  // return table.data.reduce((acc, cur) => acc + parseFloat(cur.origin_total_amount), 0)
 })
 
 const emit = defineEmits(['close'])
 
 const onSubmit = async () => {
-  console.log('pp ', props.mode);
+
   // 核销
   if (props.mode === 0) {
     const items = table.data.map(item => {
       return {
         payment_id: item.payment_id,
-        cny_amount: item.cny_total_amount,
+        amount: item.origin_total_amount,
+        currency: item.currency,
         note: item.note
       }
     })
@@ -83,17 +101,17 @@ const onSubmit = async () => {
         {{ scope.row.department_name }}丨{{ scope.row.company_name }}
       </template>
     </el-table-column>
-    <el-table-column label="金额" width="120" align="right">
+    <!-- <el-table-column label="金额" width="120" align="right">
       <template #default="scope">
         <span class="amount">{{ numberFmt(scope.row.origin_total_amount) }}</span>
         <span class="currency">{{ scope.row.currency }}</span>
       </template>
-    </el-table-column>
-    <el-table-column label="人民币金额" width="140" align="right">
+    </el-table-column> -->
+    <el-table-column label="金额" width="140" align="left">
       <template #default="scope">
-        <el-input v-model="scope.row.cny_total_amount" onkeyup="value=value.replace(/[^\-?\d.]/g,'')"
+        <el-input v-model="scope.row.origin_total_amount" onkeyup="value=value.replace(/[^\-?\d.]/g,'')"
           :disabled="disabled" class="input-amount">
-          <template #append>元</template>
+          <template #append>{{ scope.row.currency }}</template>
         </el-input>
       </template>
     </el-table-column>
@@ -108,10 +126,15 @@ const onSubmit = async () => {
       </template>
     </el-table-column>
   </el-table>
-  <div class="total-amount">
+  <div class="total-amount flex gap-4">
     <span class="label">{{ props.mode === 0 ? '本次核销金额：' : '本次复核金额' }}</span>
-    <span class="amount">{{ numberFmt(totalAmountCNY.toFixed(2)) }}</span>
-    <span class="currency">CNY</span>
+    <div v-for="item in totalAmountCNY" class="flex gap-2 flex-start">
+      <span class="amount" v-for="item in totalAmountCNY">{{ numberFmt(item.value) }}</span>
+      <span class="currency">{{ item.currency }}</span>
+    </div>
+    <!-- <span class="amount" v-for="item in totalAmountCNY">{{ numberFmt(totalAmountCNY.toFixed(2)) }}</span>
+    <span class="currency">{{ props.rows[0].currency }}</span> -->
+    <!-- <span class="amount" v-for="item in totalAmountCNY">{{ numberFmt(totalAmountCNY.toFixed(2)) }}</span> -->
   </div>
 
   <div class="btn-group">

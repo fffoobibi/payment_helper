@@ -10,7 +10,7 @@ export const relations = {
     },
     '/voucher/exportHistoryList': '钉钉打款历史导出',
     '/voucher/modifyVoucher': form => ['修改钉钉打款记录', "修改原因 " + form.application_reason],
-    '/voucher/deleteVoucher': '删除钉钉打款记录',
+    '/voucher/deleteVoucher': '删除钉钉打款',
     '/voucher/cancelModifyVoucher': '取消修改打款记录',
     '/voucher/auditModifyVoucher': '审核打款记录修改',
     '/voucher/replenishVoucher': '钉钉打款补充凭证图片',
@@ -21,7 +21,7 @@ export const relations = {
         else if (form.status?.toString() == '2') {
             return "拒绝钉钉打款"
         }
-        return ''
+        return '' 
     },
     '/paymentCashier/batchReview': form => {
         if (form.status?.toString() == '1') {
@@ -50,6 +50,7 @@ export const relations = {
     '/transit/delete': '删除在途资金',
     '/transit/replenish': '在途资金补充凭证图片',
     '/transit/arrival': form => ['到账在途资金', '到账金额 ' + form.received_amount + " " + form.received_currency],
+    '/transit/modifyNote': '在途资金修改了备注',
 
     '/transferAccounts/save': form => ['新增银行转账', '转账金额 ' + form.origin_amount + " " + form.currency],
     '/transferAccounts/replenish': '银行转账补充凭证图片',
@@ -57,6 +58,7 @@ export const relations = {
     '/transferAccounts/cancel': '取消修改银行转账',
     '/transferAccounts/audit': '审核银行转账修改',
     '/transferAccounts/delete': '删除银行转账',
+    '/transferAccounts/modifyNote': '银行转账修改了备注',
 
     '/payout/addPayout': '新增支出',
     '/payout/editPayout': form => ['修改支出', '修改原因 ' + form.application_reason],
@@ -64,6 +66,7 @@ export const relations = {
     '/payout/auditEditPayout': '审核支出修改',
     '/payout/deletePayout': '删除支出',
     '/payout/replenish': '支出补充凭证图片',
+    '/payout/modifyNote': '支出修改了备注',
 
     '/incomeRecord/save': '新增收入',
     '/incomeRecord/modify': form => ['修改收入', '修改原因 ' + form.application_reason],
@@ -71,6 +74,7 @@ export const relations = {
     '/incomeRecord/audit': '审核收入修改',
     '/incomeRecord/delete': '删除收入',
     '/incomeRecord/replenish': '收入补充凭证图片',
+    '/incomeRecord/modifyNote': '收入修改了备注',
 
     '/creditCard/review': '核销信用卡',
     '/creditCard/modifyNote': '信用卡修改了备注',
@@ -82,7 +86,7 @@ export const relations = {
     '/account/inventory': '盘账',
     '/account/editVoucherNo': '编辑凭证号',
 
-    '/paymentCashier/updatePaymentAbnormal': form => ["打款异常", form.purchase_number + " " + form.payment_error_msg]
+    '/paymentCashier/updatePaymentAbnormal': form => ["打款异常", form.purchase_number + " " + form.payment_error_msg],
 
 }
 

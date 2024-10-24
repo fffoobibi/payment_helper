@@ -109,6 +109,7 @@ instance.interceptors.response.use(
           res.response
         )
       }
+
       let returned
       if (onSuccess) {
         returned = onSuccess(res.response)
@@ -198,7 +199,7 @@ const http = (config) => {
     contentType = contentTypeJson
   }
 
-  const token = localStorage.getItem('token')
+  const token = store?.user?.token ?? localStorage.getItem('token')
 
   let targetUrl
   if (cfgStore.mode) {
@@ -210,8 +211,8 @@ const http = (config) => {
     'Content-Type': contentType,
     'X-Requested-With': 'XMLHttpRequest',
     'target-url': targetUrl,
-    version: appInfo.version,
-    token: token
+    'version': appInfo.version,
+    'token': token
   }
   if (method === 'post') {
     const logParams = { ...params }

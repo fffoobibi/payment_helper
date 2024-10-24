@@ -9,6 +9,7 @@ const payment = {
   batchReview: data => http({ url: '/paymentCashier/batchReview', params: data }),
   checkMergePayment: data => http({ url: '/voucher/checkMergePayment', params: data }),
   mergePayment: data => http({ url: '/voucher/saveMergePayment', params: data }),
+  deleteVoucher: data=>http({url: '/voucher/deleteVoucher', params: data}),
   getAccountDetail: data => http({ url: '/account/getAccountDetail', params: data, showLoading: false }),
   getAirwallexConfig: data => http({ url: '/airwallex/getConfig', params: data }),
   getAirwallexData: data => http({ url: '/airwallex/getList', params: data, showLoading: false }),

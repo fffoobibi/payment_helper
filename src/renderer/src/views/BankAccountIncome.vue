@@ -2,12 +2,14 @@
 import { ref, watch, computed, reactive } from "vue"
 import api from "@/api"
 import message from "@/utils/message"
-import { useUserStore, useAccountStore } from "@/stores/index"
-import { timestampToFormattedString, numberFmt,addNumbers } from "@/utils/format"
+import { useUserStore, useAccountStore, useScreenShortStore } from "@/stores/index"
+import { timestampToFormattedString, numberFmt, addNumbers } from "@/utils/format"
 import { useClient } from "@/utils/client"
-import { viewImages, setUpCapture } from "@/utils/tools"
+import { viewImages, setUpCapture, getItem } from "@/utils/tools"
 import logger from "../utils/logger"
 const { height } = useClient()
+
+const screen = useScreenShortStore()
 const store = useUserStore()
 const bank = useAccountStore()
 
@@ -287,15 +289,31 @@ const onSubmit = () => {
 }
 
 // 截图
-const crop = setUpCapture(src => {
-    if (form.mode == 'add') {
-        form.post.attachment_list.push({
-            url: src
-        })
-    } else {
-        form.editPost.attachment_list.push({
-            url: src
-        })
+// const crop = setUpCapture(src => {
+//     if (form.mode == 'add') {
+//         form.post.attachment_list.push({
+//             url: src
+//         })
+//     } else {
+//         form.editPost.attachment_list.push({
+//             url: src
+//         })
+//     }
+// })
+
+const crop = screen.onImageShortCutDown((route, src) => {
+    if (route.name === 'bankAccount') {
+        if (getItem('bankAccountCrop') === '收入') {
+            if (form.mode == 'add') {
+                form.post.attachment_list.push({
+                    url: src
+                })
+            } else {
+                form.editPost.attachment_list.push({
+                    url: src
+                })
+            }
+        }
     }
 })
 
@@ -459,8 +477,8 @@ watch(() => form.post.account_id, async () => {
             </div>
         </div>
 
-        <el-drawer v-model="form.editShow" size="50%" destroy-on-close title="编辑" :rules="form.editRules" :close-on-click-modal="false"
-            @opened="form.mode = 'edit'" @closed="form.mode = 'add'">
+        <el-drawer v-model="form.editShow" size="50%" destroy-on-close title="编辑" :rules="form.editRules"
+            :close-on-click-modal="false" @opened="form.mode = 'edit'" @closed="form.mode = 'add'">
             <el-form :model="form.editPost" label-width="auto" ref="editFormRef">
                 <el-form-item label="收入科目" prop="in_account_title_id" required>
                     <el-select v-model="form.editPost.in_account_title_id" filterable>
@@ -523,7 +541,8 @@ watch(() => form.post.account_id, async () => {
             </template>
         </el-dialog>
 
-        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose" destroy-on-close :close-on-click-modal="false">
+        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose" destroy-on-close
+            :close-on-click-modal="false">
             <p>修改人: {{ form.auditPost.applicant }}</p>
             <p>提交时间: {{ timestampToFormattedString(form.auditPost.application_time) }}</p>
             <el-form-item label="修改原因: ">

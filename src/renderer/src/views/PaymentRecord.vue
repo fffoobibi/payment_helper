@@ -1,15 +1,15 @@
 <script setup>
 import { onBeforeMount, reactive, ref } from 'vue'
 import api from '@/api'
-import { Check, DocumentDelete, Edit, Picture, RefreshLeft } from '@element-plus/icons-vue'
+import { Check, DocumentDelete, Edit, Picture, RefreshLeft, Delete } from '@element-plus/icons-vue'
 import Message from '@/utils/message'
 import { dateTimeFmt, numberFmt, timestampToFormattedString } from '@/utils/format'
 import PaymentRecordEdit from './paymentRecordEdit.vue'
 import * as XLSX from "xlsx"
 import { getExcelColumnLetter, setUpCapture } from '@/utils/tools'
-import { useUserStore } from "@/stores/index"
+import { useUserStore, useScreenShortStore } from "@/stores/index"
 import message from '@/utils/message'
-import  {debounce} from "lodash"
+import { debounce } from "lodash"
 
 const props = defineProps({
   condition: {
@@ -74,7 +74,13 @@ const onSubmit = async () => {
     table.data = data.list
     table.total = data.count
     if (props.expands.length) {
-      tableRef.value.toggleRowExpansion(table.data[0])
+      try {
+        if (table.data.length) {
+          tableRef.value.toggleRowExpansion(table.data[0])
+        }
+      } catch (err) {
+
+      }
     }
   } catch (error) {
     console.log(error)
@@ -86,7 +92,7 @@ const onSubmit = async () => {
 //   onSubmit()
 // }
 
-const onInputChange = debounce(()=>{
+const onInputChange = debounce(() => {
   onSubmit()
 }, 500)
 
@@ -149,14 +155,16 @@ const onCopy = async text => {
 
 const tableRef = ref(null)
 const onExpandRow = async (row, _) => {
-  row.isLoading = row.voucher_ext_list == undefined || row.voucher_ext_list.length == 0
-  try {
-    const data = await api.getPaymentRecordExtList({ voucher_id: row.voucher_id })
-    row.voucher_ext_list = data.list
-  } catch (err) {
-    console.log('err ==> ', err)
-  } finally {
-    row.isLoading = false
+  if (row) {
+    row.isLoading = row.voucher_ext_list == undefined || row.voucher_ext_list?.length == 0
+    try {
+      const data = await api.getPaymentRecordExtList({ voucher_id: row.voucher_id })
+      row.voucher_ext_list = data.list
+    } catch (err) {
+      console.log('err ==> ', err)
+    } finally {
+      row.isLoading = false
+    }
   }
 }
 
@@ -287,15 +295,45 @@ const submitPicture = async () => {
   }
 }
 
-
-const crop = setUpCapture(src => {
-  if (showAddPicture.value) {
+const screen = useScreenShortStore()
+const crop = screen.onImageShortCutDown((route, src) => {
+  if (route.name === 'paymentForm' && showAddPicture.value) {
     addPictureForm.attachment_list.push({
       url: src
     })
   }
 })
 
+const showDelete = ref(false)
+const deleteForm = reactive({
+  voucher_ext_id: null,
+  sn: '',
+})
+const onDeleteVoucher = (ext, sn) => {
+  currentExt.value = ext
+  deleteForm.voucher_ext_id = ext.voucher_ext_id
+  deleteForm.sn = sn
+  showDelete.value = true
+  console.log('delete ', ext)
+}
+const submitDelete = async () => {
+  try {
+    api.deleteVoucher({
+      voucher_ext_id: deleteForm.voucher_ext_id,
+      log_text: '编号: ' + deleteForm.sn + ' 金额: ' + currentExt.value.origin_amount + ' ' + currentExt.value.origin_currency + ' 备注: ' + currentExt.value.note
+    })
+    message.success('打款记录已删除')
+
+    currentExt.value = null
+    deleteForm.voucher_ext_id = null
+    deleteForm.sn = ''
+    showDelete.value = false
+    // 跟新
+    onSubmit()
+  } catch (err) {
+
+  }
+}
 </script>
 
 
@@ -311,7 +349,7 @@ const crop = setUpCapture(src => {
       </el-select>
     </el-form-item>
     <el-form-item>
-      <el-input v-model="form.content" placeholder="请输入流水编号" @input="onInputChange" clearable @keyup.enter="onSubmit"/>
+      <el-input v-model="form.content" placeholder="请输入流水编号" @input="onInputChange" clearable @keyup.enter="onSubmit" />
     </el-form-item>
     <el-form-item>
       <el-button type="primary" :icon="DocumentDelete" @click="onExport" plain>导出</el-button>
@@ -394,6 +432,11 @@ const crop = setUpCapture(src => {
               <el-tooltip content="编辑" placement="left">
                 <el-button type="primary" :icon="Edit" class="wrap-edit" @click="onEditExt(props.$index, subIndex)"
                   link></el-button>
+              </el-tooltip>
+              <el-tooltip content="删除" placement="left">
+                <el-button type="danger" :icon="Delete" class="wrap-edit" link v-if="store.canDelete"
+                  @click="onDeleteVoucher(ext, props.row.sn)">
+                </el-button>
               </el-tooltip>
             </div>
             <div class="options" v-show="ext.is_audit == 1">
@@ -496,10 +539,10 @@ const crop = setUpCapture(src => {
   <el-dialog v-model="dialog.editVisible" title="修改打款记录" width="540" :close-on-click-modal="false" destroy-on-close
     :close-on-press-escape="false" align-center>
     <PaymentRecordEdit :ext="dialog.ext" @close="() => {
-        dialog.editVisible = false
-        emits('freshHistory')
-        onSubmit()
-      }" />
+    dialog.editVisible = false
+    emits('freshHistory')
+    onSubmit()
+  }" />
   </el-dialog>
 
   <!-- 撤销修改 -->
@@ -575,6 +618,14 @@ const crop = setUpCapture(src => {
     </template>
   </el-dialog>
 
+  <!-- 删除 -->
+  <el-dialog v-model="showDelete" destroy-on-close :close-on-click-modal="false" title="删除确认">
+    <span class="t-red">删除该条记录么</span>
+    <template #footer>
+      <el-button @click="showDelete = false">关闭</el-button>
+      <el-button type="primary" @click="submitDelete">确定</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 

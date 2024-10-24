@@ -1,5 +1,6 @@
 <script setup>
-import * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor'
+// import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import { watch, onMounted, getCurrentInstance, onBeforeUnmount } from "vue";
 import { useLogStore } from "@/stores/index"
 const logStore = useLogStore()

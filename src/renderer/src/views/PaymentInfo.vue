@@ -1,20 +1,27 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch, computed } from 'vue'
+import { reactive, ref, watch, computed, onMounted } from 'vue'
 import PaymentAdd from './PaymentAdd.vue'
 import PaymentRecord from './PaymentRecord.vue'
 import api from '@/api'
 import { numberFmt } from '@/utils/format'
 import Message from '@/utils/message'
-import { Check, Warning, Remove, QuestionFilled, Eleme } from '@element-plus/icons-vue'
+import { Check, Warning, Remove, QuestionFilled } from '@element-plus/icons-vue'
 import BankTransferAdd from './BankTransferAdd.vue'
-import { useExcelStore } from "@/stores/index"
 import { useRoute } from 'vue-router'
-const ws = useExcelStore()
+import { nextTick } from 'vue'
+import { useDialogStore } from '../stores'
+import { isDev } from '../utils/tools'
+
+const dialogStore = useDialogStore()
 const props = defineProps({
   detailId: String,
   mode: {
     type: String,
     default: 'operate'
+  },
+  immediate: {
+    type: Boolean,
+    default: true
   }
 })
 const emit = defineEmits(['update', 'openBatch'])
@@ -58,9 +65,32 @@ const dialogSingleFormReset = () => {
   abnormalCommentVisible.value = false
 }
 
+
 watch(() => props.detailId, () => {
-  fetchData()
+  if (!isDev) {
+    // setTimeout(() => {
+    //   fetchData()
+    // }, 300)
+  } else {
+    if (props.immediate) {
+      fetchData()
+    }
+  }
 })
+
+
+onMounted(() => {
+  if (!isDev) {
+    // setTimeout(() => {
+    //   fetchData()
+    // }, 300)
+  } else {
+    if (props.immediate) {
+      fetchData()
+    }
+  }
+})
+
 
 watch(() => dialogSingleForm.reasonType, () => {
   if (dialogSingleForm.status == 2) {
@@ -70,9 +100,7 @@ watch(() => dialogSingleForm.reasonType, () => {
   }
 })
 
-onBeforeMount(() => {
-  fetchData()
-})
+
 
 const onCopy = async text => {
   await navigator.clipboard.writeText(text)
@@ -81,22 +109,32 @@ const onCopy = async text => {
 const feePayers = { 0: '--', 1: '我方', 2: '顾客', 3: '双方平摊' }
 
 const fetchData = async () => {
-  const data = await api.getPaymentDetail({
-    id: props.detailId
-  })
-  approve.value = data.payment_detail.detail
-  approve.value.cashier = data.payment_cashier.cashier
-  approve.value.payment_error_msg = data.payment_cashier.payment_error_msg
-  approve.value.payment_status = data.payment_cashier.payment_status
-  approve.value.fee_payer_str = feePayers[data.payment_detail.detail?.fee_payer]
-
-  tableData.value = data.payment_detail.items
-  if (data.payment_detail.items.length > 0) {
-    firstItem.value = data.payment_detail.items[0]
-    if (bankAccountTitleIds.includes(firstItem.value.account_title_id)) {
-      isBankTransfer.value = true
+  try {
+    console.log('fetch data', {
+      id: props.detailId
     }
+    )
+    const data = await api.getPaymentDetail({
+      id: props.detailId
+    })
+    console.log('fetch data resp', data)
+    approve.value = data.payment_detail.detail
+    approve.value.cashier = data.payment_cashier.cashier
+    approve.value.payment_error_msg = data.payment_cashier.payment_error_msg
+    approve.value.payment_status = data.payment_cashier.payment_status
+    approve.value.fee_payer_str = feePayers[data.payment_detail.detail?.fee_payer]
+
+    tableData.value = data.payment_detail.items
+    if (data.payment_detail.items.length > 0) {
+      firstItem.value = data.payment_detail.items[0]
+      if (bankAccountTitleIds.includes(firstItem.value.account_title_id)) {
+        isBankTransfer.value = true
+      }
+    }
+  } catch (err) {
+    console.log('fetch fail', err)
   }
+
 }
 
 const onShowDialog = (status) => {
@@ -171,6 +209,10 @@ const showOperate = computed(() => {
   }
   return false
 })
+
+defineExpose({
+  fetchData
+})
 </script>
 
 
@@ -211,13 +253,21 @@ const showOperate = computed(() => {
     <el-scrollbar class="info-box">
       <section class="infos">
         <div class="info top">
-          <div class="info-item">
-            <i class="item-icon iconfont icon-approve"></i>
-            <div class="item-label">钉钉编号：</div>
-            <div class="item-value">{{ approve.approval_number }}</div>
-            <el-tooltip content="复制" placement="right">
-              <el-button @click="onCopy(approve.approval_number)" link><i class="iconfont icon-copy"></i></el-button>
-            </el-tooltip>
+          <div class="flex flex-between">
+            <div class="flex">
+              <i class="item-icon iconfont icon-approve"></i>
+              <div class="item-label">钉钉编号：</div>
+              <div class="item-value">{{ approve.approval_number }}</div>
+              <el-tooltip content="复制" placement="right">
+                <el-button @click="onCopy(approve.approval_number)" link><i class="iconfont icon-copy"></i></el-button>
+              </el-tooltip>
+            </div>
+            <div class="flex">
+              <i class="item-icon iconfont icon-number"></i>
+              <div class="item-label">支付对象：</div>
+              <div class="item-value">{{ approve.payment_object || '一一' }}</div>
+            </div>
+
           </div>
         </div>
 
@@ -226,11 +276,13 @@ const showOperate = computed(() => {
             <i class="item-icon iconfont icon-category"></i>
             <div class="item-label">类型：</div>
             <div class="item-value">{{ approve.payment_type_name }}</div>
+
           </div>
           <div class="info-item">
             <i class="item-icon iconfont icon-approver"></i>
             <div class="item-label">打款员：</div>
             <div class="item-value">{{ approve.cashier }}</div>
+
           </div>
           <div class="info-item">
             <i class="item-icon iconfont icon-approve-author"></i>
@@ -279,11 +331,13 @@ const showOperate = computed(() => {
             <i class="item-icon iconfont icon-system-info"></i>
             <div class="item-label">系统名称：</div>
             <div class="item-value">{{ approve.system_code }}</div>
+
           </div>
           <div class="info-item">
             <i class="item-icon iconfont icon-country"></i>
             <div class="item-label">收款账号国家或地区：</div>
-            <div class="item-value">{{ approve.country }}</div>
+            <div class="item-value ">{{ approve.country }}</div>
+
           </div>
         </div>
 
@@ -319,7 +373,7 @@ const showOperate = computed(() => {
             <template #default="scope">
               <div class="select-text">编号：{{ scope.row.item_id }}</div>
               <div class="select-text">科目：{{ scope.row.account_title_parent }} - {{ scope.row.account_title }}</div>
-              <div class="select-text">金额：{{ numberFmt(scope.row.origin_amount) }} {{ scope.row.currency }}</div>
+              <div class="select-text">金额：<span class="t-red f-14 b-500">{{ numberFmt(scope.row.origin_amount) }}</span>  <span class="t-black f-14 b-500">{{ scope.row.currency }}</span></div>
               <div class="select-text">人民币金额：{{ numberFmt(scope.row.cny_amount) }} CNY</div>
             </template>
           </el-table-column>
@@ -336,14 +390,14 @@ const showOperate = computed(() => {
 
     <!-- 新增打款抽屉 -->
     <el-drawer v-model="showAddDrawer" :title="isBankTransfer ? '新增银行转账' : '新增打款'" direction="rtl" size="600"
-    :close-on-click-modal="false"
-      destroy-on-close>
+      :close-on-click-modal="false" destroy-on-close>
       <BankTransferAdd :item="firstItem" @close="showAddDrawer = false" v-if="isBankTransfer" />
       <PaymentAdd :approve="approve" @close="showAddDrawer = false" v-else />
     </el-drawer>
 
     <!-- 打款记录抽屉 -->
-    <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="70%" class="records" destroy-on-close :close-on-click-modal="false">
+    <el-drawer v-model="showRecordDrawer" title="打款记录" direction="rtl" size="70%" class="records" destroy-on-close
+      :close-on-click-modal="false">
       <PaymentRecord />
     </el-drawer>
 
@@ -387,7 +441,8 @@ const showOperate = computed(() => {
     </el-dialog>
 
     <!-- 打款异常弹窗 -->
-    <el-dialog v-model="abnormalSingleDialogVisible" title="异常原因" width="320" align-center :close-on-click-modal="false">
+    <el-dialog v-model="abnormalSingleDialogVisible" title="异常原因" width="320" align-center
+      :close-on-click-modal="false">
       <el-form :model="dialogSingleForm">
         <el-form-item>
           <el-select v-model="dialogSingleForm.reasonType">
@@ -503,6 +558,7 @@ const showOperate = computed(() => {
   line-height: 25px;
   color: #99a;
   font-size: 0.75em;
+  user-select: text
 }
 
 .item-value {
@@ -510,6 +566,7 @@ const showOperate = computed(() => {
   color: #353549;
   font-size: 0.8em;
   line-height: 25px;
+  user-select: text
 }
 
 .top .item-value {

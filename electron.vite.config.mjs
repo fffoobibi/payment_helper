@@ -1,6 +1,7 @@
 import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin, loadEnv } from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
+// import  monacoEditorPlugin from 'vite-plugin-monaco-editor'
 
 const root = process.cwd()
 
@@ -11,7 +12,11 @@ export default ({ mode }) => {
       plugins: [externalizeDepsPlugin()]
     },
     preload: {
-      plugins: [externalizeDepsPlugin()]
+      plugins: [externalizeDepsPlugin(),
+          // monacoEditorPlugin({
+          //   languageWorkers: ['json', 'html','editorWorkerService', 'typescript']
+          // })
+      ]
     },
 
     renderer: {
@@ -29,7 +34,7 @@ export default ({ mode }) => {
           '/api': {
             target: env.VITE_API_DOMAIN,
             changeOrigin: true,
-            rewrite: (path) => path, // path.replace(/^\/api/, ''), //path
+            rewrite: (path) => path.replace(/^\/api/, ''), //path
             configure: (proxy, options) => {
               // 使用自定义的代理逻辑
               const originalWeb = proxy.web

@@ -61,9 +61,9 @@ const onMenu = (item) => {
         <li :class="['menu-item', { active: item.name == currItem.name }]" v-for="item in menuItems" :key="item.name">
           <el-tooltip :content="item.text" :hide-after="0" effect="dark" transition="none" placement="right-start">
             <el-button @click="onMenu(item)" text>
-              <div style="display: flex; flex-direction: column;justify-content: center; align-items: center; gap: 3px">
+              <div class="flex flex-col gap-3 flex-c-center">
                 <el-icon :class="['iconfont', 'icon-' + item.icon]"></el-icon>
-                <span class="menu-item-display">{{ item.display }}</span>
+                <span class="menu-item-display b-600">{{ item.display }}</span>
               </div>
             </el-button>
           </el-tooltip>

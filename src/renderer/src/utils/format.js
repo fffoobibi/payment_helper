@@ -96,9 +96,13 @@ const dateTimeFmt = (date, type = 1) => {
  * @param {string|number} n
  * @returns
  */
-const numberFmt = n => {
+const numberFmt = (n, strict=true) => {
     if (!n) return ''
-    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    const v =  n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    if(!strict && v.endsWith('.00')){
+        return v.replaceAll('.00', '')
+    }
+    return v
 }
 
 const amountFormatter = value => `${value}`.replace(/[^\-?\d.]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
@@ -134,6 +138,31 @@ const timestampToFormattedString = (timestamp, sep = false, getNormal = false) =
     }
     // 拼接成指定格式的字符串
     return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * 
+ * @param {Date|Number} date 
+ * @returns 
+ */
+const getMonthDaysFromDate = (date) => {
+    if (!date) {
+        return ""
+    }
+    if (typeof date === 'number' || (date instanceof Number)) {
+        date = new Date(date * 1000)
+    }
+
+    const year = date.getFullYear(); // 获取年份
+    const month = date.getMonth(); // 获取月份，注意月份是从0开始的
+
+    const firstDay = new Date(year, month, 1); // 当月的第一天
+    const lastDay = new Date(year, month + 1, 0); // 下个月的0号，即当月的最后一天
+
+    return {
+        firstDay: firstDay,
+        lastDay: lastDay
+    };
 }
 
 /**
@@ -264,6 +293,7 @@ const until = (scala, days, fmt = 'YYYY-MM-DD') => {
 export {
     dateTimeFmt,
     numberFmt,
+    getMonthDaysFromDate,
     timestampToFormattedString,
     formatDate,
     subNumbers,

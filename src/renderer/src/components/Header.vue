@@ -4,7 +4,7 @@
 
 <template>
   <header>
-    <div class="header-title">
+    <div class="header-title drag">
       <slot name="title">
         <h4>页面标题</h4>
       </slot>

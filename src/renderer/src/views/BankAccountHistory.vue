@@ -11,6 +11,36 @@ import { viewImages } from "../utils/tools"
 import { useLocalConfig } from "../stores/config"
 const { height, width } = useClient()
 
+const shortcuts = [
+  {
+    text: '1周前',
+    value: () => {
+      const start = new Date()
+      start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
+      return start
+    },
+  },
+  {
+    text: '1月前',
+    value: () => {
+      const start = new Date()
+      start.setTime(start.getTime() - 3600 * 1000 * 24 * 30)
+      return start
+    },
+  },
+  {
+    text: '3月前',
+    value: () => {
+      const start = new Date()
+      start.setTime(start.getTime() - 3600 * 1000 * 24 * 90)
+      return start
+    },
+  },
+]
+
+const startTime = defineModel('startTime', {default: ''})
+const endTime = defineModel('endTime', {default:''})
+
 const cfg = useLocalConfig()
 const tableFields = computed(()=>{
   return cfg.histories
@@ -38,35 +68,7 @@ const props = defineProps({
   typeName: String,
   balance:Number
 })
-const shortcuts = [
-  {
-    text: '1周前',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
-      return start
-    },
-  },
-  {
-    text: '1月前',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24 * 30)
-      return start
-    },
-  },
-  {
-    text: '3月前',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24 * 90)
-      return start
-    },
-  },
-]
+
 const queryFormRef = ref(null)
 const queryForm = reactive({
   page: {
@@ -78,11 +80,9 @@ const queryForm = reactive({
     account_id: props.accountId,
     // start_time: formatDate( shortcuts[1].value(), {start: true}),
     // end_time: formatDate(new Date, {end: true}),
-    start_time:"",
-    end_time: "",
 
     content: '',  // 凭证号
-    rank: 'DESC',  // 倒叙，顺序 ASC DESC
+    rank: 'ASC',  // 倒叙，顺序 ASC DESC
     voucher_no: '', // 编号
     page: 1,
     limit: 10,
@@ -137,10 +137,18 @@ const exportData = async ()=>{
   try{
     exportLoading.value=true
     const post = { ...queryForm.search }
-    if (post.date) {
-      post.start_time = post.date[0]
-      post.end_time = post.date[1]
-    }
+    // if (post.date) {
+      if(startTime.value){
+        post.start_time = startTime.value
+        if(endTime.value){
+          post.end_time = endTime.value
+        }else{
+          post.end_time = formatDate(new Date, {end: true})
+        }
+      }
+      
+      
+    // }
     delete post.page
     delete post.limit
     delete post.date
@@ -184,7 +192,11 @@ const onSearch = async (page = null, pageSize = null) => {
   } else {
     queryForm.search.limit = queryForm.page.pageSize
   }
+  
   const post = { ...queryForm.search }
+  
+  post.start_time = startTime.value
+  post.end_time = endTime.value
   delete post.date
   const data = await api.bank_account.getAccountHistoryList(post, processResponse)
   queryForm.tableData = data.list
@@ -241,13 +253,13 @@ onMounted(() => {
         <el-input placeholder="凭证号" clearable style="width:150px" v-model.trim="queryForm.search.voucher_no"></el-input>
       </el-form-item>
       <el-form-item>
-        <el-date-picker style="width: 110px;margin-right:5px" v-model="queryForm.search.start_time" type="date" 
+        <el-date-picker style="width: 110px;margin-right:5px" v-model="startTime" type="date" 
           value-format="YYYY-MM-DD 00:00:00"
           format="YY/MM/DD"
           placeholder="开始" 
           :shortcuts="shortcuts" 
           />
-        <el-date-picker style="width: 110px" v-model="queryForm.search.end_time" type="date" 
+        <el-date-picker style="width: 110px" v-model="endTime" type="date" 
           value-format="YYYY-MM-DD 23:59:59"
           format="YY/MM/DD"
           placeholder="结束"
@@ -293,7 +305,7 @@ onMounted(() => {
 
     <el-table row-key="id" ref="tableRef" highlight-current-row :data="queryForm.tableData" :height="tableHeight"
       :row-class-name="renderTableRowClass" 
-      :default-sort="{ prop: 'create_time', order: 'descending' }"
+      :default-sort="{ prop: 'create_time', order: 'ascending' }"
       @sort-change="(d)=>{
         if(d.order =='ascending'){
           queryForm.search.rank = 'ASC'
@@ -324,27 +336,68 @@ onMounted(() => {
       </el-table-column>
       <el-table-column label='类型' prop="type_name" class-name="cell-select" v-if="tableFieldsInfo['类型']"></el-table-column>
 
-      <el-table-column label="初期"  v-if="tableFieldsInfo['初期']" width="90" class-name="cell-select" >
+      <el-table-column label="初期"  v-if="tableFieldsInfo['初期']"  class-name="cell-select" >
         <template #default="{ row }">
-          <div class="user-select">{{ numberFmt(row.beginning_balance) }}</div>
-          <div class="red">{{ " " + row.base_currency }}</div>
+          <div class="flex gap-2">
+            <div class="user-select">{{ numberFmt(row.beginning_balance) }}</div>
+            <div class="red">{{ " " + row.base_currency }}</div>
+          </div>
+         
         </template>
       </el-table-column>
 
-      <el-table-column label="本期"  v-if="tableFieldsInfo['本期']" width="90" class-name="cell-select" >
+      <el-table-column label="本期"  v-if="tableFieldsInfo['本期']"  class-name="cell-select" >
         <template #default="{ row }">
-          <div class="user-select">{{ numberFmt(row.current_amount) }}</div>
-          <div class="red">{{ " " + row.base_currency }}</div>
+          <div class="flex gap-2">
+            <div class="user-select">{{ numberFmt(row.current_amount) }}</div>
+            <div class="red">{{ " " + row.base_currency }}</div>
+          </div>
         </template>
       </el-table-column>
-      <el-table-column label="期末"  v-if="tableFieldsInfo['期末']" width="90" class-name="cell-select" >
+      <el-table-column label="期末"  v-if="tableFieldsInfo['期末']"  class-name="cell-select" >
         <template #default="{ row }">
-          <div class="user-select">{{ numberFmt(row.ending_balance) }}</div>
-          <div class="red">{{ " " + row.base_currency }}</div>
+          <div class="flex gap-2">
+            <div class="user-select">{{ numberFmt(row.ending_balance) }}</div>
+            <div class="red">{{ " " + row.base_currency }}</div>
+          </div>
         </template>
       </el-table-column>
       <el-table-column label='备注' prop="account_record_note" class-name="cell-select" v-if="tableFieldsInfo['备注']"></el-table-column>
       <el-table-column label='打款备注' prop="account_voucher_ext_note" class-name="cell-select" v-if="tableFieldsInfo['打款备注']"></el-table-column>
+
+      <el-table-column label="操作" width="140" v-if="tableFieldsInfo['操作']" class-name="cell-select">
+        <template #default="{ row }">
+          <el-space>
+
+          <el-button link type='primary' v-if="row.attachment_list?.length" @click="()=>{
+            viewImages(row.attachment_list.map(v=>v.path), 0)
+          }">凭证[{{ row.attachment_list.length }}]</el-button>
+          <el-popover
+            v-if="row.payment_items.length"
+            :transition="none"
+            :hide-after="0"
+            :width="330"
+            title="明细"
+            trigger="click"
+            >
+              <template #reference>
+                <el-button link type="success" >明细[{{ row.payment_items.length }}]</el-button>
+              </template>
+              <el-scrollbar :max-height="300" :height="250">
+                <div style="border-bottom:1px solid lightgray;margin-bottom: 4px; padding-bottom: 4px;">
+                  <p>合计： <span> {{ numberFmt(row._vo_total)}} </span><span class="red">{{ " " + row.payment_items[0].currency }}</span></p>
+                </div>
+                <div v-for="item in row.payment_items" :key="item.item_id" style="padding-bottom: 4px; border-bottom:1px solid lightgray; margin-bottom: 4px;">
+                  <p><span class="black">{{ item.account_title_parent }} - {{ item.account_title }}:</span> <span class="user-select">{{ numberFmt(item.cny_amount) }}</span><span class="red user-select">{{ " " + item.currency }}</span></p>
+                  <p><span class="black">备注:</span> <span class="user-select" style="white-space: pre-wrap;">{{item.note}}</span></p>
+                </div>
+              </el-scrollbar>
+
+            </el-popover>
+          </el-space>
+
+        </template>
+      </el-table-column>
 
       <el-table-column label="凭证号" v-if="tableFieldsInfo['凭证号']" class-name="cell-select">
         <template #header>
@@ -371,35 +424,7 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="170" v-if="tableFieldsInfo['操作']" class-name="cell-select">
-        <template #default="{ row }">
-          <el-button link type='primary' v-if="row.attachment_list?.length" @click="()=>{
-            viewImages(row.attachment_list.map(v=>v.path), 0)
-          }">凭证[{{ row.attachment_list.length }}]</el-button>
-          <el-popover
-            v-if="row.payment_items.length"
-            :transition="none"
-            :hide-after="0"
-            :width="330"
-            title="明细"
-            trigger="click"
-            >
-              <template #reference>
-                <el-button link type="success" >明细[{{ row.payment_items.length }}]</el-button>
-              </template>
-              <el-scrollbar :max-height="300" :height="250">
-                <div style="border-bottom:1px solid lightgray;margin-bottom: 4px; padding-bottom: 4px;">
-                  <p>合计： <span> {{ numberFmt(row._vo_total)}} </span><span class="red">{{ " " + row.payment_items[0].currency }}</span></p>
-                </div>
-                <div v-for="item in row.payment_items" :key="item.item_id" style="padding-bottom: 4px; border-bottom:1px solid lightgray; margin-bottom: 4px;">
-                  <p><span class="black">{{ item.account_title_parent }} - {{ item.account_title }}:</span> <span class="user-select">{{ numberFmt(item.cny_amount) }}</span><span class="red user-select">{{ " " + item.currency }}</span></p>
-                  <p><span class="black">备注:</span> <span class="user-select" style="white-space: pre-wrap;">{{item.note}}</span></p>
-                </div>
-              </el-scrollbar>
-
-            </el-popover>
-        </template>
-      </el-table-column>
+  
 
     </el-table>
     <el-pagination size="default" style="padding-top: 5px; position: fixed;bottom: 20px" :default-page-size="50"

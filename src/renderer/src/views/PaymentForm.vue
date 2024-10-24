@@ -10,7 +10,7 @@ import { amountFormatter, amountParser, numberFmt, timestampToFormattedString } 
 import { viewImages } from "@/utils/tools"
 import Message from '@/utils/message'
 import Airwallex from './Airwallex.vue'
-import { debounce } from 'lodash'
+import { debounce, runInContext } from 'lodash'
 
 import PaymentRecord from './PaymentRecord.vue'
 import { useClient } from '../utils/client'
@@ -143,8 +143,14 @@ const rules = reactive({
 
 const confirmDialogVisible = ref(false)
 
-watch(() => shortStore.image, (src) => {
-    form.attachment_list.push({ url: src })
+
+
+shortStore.onImageShortCutDown((route, src, tag) => {
+    if (route.name == 'paymentForm' && tag === 'unset') {
+        if (showRecordDrawer.value == false) {
+            form.attachment_list.push({ url: src })
+        }
+    }
 })
 
 const onSubmit = async el => {
@@ -176,6 +182,7 @@ const onSubmit = async el => {
             const resp = await api.addPaymentRecord(data)
             Message.success("打款提交成功")
             emit('freshPending')
+            // 刷新打款记录
             listRef.value?.reload()
 
             const account_id = form.account_id
@@ -210,9 +217,8 @@ const onSubmit = async el => {
             if (props.batch) {
                 nextData()
             } else {
-                emit('close')
+                // emit('close')
             }
-
             // 是否自动点单
             // if (autoClick.value) {
             //     // 是否需要确认
@@ -243,7 +249,7 @@ const onConfirm = async (account_id, approval_number) => {
         }, false)
         Message.success("自动点单成功")
         confirmDialogVisible.value = false
-        emit('close')
+        // emit('close')
     } catch (error) {
         errorMsg.value = error.msg
         centerDialogVisible.value = true
@@ -352,6 +358,12 @@ const dSearch = debounce(() => {
 watch(() => recordQuery.content, () => {
     dSearch()
 })
+
+defineExpose({
+    freshHistroy: () => {
+        listRef.value.reload()
+    }
+})
 </script>
 
 
@@ -389,7 +401,6 @@ watch(() => recordQuery.content, () => {
     <div class="wrapper flex flex-col w-full">
         <!-- :height="height - 86" -->
         <el-scrollbar>
-
             <el-form :model="form" :rules="rules" ref="formRef" label-width="auto" @submit.prevent v-if="true">
                 <el-form-item label="钉钉编号" prop="approval_number" required>
                     <div style="width: 100%;display: flex;gap: 10px;justify-content: space-between">
@@ -685,7 +696,7 @@ watch(() => recordQuery.content, () => {
                 <div class="dialog-footer">
                     <el-button type="primary" @click="() => {
                 centerDialogVisible = false
-                emit('close')
+                // emit('close')
             }">
                         关闭
                     </el-button>

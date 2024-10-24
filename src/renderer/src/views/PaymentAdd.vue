@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { reactive, ref, watch, computed, onMounted, nextTick } from 'vue'
 import { useUserStore, useAccountStore, useAirwallexStore, useScreenShortStore } from '@/stores'
 import { useLocalConfig } from "@/stores/config"
 import { storeToRefs } from "pinia"
@@ -10,8 +10,6 @@ import { amountFormatter, amountParser, numberFmt, timestampToFormattedString } 
 import { viewImages } from "@/utils/tools"
 import Message from '@/utils/message'
 import Airwallex from './Airwallex.vue'
-import { computed, onMounted } from 'vue'
-import { nextTick } from 'vue'
 import { debounce } from 'lodash'
 
 const props = defineProps({
@@ -26,16 +24,20 @@ const props = defineProps({
   }
 })
 
+const initBatchData = ref(props.batchData.map(v => {
+  v._done = false
+  return v
+}))
 const shortStore = useScreenShortStore()
 const store = useUserStore()
 const accountStore = useAccountStore()
 const accounts = computed(() => {
-    return accountStore.accounts.map(item => ({ 'label': item.account_name, 'value': item.id }))
+  return accountStore.accounts.map(item => ({ 'label': item.account_name, 'value': item.id }))
 })
 const airwallexStore = useAirwallexStore()
 const airwallexTypes = [{ label: 'airwallex', value: 1 }, { label: 'paypal', value: 2 }]
 
-const { state, next, prev, index } = useCycleList(props.batchData)
+const { state, next, prev, index } = useCycleList(initBatchData)
 const showOrder = computed(() => {
   return "  " + (index.value + 1 + " / " + props.batchData.length)
 })
@@ -54,14 +56,24 @@ const updateCurrent = () => {
     }
   }
 }
-
+const disabled = computed(() => {
+  if (!props.batch) {
+    return false
+  } else {
+    return state.value._done
+  }
+})
 const previewData = () => {
-  prev()
-  updateCurrent()
+  if (index.value > 0) {
+    prev()
+    updateCurrent()
+  }
 }
 const nextData = () => {
-  next()
-  updateCurrent()
+  if (index.value < props.batchData.length - 1) {
+    next()
+    updateCurrent()
+  }
 }
 
 onMounted(() => {
@@ -70,7 +82,7 @@ onMounted(() => {
   }
 })
 
-const emit = defineEmits(['close', 'freshPending'])
+const emit = defineEmits(['close', 'freshPending', 'freshHistory'])
 
 const cfgStore = useLocalConfig()
 const { autoClick, autoConfirm } = storeToRefs(cfgStore)
@@ -139,8 +151,13 @@ const confirmDialogVisible = ref(false)
 // setUpCapture(src => {
 //   form.attachment_list.push({ url: src })
 // })
-watch(() => shortStore.image, (src) => {
-  form.attachment_list.push({ url: src })
+// watch(() => shortStore.image, (src) => {
+//   form.attachment_list.push({ url: src })
+// })
+const crop = shortStore.onImageShortCutDown((route, src, tag) => {
+  if (tag === 'batchExcel') {
+    form.attachment_list.push({ url: src })
+  }
 })
 
 const onSubmit = async el => {
@@ -172,6 +189,10 @@ const onSubmit = async el => {
       const resp = await api.addPaymentRecord(data)
       Message.success("打款提交成功")
       emit('freshPending')
+      emit('freshHistory')
+      if (props.batch) {
+        state.value._done = true
+      }
       const account_id = form.account_id
       const approval_number = form.approval_number
 
@@ -203,7 +224,7 @@ const onSubmit = async el => {
       if (props.batch) {
         nextData()
       } else {
-        emit('close')
+        // emit('close')
       }
       // 是否自动点单
       // if (autoClick.value) {
@@ -221,6 +242,9 @@ const onSubmit = async el => {
       //   }
       // }
     } catch (error) {
+      // state.value._done = true
+      // console.log('fresh ...')
+      // emit('freshHistory')
     }
   })
 }
@@ -235,7 +259,7 @@ const onConfirm = async (account_id, approval_number) => {
     }, false)
     Message.success("自动点单成功")
     confirmDialogVisible.value = false
-    emit('close')
+    // emit('close')
   } catch (error) {
     errorMsg.value = error.msg
     centerDialogVisible.value = true
@@ -370,17 +394,21 @@ onMounted(async () => {
       <el-text type="primary">提示：Ctrl + Q 快速截图</el-text>
     </el-form-item>
     <el-form-item label=" ">
-      <el-button type="primary" :icon="Check" @click="onSubmit(formRef)">提交</el-button>
-      <el-button :icon="Close" @click="emit('close')">取消</el-button>
+      <el-button type="primary" :icon="Check" @click="onSubmit(formRef)" :disabled="disabled">提交</el-button>
+      <!-- <el-button :icon="Close" @click="emit('close')">取消</el-button> -->
+
       <el-button v-if="props.batch" @click="previewData" link><el-icon>
           <ArrowLeftBold />
         </el-icon></el-button>
       <el-button v-if="props.batch" @click="nextData" link><el-icon>
           <ArrowRightBold />
         </el-icon></el-button>
+
       <el-text v-if="batch" style="margin-left: 10px">
         {{ showOrder }}
       </el-text>
+      <el-text v-if="disabled" type="danger" style="margin-left: 10px">已提交</el-text>
+
     </el-form-item>
   </el-form>
 
@@ -464,7 +492,7 @@ onMounted(async () => {
       <div class="dialog-footer">
         <el-button type="primary" @click="() => {
     centerDialogVisible = false
-    emit('close')
+    // emit('close')
   }">
           关闭
         </el-button>

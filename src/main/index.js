@@ -194,8 +194,10 @@ class WindowManger {
           })
       } else {
         after(previewWindow)
+        previewWindow.setAlwaysOnTop(true, "screen-saver")
         previewWindow.show()
         previewWindow.center()
+
         if (openDevTools) {
           previewWindow.webContents.openDevTools()
         }
@@ -206,13 +208,16 @@ class WindowManger {
           .loadFile(join(__dirname, '../renderer/index.html'), { hash: hash.toString() })
           .then(() => {
             after(previewWindow)
+            previewWindow.setAlwaysOnTop(true, "screen-saver")
             previewWindow.show()
+            // previewWindow.webContents.openDevTools()
           })
           .catch((err) => {
             log.error('open fail', err, 'hash ', hash)
           })
       } else {
         after(previewWindow)
+        previewWindow.setAlwaysOnTop(true, "screen-saver")
         previewWindow.show()
         previewWindow.center()
       }
@@ -241,6 +246,9 @@ class WindowManger {
         break
       case 5: // 更新
         this.destroy('excel')
+        break
+      case 6:
+        this.destroy('detail')
         break
       default:
         break
@@ -323,7 +331,7 @@ const operateDb = new OperateDataBase(join(directoryPath, dbPath))
 
 const loginWidth = 360
 const loginHeight = 400
-const mainWidth = 950 + 20
+const mainWidth = 950 + 20 + 160
 const mainHeight = 700 + 200
 
 function createWindow() {
@@ -446,13 +454,7 @@ function createWindow() {
           win.close()
         } else if (data.closeType == 1) {
           win.hide()
-        } else if (data.closeType == 2) {
-          manager.onCloseType(data.closeType)
-        } else if (data.closeType == 3) {
-          manager.onCloseType(data.closeType)
-        } else if (data.closeType == 4) {
-          manager.onCloseType(data.closeType)
-        } else if (data.closeType == 5) {
+        } else{
           manager.onCloseType(data.closeType)
         }
         break
@@ -708,6 +710,22 @@ function createWindow() {
       console.log('open excel fail ', error)
       log.error('Excel加载失败', error)
       mainWindow.webContents.send('open-excel:error', error.message)
+    }
+  })
+
+  // 详情查看
+  ipcMain.on('open-detail-dialog', (event, user, detailId, hash) => {
+    try {
+      manager.createWindow(
+        'detail',
+        (frame) => {
+          frame.webContents.send('open-detail-dialog:success', user, detailId)
+        },
+        { title: 'detail', hash, width:740 },
+        false,
+      )
+    } catch (error) {
+      log.error('详情窗口打开失败', error)
     }
   })
 

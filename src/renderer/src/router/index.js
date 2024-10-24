@@ -34,6 +34,11 @@ const router = createRouter({
             component: () => import('@/views/Excel.vue')
         },
         {
+            path: '/detail',
+            name: 'detail',
+            component: ()=>import('@/views/PaymentInfoDialog.vue')
+        },
+        {
             path: '/home',
             name: 'home',
             redirect: { name: 'payment' },

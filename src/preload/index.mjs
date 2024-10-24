@@ -18,6 +18,12 @@ const electron = {
   viewImages: (urls, index = 0) => ipcRenderer.send('open-images', urls, index, 'image'),
   newWindow: (urlname, params = {}, options = {}) => ipcRenderer.send('new-window', urlname, params, options),
   viewLog: () => ipcRenderer.send('open-log', 'log'),
+  openDetailDialog: (user, detailId)=>ipcRenderer.send('open-detail-dialog', user, detailId, 'detail'),
+  onOpenDetailDialog: (callback)=>{
+    ipcRenderer.on('open-detail-dialog:success', (_event, user, detailId) => {
+      callback(user, detailId)
+    })
+  },
   files: {
     readFile: (path, callback) => {
       fs.readFile(path, 'utf8', (err, data) => {

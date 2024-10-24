@@ -6,11 +6,11 @@ import BankAccountRecord from "@/views/BankAccountRecord.vue"
 
 import { reactive, ref, watch, onMounted } from 'vue'
 import { storeToRefs } from "pinia"
-import { useUserStore } from "@/stores"
+import { useScreenShortStore, useUserStore } from "@/stores"
 import { timestampToFormattedString, numberFmt, formatDate } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { useLocalConfig } from "@/stores/config"
-import { setUpCapture, setUpExportToExcel } from "@/utils/tools"
+import { setUpCapture, setUpExportToExcel, setItem, getItem } from "@/utils/tools"
 import api from "@/api"
 import { computed } from 'vue'
 import message from '@/utils/message'
@@ -19,6 +19,8 @@ const configStore = useLocalConfig()
 const { accountIndexs, accountMenus } = storeToRefs(configStore)
 const store = useUserStore()
 const { height, width } = useClient()
+const screen = useScreenShortStore()
+
 
 const queryFormRef = ref(null)
 const queryForm = reactive({
@@ -498,6 +500,7 @@ const viewIncomes = async (row) => {
   form.incomes.currency = row.currency
   form.incomes.accountId = row.id
   form.incomeShow = true
+  setItem('bankAccountCrop', '收入')
   form.currentTab = '收入'
 }
 
@@ -505,6 +508,7 @@ const viewPayouts = async (row) => {
   form.payout.currency = row.currency
   form.payout.accountId = row.id
   form.payoutShow = true
+  setItem('bankAccountCrop', '支出')
   form.currentTab = '支出'
 }
 
@@ -516,6 +520,7 @@ const viewHistory = async (row) => {
   form.history.available = row.is_available == 1 ? true : false
   form.history.accountId = row.id
   form.history.currency = row.currency
+  setItem('bankAccountCrop', '历史')
   form.currentTab = '历史'
 }
 
@@ -544,6 +549,7 @@ const viewPanZhang = async (row) => {
     form.panzhangPost.withdrawable_balance = row.withdrawable_balance
     form.panzhangCurrency = row.currency
     form.panzhangShow = true
+    setItem('bankAccountCrop', '盘账')
   } catch (error) {
 
   }
@@ -606,10 +612,20 @@ const tableState = {
   }
 }
 
-const crop = setUpCapture(src => {
-  form.panzhangPost.attachment_list.push({
-    url: src
-  })
+// const crop = setUpCapture(src => {
+//   form.panzhangPost.attachment_list.push({
+//     url: src
+//   })
+// })
+
+const crop = screen.onImageShortCutDown((route, src) => {
+  if (route.name === 'bankAccount') {
+    if (getItem('bankAccountCrop') === '盘账') {
+      form.panzhangPost.attachment_list.push({
+        url: src
+      })
+    }
+  }
 })
 
 const shortcuts = [
@@ -646,17 +662,20 @@ const saveAsExcel = setUpExportToExcel(() => {
 const exportRef = ref(null)
 const exportForm = reactive({
   date: null,
-  is_business_system: "1"
+  is_business_system: "0"
 })
 
-
+const historyStartTime = ref(formatDate(shortcuts[1].value()[0], {start: true}))
+const historyEndTime = ref(formatDate(shortcuts[1].value()[1], {end: true}))
 
 </script>
 
 <template>
   <Layout>
     <template #layout-main-inner>
-      <el-tabs v-model="form.currentTab" type="border-card" class="bank-tabs" closable @tab-remove="name => {
+      <el-tabs v-model="form.currentTab" type="border-card" class="bank-tabs" closable @tab-change="name => {
+        setItem('bankAccountCrop', name)
+      }" @tab-remove="name => {
         if (name == '收入') {
           form.incomeShow = false
         } else if (name == '支出') {
@@ -817,7 +836,7 @@ const exportForm = reactive({
                 <el-form-item label="类型" required>
                   <el-select v-model="exportForm.is_business_system" disabled>
                     <el-option label="系统业务打款明细" value="1"></el-option>
-                    <el-option label="打款助手收支明细" value="0"></el-option>
+                    <el-option label="收支明细" value="0"></el-option>
                   </el-select>
 
                 </el-form-item>
@@ -841,7 +860,7 @@ const exportForm = reactive({
                   '凭证编号': v.voucher_id,
                   '打款编号': v.payment_id,
                   '类型': v.type_name,
-                  '类型备注': v.type_name_desc,
+                  '类型备注': v.type_name_sec,
                   '钉钉编号/系统编号': v.sn,
                   '打款创建时间': formatDate(v.create_time),
                   '审批完成时间': formatDate(v.dingtalk_create_time),
@@ -864,7 +883,7 @@ const exportForm = reactive({
                   '申请人备注': v.payment_note
                 }
               })
-              saveAsExcel(d, '系统业务打款明细_' + formatDate(new Date(), { sepLast: '-' }))
+              saveAsExcel(d, '打款明细_' + formatDate(new Date(), { sepLast: '-' }))
 
             } catch (err) {
               detailsLoading = false
@@ -892,16 +911,20 @@ const exportForm = reactive({
           <BankAccountRecord></BankAccountRecord>
         </el-tab-pane>
         <el-tab-pane v-if="form.historyShow" :label="form.historyTabLabel" name="历史">
-          <BankAccountHistory :account-id="form.history.accountId" :currency="form.history.currency"
-            :type-name="form.history.typeName" :available="form.history.available" :balance="form.history.balance" />
+          <BankAccountHistory :account-id="form.history.accountId" :currency="form.history.currency" v-model:start-time="historyStartTime"
+            v-model:end-time="historyEndTime" :type-name="form.history.typeName" :available="form.history.available"
+            :balance="form.history.balance" />
         </el-tab-pane>
       </el-tabs>
 
       <!-- 盘账 -->
       <el-drawer destroy-on-close v-model="form.panzhangShow" size="50%" :title="form.pangZhangTitle"
         :close-on-click-modal="false">
+        <!-- <template #title>
+          盘账
+        </template> -->
         <el-form :model="form.panzhangPost" label-width="auto" :rules="rules" ref="formRef">
-          <p style="font-size: 11pt; color:blue; margin-bottom: 10px; margin-top: -20px;">
+          <p style="font-size: 11pt; color:blue; margin-bottom: 10px; margin-top: -20px;" class="drag">
             {{ form.panzhangState.account_name }}
           </p>
           <el-form-item label="可用余额" v-if="form.panzhangState.available_balance">
@@ -1048,6 +1071,11 @@ const exportForm = reactive({
   background-color: white !important;
   border: none !important;
   border-bottom: 1px solid #eee !important;
+  -webkit-app-region: drag;
+}
+
+:deep(.el-tabs__nav-scroll div) {
+  -webkit-app-region: no-drag;
 }
 
 :deep(.el-tabs__header),

@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeMount, reactive, ref, watch, onActivated, onDeactivated } from 'vue'
+import { onBeforeMount, reactive, ref, watch, onActivated, onDeactivated, toRaw } from 'vue'
 import { Check, Delete, Files, Warning, Remove, Search, RefreshLeft } from '@element-plus/icons-vue'
 import { dateTimeFmt, numberFmt, subNumbers } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
@@ -29,19 +29,9 @@ const { pause, resume, isActive } = useIntervalFn(() => {
 }, 1000 * 60 * 10)
 
 onActivated(() => {
-  // if (!isActive.value) {
-  //   console.log('resume')
-  //   resume()
-  // }
-  onSearch()
+  onRefresh()
 })
 
-// onDeactivated(() => {
-//   if (isActive.value) {
-//     console.log('pause')
-//     pause()
-//   }
-// })
 
 const checkAll = ref(false)
 const isIndeter = ref(false)
@@ -111,7 +101,8 @@ const currencies = accountStore.currencies
 
 const onAllCheck = val => {
   approves.value.forEach(item => item.isChecked = val)
-  preprocess = val ? approves.value : []
+  // preprocess = val ? approves.value : []
+  preprocess = approves.value || []
   types[1].count = preprocess.length
   isIndeter.value = false
   listTitle.value = val ? `已选 ${approves.value.length} 个` : `全选（${approves.value.length}）`
@@ -146,7 +137,7 @@ const onRefresh = () => {
   onSearch()
 }
 
-const onSearch = async () => {
+const onSearch = async (fresh=false) => {
   checkAll.value = false
   try {
     const data = await api.getPaymentList(form)
@@ -156,7 +147,8 @@ const onSearch = async () => {
       isIndeter.value = false
       scrollbarRef.value.setScrollTop(0)
     } else {
-      approves.value = approves.value.concat(data.list)
+      approves.value.push(...data.list)
+      // approves.value = approves.value.concat(data.list)
       isIndeter.value = approves.value.some(item => item.isChecked)
       if (data.list.length < form.limit) {
         noMore.value = true
@@ -172,7 +164,9 @@ const onSearch = async () => {
       checkAll.value = checks.length == approves.value.length
       types[0].count = data.count
     }
-  } finally {
+  } catch(err){
+    console.log('err in fresh', err)
+  }finally {
     isLoading = false
   }
 }
@@ -200,7 +194,7 @@ const onDetail = (id, item) => {
 
 const showAddDrawer = ref(false)
 const firstItem = ref(null)
-const bankAccountTitleIds = [181, 197]
+const bankAccountTitleIds = [181, 197]  // 财务费 - 内部转账支出, 
 
 const preSubmitdingding = async (item) => {
   dd.approve = item
@@ -215,7 +209,8 @@ const onSegmented = val => {
   }
   noMore.value = false
   if (val == 'preprocess') {
-    router.push({ name: 'blank', query: { type: val } })
+    // router.push({ name: 'blank', query: { type: val } })
+    router.push({ name: 'paymentForm' })
     approves.value = preprocess
     return
   }
@@ -363,12 +358,12 @@ const feePayers = { 0: '--', 1: '我方', 2: '顾客', 3: '双方平摊' }
 const detailsShow = ref(false)
 const detailId = ref(null)
 const viewPaymentDetails = id => {
-  detailsShow.value = true
-  detailId.value = id
+  // detailsShow.value = true
+  // detailId.value = id
+  electron.openDetailDialog(toRaw(store.user), id)
 }
 
 const onShowDialog = (status, item) => {
-  console.log('item ', item)
   activeItem.value = item
   dialogSingleForm.status = status
   switch (status) {
@@ -407,7 +402,7 @@ const onReview = async () => {
   } catch (error) {
     Message.success('审批失败')
   } finally {
-    onSearch()
+    onRefresh()
     dialogSingleFormReset()
   }
 }
@@ -430,7 +425,8 @@ const onAbnoraml = async () => {
   } catch (error) {
     console.log('err ', error)
   } finally {
-    onSearch()
+    // onSearch()
+    onRefresh()
     dialogSingleFormReset()
   }
 }
@@ -501,11 +497,10 @@ defineExpose({
 
     <div class="list">
       <div class="list-header">
-        <div class="header-checkbox" v-show="form.type == 'pending'">
-          <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{
-      listTitle
-    }}</el-checkbox>
-          <el-button link @click="onSearch">
+        <div class="header-checkbox w-full flex-between" v-show="form.type == 'pending'">
+          <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{listTitle}}</el-checkbox>
+          <div class="w-full flex flex-end">
+            <el-button link @click="onRefresh">
             <el-icon :size="16">
               <Refresh />
             </el-icon>
@@ -522,6 +517,7 @@ defineExpose({
               </el-segmented>
             </div>
           </el-tooltip>
+          </div>
         </div>
         <div class="header-btns" v-show="form.type == 'preprocess'">
           <el-tooltip content="通过" placement="top">
@@ -554,21 +550,21 @@ defineExpose({
           <el-button v-if="form.type == 'preprocess'" size="small" @click="onRemove(index)" type="warning"
             :icon="Delete" link></el-button>
           <div class="space" v-if="form.type == 'processed'"></div>
-          <div class="row-content" @click="() => {
-      if (form.type != 'pending') {
-        onDetail(item.id, item)
-      }
-      if (!cfg.layout) {
-        onDetail(item.id, item)
-      }
-    }">
+                  <div class="row-content" @click="() => {
+              if (form.type == 'processed') {
+                onDetail(item.id, item)
+              }
+              if (!cfg.layout) {
+                onDetail(item.id, item)
+              }
+            }">
             <div class="row-top">
               <div class="row-title">{{ item.process_name }}</div>
               <div class="row-time">{{ dateTimeFmt(item.create_time) }}</div>
             </div>
             <div class="row-bottom">
               <div class="row-subtitle user-select">{{ item.approval_number }}</div>
-              <div class="f-14 b-500">{{ numberFmt(item.origin_total_amount) }} <span class="t-red f-12 b-500">{{ item.currency }}</span></div>
+              <div class="f-14 b-500">{{ numberFmt(item.origin_total_amount, false) }} <span class="t-red f-12 b-500">{{ item.currency }}</span></div>
             </div>
             <div class="flex flex-col gap-2 m-t-2 w-full" v-if="cfg.layout">
               <span class="user-select more gray"><span class="gray">银行账号：</span>{{ item.bank_account || "--" }}</span>
@@ -579,10 +575,11 @@ defineExpose({
 
               <span class="user-select more gray"><span class="gray">申请人/部门：</span>{{ item.creator || "--" }} <span
                   class="more" style="color:#5BA3ED">{{ item.department_name }}</span> </span>
-              <span class="user-select more error" v-if="item.payment_error_msg"><span class="error"></span>{{
-      item.payment_error_msg }}</span>
+
+              <span class="user-select more error" v-if="item.payment_error_msg"><span class="error"></span>{{item.payment_error_msg }}</span>
 
               <span class="b-600 f-12 t-red">{{ paymentDetail(item) }}</span>
+              <!-- <span class="b-600 f-12 t-red">{{ item.voucher_id ===0 ? '未上传用户凭证':''}}</span> -->
 
               <div v-show="form.type === 'pending'" style="display: flex; justify-content: flex-start;margin-top: 5px ">
                 <el-button size="small" type="warn" @click="viewPaymentDetails(item.id)" link>查看</el-button>
@@ -590,6 +587,14 @@ defineExpose({
                 <el-button size="small" type="danger" @click="onShowDialog(2, item)" link>拒绝</el-button>
                 <el-button size="small" type="info" @click="onShowDialog(3, item)" link>异常</el-button>
                 <el-button size="small" type="warning" @click="onDetail(item.id, item)" link>填充</el-button>
+              </div>
+
+              <div v-show="form.type === 'preprocess'" style="display: flex; justify-content: flex-start;margin-top: 5px ">
+                <el-button size="small" type="warn" @click="viewPaymentDetails(item.id)" link>查看</el-button>
+                <!-- <el-button size="small" type="success" @click="onShowDialog(1, item)" link>通过</el-button> -->
+                <el-button size="small" type="danger" @click="onShowDialog(2, item)" link>拒绝</el-button>
+                <el-button size="small" type="info" @click="onShowDialog(3, item)" link>异常</el-button>
+                <!-- <el-button size="small" type="warning" @click="onDetail(item.id, item)" link>填充</el-button> -->
               </div>
 
             </div>
@@ -873,7 +878,6 @@ defineExpose({
 }
 
 .list-title {
-  width: 100%;
   height: 20px;
 }
 

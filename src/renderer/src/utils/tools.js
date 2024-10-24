@@ -1,6 +1,6 @@
 import { toRaw, ref } from 'vue'
 import notification from './notification'
-import { useUserStore, useExcelStore } from '../stores'
+import { useUserStore, useExcelStore, useScreenShortStore } from '../stores'
 import { useLocalConfig } from '../stores/config'
 import appInfo from "../../../../package.json"
 
@@ -101,7 +101,7 @@ const useFutureControl = () => {
     current, gt, gte, lt, lte, eq
   }
 }
-const useExcelBatchPayment = (callback = null) => {
+const useExcelBatchPayment = (callback = null, screenTag='batchExcel') => {
   const title = ref('新增打款')
   const batch = ref(false)
   const batchData = ref([])
@@ -109,6 +109,7 @@ const useExcelBatchPayment = (callback = null) => {
   const store = useUserStore()
   const cfgStore = useLocalConfig()
   const ex = useExcelStore()
+  const screen = useScreenShortStore()
 
   const openBatch = () => {
     ex.excelLoading = true
@@ -118,6 +119,7 @@ const useExcelBatchPayment = (callback = null) => {
     show.value = false
     title.value = '新增打款'
     batch.value = false
+    screen.setTag('unset')
   }
   electron.onExcelData(data => {
     show.value = true
@@ -126,6 +128,7 @@ const useExcelBatchPayment = (callback = null) => {
     batchData.value.splice(0)
     batchData.value.push(...data)
     callback?.()
+    screen.setTag(screenTag)
   })
   electron.onNewExcelColor(data => {
     cfgStore.excelColors = data
@@ -155,4 +158,14 @@ const getExcelColumnLetter = (index) => {
   return columnLetter
 }
 
-export { viewImages, getIndexFromArray, setUpExportToExcel, setUpCapture, getExcelColumnLetter, isDev, useExcelBatchPayment, useFutureControl }
+const setItem = (key, value) => {
+  localStorage.setItem(key, JSON.stringify(value))
+}
+const getItem = key => {
+  const v = localStorage.getItem(key)
+  if (v !== null) {
+    console.log('get item', key, JSON.parse(v))
+    return JSON.parse(v)
+  }
+}
+export { setItem, getItem, viewImages, getIndexFromArray, setUpExportToExcel, setUpCapture, getExcelColumnLetter, isDev, useExcelBatchPayment, useFutureControl }

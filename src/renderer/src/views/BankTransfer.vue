@@ -7,9 +7,12 @@ import { setUpCapture } from "@/utils/tools"
 import api from "@/api"
 import { computed } from 'vue'
 import message from '@/utils/message'
+import { useScreenShortStore } from "@/stores/index"
+import { useRoute } from 'vue-router'
 const store = useUserStore()
 const bank = useAccountStore()
 const { height, width } = useClient()
+const route = useRoute()
 const queryForm = reactive({
   page: {
     currentPage: 1,
@@ -26,6 +29,7 @@ const queryForm = reactive({
   hasSearch: false,
   tableData: [],
 })
+const screenStore = useScreenShortStore()
 
 const onSearch = async (page = null, pageSize = null) => {
   if (page != null) {
@@ -258,14 +262,25 @@ const resetForm = () => {
   }
   formRef.value?.clearValidate()
 
-  formState.in_account_id_balance_base=''
-  formState.in_account_id_loading=false
-  formState.out_account_id_loading=false
+  formState.in_account_id_balance_base = ''
+  formState.in_account_id_loading = false
+  formState.out_account_id_loading = false
 }
 
-const crop = setUpCapture(src => {
-  form.post.attachment_list.push({ url: src })
+screenStore.onImageShortCutDown((route, src, tag, resetTag) => {
+  if (route.name == 'bankTransfer') {
+    form.post.attachment_list.push({ url: src })
+  }
+}, (set)=>{
+
 })
+// watch(()=>screenStore.image, src =>{
+//   form.post.attachment_list.push({ url: src })
+
+// })
+// const crop = setUpCapture(src => {
+//   form.post.attachment_list.push({ url: src })
+// })
 
 const onSubmit = async () => {
   if (form.mode == 'add') {
@@ -427,10 +442,11 @@ const submitAuditTransfer = async () => {
       <div class="pannel">
         <el-form :inline="true" :model="queryForm.search" class="query-form-inline" ref="queryFormRef">
           <el-form-item label="银行账户">
-            <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable @keyup.enter="onSearch(1, null)" />
+            <el-input v-model="queryForm.search.account_name" placeholder="支持模糊查找" clearable
+              @keyup.enter="onSearch(1, null)" />
           </el-form-item>
           <el-form-item label="日期">
-            <el-select v-model="queryForm.search.condition" placeholder="">
+            <el-select v-model="queryForm.search.condition" placeholder="" @change="onSearch(1, null)">
               <el-option label="今天" value="1" />
               <el-option label="昨天" value="2" />
               <el-option label="近7天" value="3" />
@@ -449,7 +465,7 @@ const submitAuditTransfer = async () => {
           <template #empty>
             <el-empty :image-size="200" />
           </template>
-          <el-table-column label="序号" width="60">
+          <el-table-column label="#" width="40">
             <template #default="scope">
               <div>{{ scope.$index + 1 + (queryForm.page.currentPage - 1) * queryForm.page.pageSize }}</div>
             </template>
@@ -457,55 +473,54 @@ const submitAuditTransfer = async () => {
           <el-table-column label="摘要信息" width="220">
             <template #default="scope">
               <div :class="{ audit: scope.row.voucher_ext_last.is_audit == 1 }">
-                <div>编号： <span class="user-black">{{ scope.row.transfer_number }}</span></div>
-                <div>创建： <span class="user-black">{{ timestampToFormattedString(scope.row.create_time) }}</span></div>
-                <div>创建人：<span class="user-black">{{ `${scope.row.creator}(${scope.row.department_name})` }}</span>
+                <div><span class="user-black">{{ scope.row.transfer_number }}</span></div>
+                <div> <span class="user-black">{{ timestampToFormattedString(scope.row.create_time) }}</span></div>
+                <div><span class="user-black">{{ `${scope.row.creator}(${scope.row.department_name})` }}</span>
                 </div>
               </div>
 
             </template>
           </el-table-column>
-          <el-table-column label="银行信息">
+          <el-table-column label="转出/转入/金额">
             <template #default="scope">
-              <div>转出：<span class="user-black">{{ scope.row.out_account_name }}</span></div>
-              <div>转入：<span class="user-black">{{ scope.row.in_account_name }}</span></div>
-              <div>金额：<span class="user-black red light">{{ `${numberFmt(scope.row.origin_amount)}` }}</span> <span
+              <div><span class="user-black">{{ scope.row.out_account_name }}</span></div>
+              <div><span class="user-black">{{ scope.row.in_account_name }}</span></div>
+              <div><span class="user-black red light">{{ `${numberFmt(scope.row.origin_amount)}` }}</span> <span
                   class="black light">{{ `
                   ${scope.row.currency}` }}</span></div>
             </template>
           </el-table-column>
-          <el-table-column label="备注">
+          <el-table-column label="备注" width="110">
             <template #default="scope">
               <div class="user-black">{{ scope.row.note }}</div>
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="200">
+          <el-table-column label="操作" width="110">
             <template #default="scope">
-              <el-space>
+              <div class="flex flex-start operate" style="flex-wrap: wrap">
                 <el-button size="default" type="primary" @click="viewTransfer(scope.row)" link>
                   查看
                 </el-button>
-                <el-button v-if="store.canModify && scope.row.voucher_ext_last.is_audit == 0" size="default"
-                  type="primary" @click="editTransfer(scope.row)" link>
+                <el-button v-if="store.canModify && scope.row.voucher_ext_last.is_audit == 0" type="warning"
+                  @click="editTransfer(scope.row)" link>
                   编辑
                 </el-button>
-                <el-button v-if="store.canModifyNote" size="default" type="primary" @click="noteTransfer(scope.row)"
-                  link>
+                <el-button v-if="store.canModifyNote" type="primary" @click="noteTransfer(scope.row)" link>
                   备注
                 </el-button>
-                <el-button v-if="store.canCancel && scope.row.voucher_ext_last.is_audit == 1" size="default"
-                  type="danger" @click="cancelTransfer(scope.row)" link>
+                <el-button v-if="store.canCancel && scope.row.voucher_ext_last.is_audit == 1" type="danger"
+                  @click="cancelTransfer(scope.row)" link>
                   撤销
                 </el-button>
-                <el-button v-if="store.canAudit && scope.row.voucher_ext_last.is_audit == 1" size="default"
-                  type="success" @click="auditTransfer(scope.row)" link>
+                <el-button v-if="store.canAudit && scope.row.voucher_ext_last.is_audit == 1" type="success"
+                  @click="auditTransfer(scope.row)" link>
                   审核
                 </el-button>
-                <el-button v-if="store.canDelete" size="default" type="danger" @click="noteTransfer(scope.row)" link>
+                <el-button v-if="store.canDelete" type="danger" @click="noteTransfer(scope.row)" link>
                   删除
                 </el-button>
-              </el-space>
+              </div>
             </template>
           </el-table-column>
 
@@ -517,9 +532,9 @@ const submitAuditTransfer = async () => {
           layout="total, sizes, prev, pager, next, jumper" :total="queryForm.page.totalCount" />
 
         <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%"
-          :close-on-click-modal="false" destroy-on-close ref="drawRef" @closed="()=>{
-              resetForm()
-          }">
+          :close-on-click-modal="false" destroy-on-close ref="drawRef" @closed="() => {
+          resetForm()
+        }">
           <template #default>
             <el-form :model="form.post" label-width="auto" style="width:100%" ref="formRef" :rules="formRules">
 
@@ -693,6 +708,12 @@ h4 {
   padding: 0 10px;
   color: #333;
   font-weight: bold;
+}
+
+:deep(.operate button) {
+  width: 32px;
+  padding: 0px !important;
+  margin: 4px !important;
 }
 
 .form-item-detail {

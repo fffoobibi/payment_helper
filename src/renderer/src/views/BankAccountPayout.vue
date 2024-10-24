@@ -2,14 +2,15 @@
 import { ref, watch, computed, reactive } from "vue"
 import api from "@/api"
 import message from "@/utils/message"
-import { useUserStore, useAccountStore } from "@/stores/index"
+import { useUserStore, useAccountStore, useScreenShortStore } from "@/stores/index"
 import { timestampToFormattedString, numberFmt, dateTimeFmt, subNumbers } from "@/utils/format"
 import { useClient } from "@/utils/client"
-import { setUpCapture, viewImages } from "@/utils/tools"
+import { setUpCapture, viewImages, getItem } from "@/utils/tools"
 import logger from "../utils/logger"
 const { height } = useClient()
 const store = useUserStore()
 const bank = useAccountStore()
+const screen = useScreenShortStore()
 
 const props = defineProps({
     accountId: {
@@ -291,15 +292,30 @@ const onSubmit = () => {
     })
 }
 
-const crop = setUpCapture(src => {
-    if (form.mode == 'add') {
-        form.post.attachment_list.push({
-            url: src
-        })
-    } else {
-        form.editPost.attachment_list.push({
-            url: src
-        })
+// const crop = setUpCapture(src => {
+//     if (form.mode == 'add') {
+//         form.post.attachment_list.push({
+//             url: src
+//         })
+//     } else {
+//         form.editPost.attachment_list.push({
+//             url: src
+//         })
+//     }
+// })
+const crop = screen.onImageShortCutDown((route, src) => {
+    if (route.name === 'bankAccount') {
+        if (getItem('bankAccountCrop') === '支出') {
+            if (form.mode == 'add') {
+                form.post.attachment_list.push({
+                    url: src
+                })
+            } else {
+                form.editPost.attachment_list.push({
+                    url: src
+                })
+            }
+        }
     }
 })
 
@@ -365,7 +381,8 @@ watch(() => form.post.account_id, async () => {
                     info.currency }}</span></div>
                         <div>备注：<span>{{ info.voucher_ext_last?.note }}</span></div>
                         <div class="flex-row">附件：
-                            <el-button link @click="()=>viewImages(info.attachment_list.map(v=>v.path), 0)">查看图片[{{ info.attachment_list?.length }}]</el-button>
+                            <el-button link @click="() => viewImages(info.attachment_list.map(v => v.path), 0)">查看图片[{{
+                    info.attachment_list?.length }}]</el-button>
                             <el-button link type="primary" v-if="store.canModifyNote"
                                 @click="modifyNote(info)">修改备注</el-button>
                             <el-button v-if="store.canModify && info.voucher_ext_last.is_audit !== 1" link type="danger"
@@ -459,8 +476,8 @@ watch(() => form.post.account_id, async () => {
 
         </div>
 
-        <el-drawer v-model="form.editShow" size="50%" destroy-on-close title="支出编辑" :rules="form.editRules" :close-on-click-modal="false"
-            @opened="form.mode = 'edit'" @closed="form.mode = 'add'">
+        <el-drawer v-model="form.editShow" size="50%" destroy-on-close title="支出编辑" :rules="form.editRules"
+            :close-on-click-modal="false" @opened="form.mode = 'edit'" @closed="form.mode = 'add'">
             <el-form :model="form.editPost" label-width="auto" ref="editFormRef">
                 <el-form-item label="支出科目" prop="account_title_id" required>
                     <el-select v-model="form.editPost.account_title_id" filterable>
@@ -523,7 +540,8 @@ watch(() => form.post.account_id, async () => {
             </template>
         </el-dialog>
 
-        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose" destroy-on-close :close-on-click-modal="false">
+        <el-dialog v-model="form.auditShow" title="审核" width="500" :before-close="handleClose" destroy-on-close
+            :close-on-click-modal="false">
             <p>修改人: {{ form.auditPost.applicant }}</p>
             <p>提交时间: {{ timestampToFormattedString(form.auditPost.application_time) }}</p>
             <el-form-item label="修改原因: ">

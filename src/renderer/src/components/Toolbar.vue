@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick, watchEffect, onActivated } from 'vue'
 import { storeToRefs } from "pinia"
 import { useLocalConfig } from "@/stores/config"
 import { useOperateRecords, useUserStore } from "@/stores"
@@ -43,7 +43,36 @@ const props = defineProps({
   fulled: {
     type: Boolean,
     default: true
+  },
+  forcePin: {
+    type: Boolean,
+    default: false
+  },
+  isDialog: {
+    type: Boolean,
+    default: false
   }
+})
+
+const pinState = computed(() => {
+  if (props.forcePin) {
+    return false
+  }
+  return !props.onlyClose
+})
+
+const maxState = computed(() => {
+  if (props.forcePin) {
+    return false
+  }
+  return !props.onlyClose
+})
+
+const minState = computed(() => {
+  if (props.forcePin) {
+    return true
+  }
+  return !props.onlyClose
 })
 
 const closeType = computed(() => {
@@ -62,6 +91,9 @@ onMounted(async () => {
       onWindow('pin', { isPin: false })
       configStore.setPin(false)
     }
+  }
+  if (props.forcePin) {
+    onWindow('pin', { isPin: true })
   }
 })
 
@@ -91,10 +123,6 @@ const showOperateRecords = () => {
   console.log(treeExpand.value)
 }
 
-watch(current, () => {
-  recordRef.value?.setData(treeData.value)
-})
-
 
 
 const onCopy = async text => {
@@ -123,9 +151,6 @@ const showDebugContent = (operate_data, url, data) => {
 
 }
 
-defineExpose({
-  onClose
-})
 const toolbarRef = ref(null)
 const maxTitleLabelWidth = computed(() => {
   if (props.fulled) {
@@ -142,7 +167,6 @@ const filterMethod = (query, node) => {
   if (success.value == "-1") {
     // 全部
     search = node.title + (node.detail ?? "") + (node.statusMsg ?? "")
-    console.log('dd ', node, label);
   } else if (success.value == '0') {
     //成功
     search = node.title + (node.detail ?? "")
@@ -154,6 +178,42 @@ const filterMethod = (query, node) => {
   }
   return search.includes(query)
 }
+
+const trigger = ref(Date.now())
+const currentRef = ref(null)
+const currentTooltipDisabled = computed(() => {
+  trigger.value
+  if (currentRef.value) {
+    if (currentRef.value.offsetWidth < currentRef.value.scrollWidth) {
+      // 文本被截断
+      return false
+    }
+    return true
+  }
+})
+const updateTooltipDisabled = () => {
+  trigger.value++
+}
+watch(width, () => {
+  updateTooltipDisabled()
+})
+
+onMounted(() => {
+  nextTick(() => {
+    updateTooltipDisabled()
+  })
+})
+
+onActivated(() => {
+  nextTick(() => {
+    updateTooltipDisabled()
+  })
+})
+
+defineExpose({
+  onClose,
+  updateTooltipDisabled
+})
 
 </script>
 
@@ -171,16 +231,12 @@ const filterMethod = (query, node) => {
 
       </slot>
 
-      <el-popover 
-        v-if="configStore.operate && showRecords"
-        placement="bottom" title="操作记录（近15天）" trigger="click" hide-after="0" transition="none" 
-        :width="520"
-        :persistent="false" 
-         @after-enter="() => {
-        if (current) {
-          recordRef?.scrollToNode(current.id)
-        }
-        }">
+      <el-popover v-if="configStore.operate && showRecords" placement="bottom" title="操作记录（近15天）" trigger="click"
+        hide-after="0" transition="none" :width="520" :persistent="false" @after-enter="() => {
+    if (current) {
+      recordRef?.scrollToNode(current.id)
+    }
+  }">
         <el-space alignment="center" style="margin-bottom: 4px; height: 32px">
           <span class="t-gray f-12 ">总计 <span class="t-red f-12">{{ totalCount }}</span>条</span>
           <span class="t-gray f-12 ">今日 <span class="t-red f-12 ">{{ todayCount }}</span>条</span>
@@ -205,29 +261,25 @@ const filterMethod = (query, node) => {
 
         <el-tree-v2 :data="treeData" :props="treeProps" :default-expanded-keys="treeExpand" ref="recordRef" indent="4"
           :filter-method="filterMethod">
-          <template #default="{ node }">
-            <span v-if="!node.isLeaf">{{ node.label }} {{ ` (${node.data.children.length})` }}</span>
-            <div v-if="node.isLeaf" class="flex gap-4 flex-between w-full p-r-10">
-              <div class="flex flex-center gap-4">
-                <span class="t-gray t-n">{{ dateTimeFmt(node.data.create_time, 6) }}</span>
-                <span class="t-primary t-n"> {{ node.data.title }}</span>
-                <el-text v-if="node.data.status == 0" class="t-black t-n" :style="{ maxWidth: '220px' }" truncated> {{
-    node.data.detail?.replaceAll('<br>', '\n') }}</el-text>
-                <el-text v-else class="t-red t-n" :style="{ maxWidth: '220px' }" truncated> {{
-    node.data.statusMsg.replaceAll('<br>', '\n')
-  }}</el-text>
-
+          <template #default="{ node: { label, data, isLeaf } }">
+            <span v-if="!isLeaf">{{ label }} {{ ` (${data.children.length})` }}</span>
+            <div v-else class="flex gap-4 flex-between w-full" style="padding-right: 10px">
+              <div class="flex gap-4 w-full">
+                <span :class="['tree-item', data.status == 0 ? 't-black' : 't-red']" style="max-width: 400px;">
+                  <span class="t-gray t-n m-r-4">{{ dateTimeFmt(data.create_time, 6) }}</span>
+                  <span class="t-primary t-n m-r-4"> {{ data.title }}</span>
+                  <span v-if="data.status == 0" class="t-black" style="flex:1;">{{ data.detail?.replaceAll('<br>', ' ')
+                    }}</span>
+                  <span v-else class="t-red" style="flex:1;">{{ data.statusMsg.replaceAll('<br>', ' ') }}</span>
+                </span>
               </div>
-              <div class="flex flex-center gap-2">
-                <el-button type="info" link @click="showDebugContent(node.data.operate_data, node.data.url, node.data)">
-                  {{ "查看 " }}
-                  <el-icon>
-                    <SuccessFilled v-if="node.data.status == 0" style="color: #55AA55" />
-                    <CircleCloseFilled v-else color="red" />
-                  </el-icon>
-                </el-button>
-
-              </div>
+              <el-button type="info" link @click="showDebugContent(data.operate_data, data.url, data)">
+                {{ "查看 " }}
+                <el-icon>
+                  <SuccessFilled v-if="data.status == 0" style="color: #55AA55" />
+                  <CircleCloseFilled v-else color="red" />
+                </el-icon>
+              </el-button>
             </div>
           </template>
         </el-tree-v2>
@@ -237,16 +289,17 @@ const filterMethod = (query, node) => {
             <el-space alignment="center" v-if="showRecords && current">
               <span class="t-black f-12  t-n">{{ dateTimeFmt(current.create_time / 1000, 6) }}</span>
               <span class="t-primary t-n f-12"> {{ current.title }}</span>
-              <el-tooltip v-if="current.status == 0" :content="current.detail" show-after='0' :hide-after='0'
-                transition="none" raw-content>
-                <el-text class="t-black t-n f-12" :style="{ maxWidth: maxTitleLabelWidth + 'px' }" truncated> {{
-    current.detail?.replaceAll('<br>', ' ') }}</el-text>
-              </el-tooltip>
-              <el-tooltip v-else :content="current.statusMsg" raw-content>
-                <el-text class="t-red t-n f-12" :style="{ maxWidth: maxTitleLabelWidth + 'px' }" truncated>
+              <el-tooltip :disabled="currentTooltipDisabled"
+                :content="current.status == 0 ? current.detail?.replaceAll('<br>', ' ') : current.statusMsg?.replaceAll('<br>', ' ')">
+                <span v-if="current.status == 0" class="t-black t-n f-12 tree-item" ref="currentRef"
+                  :style="{ maxWidth: maxTitleLabelWidth + 'px' }"> {{ current.detail?.replaceAll('<br>', ' ')
+                  }}</span>
+                <span v-else ref="currentRef" class="t-red t-n f-12 tree-item"
+                  :style="{ maxWidth: maxTitleLabelWidth + 'px' }">
                   {{ current.statusMsg?.replaceAll('<br>', ' ') }}
-                </el-text>
+                </span>
               </el-tooltip>
+
               <el-icon>
                 <SuccessFilled v-if="current.status == 0" style="color: #55AA55" />
                 <CircleCloseFilled v-else color="red" />
@@ -271,13 +324,13 @@ const filterMethod = (query, node) => {
       </el-space>
 
 
-      <el-button v-if="!onlyClose" class="win-option win-pin" @click="onPin" :title="isPin ? '取消固定' : '固定'" text>
+      <el-button v-if="pinState" class="win-option win-pin" @click="onPin" :title="isPin ? '取消固定' : '固定'" text>
         <el-icon class="iconfont" :class="[isPin ? 'icon-pin' : 'icon-unpin']"></el-icon>
       </el-button>
-      <el-button v-if="!onlyClose" class="win-option" @click="onMinimize" title="最小化" text>
+      <el-button v-if="minState" class="win-option" @click="onMinimize" title="最小化" text>
         <el-icon :class="['iconfont', 'icon-min']"></el-icon>
       </el-button>
-      <el-button v-if="!onlyClose" class="win-option" @click="onMaximize" :title="isMax ? '向下还原' : '最大化'" text>
+      <el-button v-if="maxState" class="win-option" @click="onMaximize" :title="isMax ? '向下还原' : '最大化'" text>
         <el-icon class="iconfont" :class="[isMax ? 'icon-normal' : 'icon-max']"></el-icon>
       </el-button>
       <el-button class="win-option danger" @click="onClose" title="关闭" text>
@@ -320,6 +373,17 @@ const filterMethod = (query, node) => {
 
 
 <style scoped>
+:deep(.el-tree-node__content) {
+  width: 100% !important;
+}
+
+.tree-item {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .toolbar {
   display: flex;
   width: 100%;

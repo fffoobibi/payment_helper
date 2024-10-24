@@ -181,7 +181,6 @@ const onSearch = async (page = null, pageSize = null) => {
         post.end_time = formatDate(new Date, { trancate: 'd' })
     }
     post.is_review = post.is_review.join(',')
-    console.log('post ', post);
     try {
         const resp = await api.creditCard.getList(post)
         queryForm.tableData = resp.list
@@ -237,6 +236,13 @@ const tableHeight = computed(
 
 onActivated(() => {
     tableHeight.value = 1
+})
+
+const selectedMsg = computed(() => {
+    if (checkRows.value.length === 0) {
+        return ''
+    }
+    return '已选择: ' + checkRows.value.length + "条记录"
 })
 
 const reviewMsg = (is_review) => {
@@ -338,6 +344,7 @@ const editNote = (row) => {
     queryForm.edit.note = row.note
     queryForm.edit.payment_id = row.payment_id
 }
+
 const onEditNote = async () => {
     try {
         await api.creditCard.modifyNote({ note: queryForm.edit.note, payment_id: queryForm.edit.payment_id })
@@ -349,12 +356,11 @@ const onEditNote = async () => {
     }
 }
 
-const goto = account_id => {
+
+const goto = (account_id, review_args) => {
     tabs.currentTab = '信用卡管理'
     queryForm.search.account_id = account_id
-    queryForm.search.is_review = [
-        '1', '2'
-    ]
+    queryForm.search.is_review = review_args ?? ['1', '2']
     onSearch()
 }
 
@@ -412,20 +418,6 @@ const goto = account_id => {
                                 </el-button>
                             </el-form-item>
                             <el-form-item>
-                                <!-- <el-skeleton style="width: 240px" :loading="queryForm.searching" animated :throttle="1000" :rows="0">
-                                    <template #template>
-                                        <el-skeleton-item variant="text"/>
-                                    </template>
-<div>
-    <span style="background-color: #6DBEAD; color: white; padding: 4px 4px; margin-right: 10px; font-size: 10pt">待核销总额
-        {{ numberFmt(queryForm.statistics_pending) + " " + queryForm.statistics_currency
-        }}</span>
-    <span style="background-color: #9BA9E6; color: white; padding: 4px 4px; font-size: 10pt">核销总额
-        {{ numberFmt(queryForm.statistics_settled) + " " + queryForm.statistics_currency
-        }}</span>
-</div>
-
-</el-skeleton> -->
                                 <div v-loading="queryForm.searching">
                                     <span
                                         style="background-color: #6DBEAD; color: white; padding: 4px 4px; margin-right: 10px; font-size: 10pt">待核销总额
@@ -436,15 +428,10 @@ const goto = account_id => {
                                         {{ numberFmt(queryForm.statistics_settled) + " " + queryForm.statistics_currency
                                         }}</span>
                                 </div>
-
-                                <el-tooltip content="农行：账单日17日，还款日6日<br>工行：账单日19日，还款日6日" raw-content>
-                                    <el-button link style="margin-left: 10px;">
-                                        <el-icon>
-                                            <QuestionFilled />
-                                        </el-icon>
-                                    </el-button>
-                                </el-tooltip>
-
+                                <div class="flex" style="position: fixed; top: 30px; right: 10px;z-index: 1000">
+                                    <span class="t-red f-12 m-l-4 ">农行账单日17日，还款日6日, 工行账单日19日，还款日6日</span >
+                                </div>
+                                <span class="t-red m-l-4">{{ selectedMsg }}</span>
 
                             </el-form-item>
                         </el-form>
@@ -462,9 +449,16 @@ const goto = account_id => {
                                         </div>
                                         <div>采购单号： <span class="user-black">{{ row.purchase_number || "一一" }}</span>
                                         </div>
-                                        <div>创建人：<span class="user-black">{{ row.creator + " - " + (row.department_name
-                || "一一")
-                                                }}</span>
+                                        <div v-if="row.is_review == 0">
+                                            创建人：<span class="user-black">{{ row.creator + " - " + (row.department_name
+                ||
+                "一一") }}</span>
+                                        </div>
+                                        <div v-else-if="row.is_review == 1">
+                                            核销人：<span class="user-black">{{ row.operator }}</span>
+                                        </div>
+                                        <div v-else>
+                                            复核人：<span class="user-black">{{ row.reviewer }}</span>
                                         </div>
                                     </div>
                                 </template>
@@ -484,11 +478,20 @@ const goto = account_id => {
                             </el-table-column>
                             <el-table-column label="时间">
                                 <template #default="{ row }">
-                                    <div>创建时间：<span class="user-black">{{ timestampToFormattedString(row.create_time)
+                                    <div v-if="row.is_review == 0">
+                                        创建：<span class="user-black">{{ timestampToFormattedString(row.create_time)
                                             }}</span>
                                     </div>
-                                    <div v-if="row.is_review == 1">核销时间：<span class="user-black">{{
-                timestampToFormattedString(row.update_time) }}</span></div>
+                                    <div v-else-if="row.is_review == 1">
+                                        核销：<span class="user-black">{{ timestampToFormattedString(row.update_time)
+                                            }}</span>
+                                    </div>
+                                    <div v-else>
+                                        复核：<span class="user-black">{{ timestampToFormattedString(row.review_time)
+                                            }}</span>
+                                    </div>
+                                    <!-- <div v-if="row.is_review == 1">核销时间：<span class="user-black">{{
+                timestampToFormattedString(row.update_time) }}</span></div> -->
                                 </template>
                             </el-table-column>
                             <el-table-column label="备注">
@@ -652,6 +655,11 @@ h4 {
     background-color: white !important;
     border: none !important;
     border-bottom: 1px solid #eee !important;
+    -webkit-app-region: drag;
+}
+
+:deep(.el-tabs__nav-scroll div) {
+    -webkit-app-region: no-drag;
 }
 
 :deep(.el-tabs__header),

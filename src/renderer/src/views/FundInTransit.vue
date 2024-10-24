@@ -3,11 +3,12 @@ import { reactive, ref, watch, computed, onMounted, onActivated } from 'vue'
 import { timestampToFormattedString, numberFmt, subNumbers, addNumbers } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { setUpCapture } from "@/utils/tools"
-import { useUserStore, useAccountStore } from "@/stores"
+import { useUserStore, useAccountStore, useScreenShortStore } from "@/stores"
 import api from "@/api"
 import Message from "@/utils/message"
 import message from '@/utils/message'
 
+const screen = useScreenShortStore()
 const store = useUserStore()
 const bank = useAccountStore()
 const tableData = ref([])
@@ -500,11 +501,18 @@ const handleClose = () => {
   resetForm()
 }
 
-const crop = setUpCapture(src => {
-  form.post.attachment_list.push({
-    url: src
-  })
+const crop = screen.onImageShortCutDown((route, src) => {
+  if (route.name === 'fundInTransit') {
+    form.post.attachment_list.push({
+      url: src
+    })
+  }
 })
+
+const onCopy = async val=>{
+  await navigator.clipboard.writeText(val)
+  message.success('已复制！')
+}
 
 </script>
 
@@ -520,7 +528,8 @@ const crop = setUpCapture(src => {
       <div class="pannel">
         <el-form :inline="true" :model="queryForm" class="demo-form-inline" ref="queryFormRef">
           <el-form-item label="提现银行">
-            <el-input v-model="queryForm.out_account_alias_name" placeholder="支持模糊查找" clearable  @keyup.enter="onSearch(1, null)"/>
+            <el-input v-model="queryForm.out_account_alias_name" placeholder="支持模糊查找" clearable
+              @keyup.enter="onSearch(1, null)" />
           </el-form-item>
           <el-form-item label="日期">
             <el-select v-model="queryForm.condition" placeholder="">
@@ -549,7 +558,7 @@ const crop = setUpCapture(src => {
           <template #empty>
             <el-empty :image-size="200" />
           </template>
-          <el-table-column label="序号" width="60">
+          <el-table-column label="#" width="50">
             <template #default="scope">
               <div>{{ scope.$index + 1 + (pageInfo.currentPage - 1) * pageInfo.pageSize }}</div>
             </template>
@@ -557,51 +566,61 @@ const crop = setUpCapture(src => {
           <el-table-column label="摘要信息" width="254">
             <template #default="scope">
               <div :class="{ audit: scope.row.voucher_ext_last.is_audit == 1 }">
-                <div>编号：<span class="user-black">{{ scope.row.sn }}</span></div>
-                <div>状态：<span class="bold" :style="{ color: scope.row.status === 1 ? 'red' : 'green' }">{{
+                <div><span class="user-black">{{ scope.row.sn }}</span></div>
+                <div><span class="bold" :style="{ color: scope.row.status === 1 ? 'red' : 'green' }">{{
           scope.row.status === 1 ? '在途中' :
             '已到账' }}</span></div>
-                <div>备注：<span class="user-black">{{ scope.row.note }}</span></div>
+                <div><span class="user-black">{{ scope.row.note }}</span></div>
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="银行信息">
+          <el-table-column label="提现/到账银行">
             <template #default="scope">
-              <div>提现银行：<span class="user-black">{{ scope.row.out_account_alias_name }}</span></div>
-              <div>到账银行：<span class="user-black">{{ scope.row.in_account_alias_name }}</span></div>
-              <div>提现时间：<span class="user-black">{{ timestampToFormattedString(scope.row.create_time) }}</span></div>
+              <div><span class="t-primary">{{ scope.row.out_account_alias_name }}</span></div>
+              <div><span class="t-black">{{ scope.row.in_account_alias_name }}</span></div>
+              <div><span class="user-black">{{ timestampToFormattedString(scope.row.create_time) }}</span></div>
+            </template>
+          </el-table-column>
+          <el-table-column label="提现/到账/手续费金额" width="170">
+            <template #default="{ row }">
+              <div class="t-black"><span class="t-black b-500">{{ numberFmt(row.origin_amount) }}</span> <span
+                  class="b-600 t-red">{{ row.currency }}</span></div>
+              <div class="t-black"><span class="t-black b-500">{{ numberFmt(row.received_amount) }}</span> <span
+                  class="b-600 t-red">{{ row.received_currency }}</span></div>
+              <div class="t-black"><span class="t-black b-500">{{ numberFmt(row.commission) }}</span></div>
+
+
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="260">
+          <el-table-column label="创建/操作" width="140">
             <template #default="scope">
-              <p>创建：<span class="user-black">{{ scope.row.creator + `(${scope.row.department_name})` }}</span></p>
-              <el-space>
-                <p>操作：</p>
+              <p><span class="t-black">{{ scope.row.creator + `(${scope.row.department_name})` }}</span></p>
+              <div class="flex flex-wrap operate gap-2">
                 <el-button size="default" type="primary" @click="viewTransit(scope.row)" link>
                   查看
                 </el-button>
-                <el-button v-if="store.canModify && scope.row.voucher_ext_last.is_audit == 0" size="default"
-                  type="primary" @click="editTransit(scope.row)" link>
+                <el-button v-if="store.canModify && scope.row.voucher_ext_last.is_audit == 0" type="primary"
+                   @click="editTransit(scope.row)" link>
                   编辑
                 </el-button>
-                <el-button v-if="store.canModifyNote" size="default" type="primary" @click="noteTransit(scope.row)"
+                <el-button v-if="store.canModifyNote"  @click="noteTransit(scope.row)" type="primary"
                   link>
                   备注
                 </el-button>
-                <el-button v-if="store.canCancel && scope.row.voucher_ext_last.is_audit == 1" size="default"
-                  type="danger" @click="cancelTransit(scope.row)" link>
+                <el-button v-if="store.canCancel && scope.row.voucher_ext_last.is_audit == 1"  type="primary"
+                  @click="cancelTransit(scope.row)" link>
                   撤销
                 </el-button>
-                <el-button v-if="store.canAudit && scope.row.voucher_ext_last.is_audit == 1" size="default"
-                  type="success" @click="auditTransit(scope.row)" link>
+                <el-button v-if="store.canAudit && scope.row.voucher_ext_last.is_audit == 1"  type="primary"
+                  @click="auditTransit(scope.row)" link>
                   审核
                 </el-button>
-                <el-button v-if="scope.row.voucher_ext_last.is_audit == 0 && scope.row.status == 1" size="default"
-                  type="primary" @click="arivalTransit(scope.row)" link>
+                <el-button v-if="scope.row.voucher_ext_last.is_audit == 0 && scope.row.status == 1"  type="primary"
+                  @click="arivalTransit(scope.row)" link>
                   到账
                 </el-button>
-              </el-space>
+              </div>
 
             </template>
           </el-table-column>
@@ -612,15 +631,27 @@ const crop = setUpCapture(src => {
           :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
           :total="pageInfo.totalCount" />
 
-        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" destroy-on-close
+
+        <!-- 新增/编辑 -->
+        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" destroy-on-close 
           :close-on-click-modal="false" ref="drawRef" @closed="resetDetails">
           <template #default>
-            <el-form :model="form" label-width="auto" style="width:100%" ref="formRef" :rules="formRules">
+            <el-form :model="form" label-width="auto" style="width:100%" ref="formRef" :rules="formRules" class="no-drag">
 
               <el-form-item label="提现账户" prop="post.out_account_id" required :show-message="false">
                 <div class="form-item-row" v-loading="formState.out_account_id_loading">
                   <el-select v-model="form.post.out_account_id" filterable
                     :disabled="formState.getDisabledState('out_account_id')">
+
+                    <template #label="{label}">
+                      <div class="flex flex-between ">
+                        <span class="t-black">{{ label }}</span>
+                        <el-button link @click="onCopy(label)">
+                          <el-icon><CopyDocument /></el-icon>
+                        </el-button>
+
+                      </div>
+                    </template>
                     <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
                       :value="item.id" />
                   </el-select>
@@ -708,7 +739,7 @@ const crop = setUpCapture(src => {
             </el-form>
           </template>
           <template #footer>
-            <div style="flex: auto">
+            <div style="flex: auto" class="no-drag">
               <el-tooltip effect="dark" content="创建在途资金后, 系统会自动创建支出记录, 无需手动创建支出记录!" placement="top">
                 <el-button link>
                   <el-icon>
@@ -753,7 +784,7 @@ const crop = setUpCapture(src => {
           </template>
         </el-dialog>
 
-        <el-dialog v-model="form.auditShow" title="审核" width="500" destroy-on-close :close-on-click-modal="false">
+        <el-dialog v-model="form.auditShow" title="审核" width="500" destroy-on-close :close-on-click-modal="false" >
           <p>修改人: {{ form.auditPost.applicant }}</p>
           <p>提交时间: {{ timestampToFormattedString(form.auditPost.application_time) }}</p>
           <el-form-item label="修改原因: ">
@@ -781,6 +812,12 @@ h4 {
   font-weight: bold;
 }
 
+:deep(.operate button){
+  padding: 0px !important;
+  margin: 2px !important;
+  margin-left: 0px!important;
+  /* margin-right: 2px !important; */
+}
 .form-item-row {
   display: flex;
   flex-direction: column;

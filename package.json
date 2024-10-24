@@ -1,6 +1,6 @@
 {
   "name": "payment_helper",
-  "version": "2.0.3",
+  "version": "2.0.6",
   "description": "An Electron application with Vue",
   "main": "./out/main/index.js",
   "author": "https://www.baizhoucn.com",
@@ -55,6 +55,7 @@
     "node-gyp": "^10.2.0",
     "prettier": "^3.3.2",
     "vite": "^5.3.1",
+    "vite-plugin-monaco-editor": "^1.1.0",
     "vue": "^3.4.30"
   }
 }
