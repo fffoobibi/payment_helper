@@ -18,15 +18,16 @@ const accountsLoading = ref(true)
 const accounts = computedAsync(async () => {
     try {
         const resp = await api.creditCard.getAccounts({ user_id: store.user.id })
-        const rs = resp.list
-        if (rs.length) {
-            queryForm.search.account_id = rs[0].account_id
+        queryForm.search.account_id = resp.accounts.list[0].account_id
+        return {
+            accounts: resp.accounts.list,
+            companies: resp.companies.list
         }
-        return rs
     } catch (error) {
         return []
     }
-}, [], accountsLoading)
+}, { accounts: [], companies: [] }, accountsLoading)
+
 
 // 0 核销 1 复核
 const mode = computed(() => {
@@ -143,8 +144,9 @@ const queryForm = reactive({
         start_time: formatDate(shortcuts[1].value(), { trancate: 'd' }),
         end_time: formatDate(new Date, { trancate: 'd' }),
         account_id: null,
+        company_id: [],
         content: '',
-        is_review: ['0']
+        is_review: ['0'],
     },
     searching: true,
     statistics_currency: null,
@@ -180,6 +182,7 @@ const onSearch = async (page = null, pageSize = null) => {
     if (!post.end_time) {
         post.end_time = formatDate(new Date, { trancate: 'd' })
     }
+    post.company_id = post.company_id.join(',')
     post.is_review = post.is_review.join(',')
     try {
         const resp = await api.creditCard.getList(post)
@@ -357,10 +360,11 @@ const onEditNote = async () => {
 }
 
 
-const goto = (account_id, review_args) => {
+const goto = (account_id, review_args, company_id) => {
     tabs.currentTab = '信用卡管理'
     queryForm.search.account_id = account_id
     queryForm.search.is_review = review_args ?? ['1', '2']
+    queryForm.search.company_id = company_id
     onSearch()
 }
 
@@ -373,10 +377,10 @@ const goto = (account_id, review_args) => {
                 <el-tab-pane label="信用卡管理" name="信用卡管理">
                     <div class="pannel">
                         <el-form :inline="true" :model="queryForm.search" class="query-form-inline" ref="queryFormRef">
-                            <el-form-item label="账户" v-loading="accountsLoading">
-                                <el-select v-model="queryForm.search.account_id" placeholder="请选择" default-first-option>
-                                    <el-option v-for="(item, index) in accounts" :key="index" :label="item.account_name"
-                                        :value="item.account_id"></el-option>
+                            <el-form-item label="" v-loading="accountsLoading">
+                                <el-select v-model="queryForm.search.account_id" placeholder="请选择" default-first-option style="width: 210px">
+                                    <el-option v-for="(item, index) in accounts.accounts" :key="index"
+                                        :label="item.account_name" :value="item.account_id"></el-option>
                                 </el-select>
                             </el-form-item>
                             <el-form-item>
@@ -388,6 +392,12 @@ const goto = (account_id, review_args) => {
                                     value-format="YYYY-MM-DD" format="YY/MM/DD" placeholder="结束"
                                     :shortcuts="shortcuts" />
 
+                            </el-form-item>
+                            <el-form-item>
+                                <el-select style="width: 170px" v-model="queryForm.search.company_id" multiple>
+                                    <el-option v-for="item in accounts.companies" :label="item.company_name"
+                                        :value="item.id"></el-option>
+                                </el-select>
                             </el-form-item>
                             <el-form-item>
                                 <el-input v-model="queryForm.search.content" placeholder="钉钉编号/采购单号"
@@ -429,7 +439,7 @@ const goto = (account_id, review_args) => {
                                         }}</span>
                                 </div>
                                 <div class="flex" style="position: fixed; top: 30px; right: 10px;z-index: 1000">
-                                    <span class="t-red f-12 m-l-4 ">农行账单日17日，还款日6日, 工行账单日19日，还款日6日</span >
+                                    <span class="t-red f-12 m-l-4 ">农行账单日17日，还款日6日, 工行账单日19日，还款日6日</span>
                                 </div>
                                 <span class="t-red m-l-4">{{ selectedMsg }}</span>
 
@@ -476,8 +486,9 @@ const goto = (account_id, review_args) => {
             }}</span></div>
                                 </template>
                             </el-table-column>
-                            <el-table-column label="时间">
+                            <el-table-column label="公司/时间">
                                 <template #default="{ row }">
+                                    <div>公司: {{ row.company_name }}</div>
                                     <div v-if="row.is_review == 0">
                                         创建：<span class="user-black">{{ timestampToFormattedString(row.create_time)
                                             }}</span>
@@ -516,7 +527,7 @@ const goto = (account_id, review_args) => {
                 </el-tab-pane>
 
                 <el-tab-pane label="信用卡报销管理" name="信用卡报销管理" v-if="store.canCreditCardReimburse">
-                    <CreditCardReimbursement @toCard="goto"></CreditCardReimbursement>
+                    <CreditCardReimbursement @toCard="goto" :accounts="accounts.accounts"></CreditCardReimbursement>
                 </el-tab-pane>
             </el-tabs>
         </template>

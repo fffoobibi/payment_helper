@@ -271,7 +271,7 @@ screenStore.onImageShortCutDown((route, src, tag, resetTag) => {
   if (route.name == 'bankTransfer') {
     form.post.attachment_list.push({ url: src })
   }
-}, (set)=>{
+}, (set) => {
 
 })
 // watch(()=>screenStore.image, src =>{
@@ -428,6 +428,11 @@ const submitAuditTransfer = async () => {
   }
 }
 
+const onCopy = async v => {
+  await navigator.clipboard.writeText(v)
+  message.success('已复制!')
+}
+
 </script>
 
 <template>
@@ -531,7 +536,7 @@ const submitAuditTransfer = async () => {
           v-model:page-size="queryForm.page.pageSize" background="true" :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper" :total="queryForm.page.totalCount" />
 
-        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%"
+        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="60%"
           :close-on-click-modal="false" destroy-on-close ref="drawRef" @closed="() => {
           resetForm()
         }">
@@ -542,6 +547,16 @@ const submitAuditTransfer = async () => {
                 <div class="form-item-detail" v-loading="formState.out_account_id_loading">
                   <el-select v-model="form.post.out_account_id" filterable
                     :disabled="formState.getDisabledState('out_account_id')">
+                    <template #label="{ label }">
+                      <div class="flex flex-between ">
+                        <span class="t-black">{{ label }}</span>
+                        <el-button link @click.stop="onCopy(label)">
+                          <el-icon>
+                            <CopyDocument />
+                          </el-icon>
+                        </el-button>
+                      </div>
+                    </template>
                     <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
                       :value="item.id" />
                   </el-select>
@@ -589,6 +604,16 @@ const submitAuditTransfer = async () => {
                 <div class="form-item-detail" v-loading="formState.in_account_id_loading">
                   <el-select v-model="form.post.in_account_id" filterable
                     :disabled="formState.getDisabledState('in_account_id')">
+                    <template #label="{ label }">
+                      <div class="flex flex-between ">
+                        <span class="t-black">{{ label }}</span>
+                        <el-button link @click.stop="onCopy(label)">
+                          <el-icon>
+                            <CopyDocument />
+                          </el-icon>
+                        </el-button>
+                      </div>
+                    </template>
                     <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
                       :value="item.id" />
                   </el-select>
@@ -610,7 +635,7 @@ const submitAuditTransfer = async () => {
               <el-form-item label="到账金额" prop="received_amount" required :show-message="false">
                 <div style=" display: flex; justify-content: center;width: 100%;">
                   <el-input-number v-model="form.post.received_amount"
-                    :disabled="formState.getDisabledState('received_amount')" :precision="2" :controls="false"
+                    :disabled="formState.getDisabledState('received_amount')" :precision="2" :controls="false" :validate-event="false"
                     style="width: 70%">
                     <template #suffix>
                       <p>{{ form.currency }}</p>

@@ -419,9 +419,19 @@ defineExpose({
                     </div>
                 </el-form-item>
                 <el-form-item label="付款账号" prop="account_id" required>
-                    <el-select v-model="form.account_id" filterable :empty-values="[null, undefined]"
-                        :value-on-clear="null">
-                        <el-option v-for="item in accounts" :label="item.label" :value="item.value"></el-option>
+                    <el-select v-model="form.account_id" filterable :empty-values="[null, undefined]" :value-on-clear="null">
+                        <template #label="{ label }">
+                            <div class="flex flex-between ">
+                                <span class="t-black">{{ label }}</span>
+                                <el-button link @click.stop="onCopy(label)" v-if="label">
+                                    <el-icon>
+                                        <CopyDocument />
+                                    </el-icon>
+                                </el-button>
+                            </div>
+                            </template>
+                        <el-option v-for="item in accounts" :label="item.label" :value="item.value">
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item label="支付方式" v-if="airwallexStore.airwallex_binding.includes(form.account_id)" required>

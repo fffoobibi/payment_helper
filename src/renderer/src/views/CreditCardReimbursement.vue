@@ -4,7 +4,29 @@ import { useClient } from "../utils/client"
 import api from "@/api"
 import { formatDate, numberFmt, amountFormatter, amountParser, until, getMonthDaysFromDate } from "@/utils/format"
 import message from "../utils/message";
+import { computed } from "vue";
 const { height } = useClient()
+
+const props = defineProps({
+    accounts: Array
+})
+
+const accountsInfo = computed(() => {
+    const r = {}
+    props.accounts.forEach(v => {
+        r[v.account_name] = v
+    })
+    return r
+})
+
+const getAccountDetail = account_name => {
+    return accountsInfo.value[account_name].detail
+}
+
+const getAccountTip = account_name => {
+    const c = accountsInfo.value[account_name].bank
+    return (c === '工行') ? '账单日19日，还款日6日' : (c === '农行') ? '账单日17日，还款日6日' : ''
+}
 
 const emits = defineEmits(['toCard'])
 
@@ -62,7 +84,17 @@ const onSearch = async () => {
             d.end_time = formatDate(new Date, { trancate: 'd' })
         }
         const resp = await api.creditCard.getReimburseList(d)
+
         data.value = resp.map(item => {
+            const rs = {}
+            item.currency_list.forEach(value => {
+                if (!rs[value.company_name]) {
+                    rs[value.company_name] = [value]
+                } else {
+                    rs[value.company_name].push(value)
+                }
+            })
+            item.currency_list_group = rs
             if (item.id === null) {
                 return { ...item, disabled: false, checked: false }
             } else {
@@ -101,6 +133,23 @@ const onReimburse = async () => {
     }
 }
 
+const onReimburseItem = async (v, company_id) => {
+    try {
+        item.value = v
+        const d = await api.creditCard.getReimburseDatail({ account_id: item.value.account_id, review_date: item.value.review_date })
+        formAdd.account_id = d.account_id
+        formAdd.account_name = d.account_name
+        formAdd.list = d.list
+        formAdd.amount = d.total_amount_cny
+        formAdd.review_date = item.value.review_date
+        formAdd.company_id = company_id
+        formAdd.note = ''
+        show.value = true
+    } catch (err) {
+
+    }
+}
+
 const show = ref(false)
 const item = ref(null)
 const formRef = ref(null)
@@ -109,6 +158,7 @@ const formAdd = reactive({
     review_date: '',
     amount: '',
     note: '',
+    company_id: '',
 
     account_name: '',
     list: [],
@@ -120,11 +170,12 @@ const submitReimburse = async () => {
                 const d = { ...formAdd }
                 delete d.account_name
                 delete d.list
-                await api.creditCard.reimburse(d)
-                show.value = false
-                message.success('报销已提交!')
-                onSearch()
-                item.value = null
+                console.log('d ==> ', d)
+                // await api.creditCard.reimburse(d)
+                // show.value = false
+                // message.success('报销已提交!')
+                // onSearch()
+                // item.value = null
             } catch (err) {
 
             }
@@ -152,7 +203,7 @@ const submitReimburse = async () => {
 
             <el-form-item>
                 <el-button type="primary" @click="onSearch">查询</el-button>
-                <el-button type="danger" @click="onReimburse">报销</el-button>
+                <!-- <el-button type="danger" @click="onReimburse">报销</el-button> -->
                 <el-text type="danger" style="margin-left: 10px;" size="default"> 共{{ data.length }}条记录</el-text>
             </el-form-item>
         </el-form>
@@ -163,16 +214,188 @@ const submitReimburse = async () => {
         </el-empty>
 
         <el-scrollbar v-else :height="height - 160">
-            <el-radio-group style="width: 100%;" v-model="item">
+            <div v-for="item in data" :key=item.id class="flex flex-col p-r-10 container"
+                style="background-color: white; margin-bottom: 24px;padding: 10px;">
+                <div class="container-info">
+                    <div class="flex flex-between p-r-10">
+                        <span class="t-black t-n f-14 b-600">{{ item.account_name }}</span>
+                        <div>
+                            <span class="t-gray f-12 t-n m-r-10">{{ item.account_name.includes('工行') ? '账单日19日，还款日6日' :
+                    (item.account_name.includes('农行') ? '账单日17日，还款日6日' : '') }}</span>
+                            <span class="t-black t-n f-12 b-600">{{ item.review_date }}</span>
+                        </div>
+                    </div>
+
+                    <div class="line"></div>
+                    <div v-for="(company_name, index) in Object.keys(item.currency_list_group)" :key="company_name"
+                        :class="item.id == null ? '' : 'has-reimburse'">
+                        <div class="flex p-r-10 flex-c-center">
+                            <img v-if="company_name.includes('策美')" src="../assets/images/md-logo.png" height="20"
+                                width="20" class="m-r-10"></img>
+                            <img v-else src="../assets/images/bz-logo.png" height="18" width="18" class="m-r-10"></img>
+                            <span class="t-black f-13 b-600 m-r-20">{{ company_name }}</span>
+                            <el-button type="primary" link @click="() => {
+                    const args = []
+                    if (item.un_reviewed_count) {
+                        args.push('1')
+                    }
+                    if (item.reviewed_count) {
+                        args.push('2')
+                    }
+                    const r = item.currency_list_group[company_name]
+                    const company_id = r[0].company_id
+                    emits('toCard', item.account_id, args, [company_id])
+                }">
+                                查看记录
+                            </el-button>
+                        </div>
+
+                        <div class="flex flex-row m-t-10 flex-c-center row">
+                            <!-- 已报销 -->
+                            <template v-if="item.id != null">
+                                <el-progress style="width: 300px" class="m-r-10" :text-inside="true" :stroke-width="20"
+                                    :percentage="100" status="success">
+                                    <div class="flex flex-start w-full">
+                                        <span class="p-l-10 f-11">已复核 {{ item.reviewed_count }}笔</span>
+                                    </div>
+                                </el-progress>
+                                <span class="t-black m-r-4 f-12 b-600">{{ item.reviewed_count }}笔</span>
+                                <span class="t-gray m-r-4 f-12 b-600">/</span>
+                                <span class="t-black m-r-4 f-12 b-600">{{ item.reviewed_count + item.un_reviewed_count }}笔</span>
+                            </template>
+
+                            <!-- 未报销 -->
+                            <template v-else>
+                                <div v-for="value in item.currency_list_group[company_name]" :key="value.currency"
+                                    class="flex flex-col" style="width: 360px">
+                                    <!-- 全部复核 -->
+                                    <template v-if="value.un_reviewed_amount == 0">
+                                        <span class="t-red b-500">{{ value.reviewed_count }}笔&nbsp; {{ value.currency }}
+                                            {{ value.reviewed_amount }}
+                                            <span class="t-green t-n f-12">
+                                                &nbsp;&nbsp;全部复核结束 <el-icon>
+                                                    <SuccessFilled />
+                                                </el-icon>
+                                            </span>
+                                        </span>
+                                    </template>
+                                    <template v-else>
+
+                                        <span class="t-red b-500">{{ value.un_reviewed_count }}笔&nbsp;
+                                            {{ value.currency }} {{ value.un_reviewed_amount }}
+                                            <span class="t-red t-n f-12">
+                                                &nbsp;未复核
+                                            </span>
+                                            <span v-if="value.reviewed_count" class="t-red b-500">{{
+                    value.reviewed_count }}笔 &nbsp;&nbsp; {{ value.currency }}
+                                                {{ value.reviewed_amount }}
+                                                <el-text class="t-green t-n f-12" size="small">
+                                                    &nbsp;已复核 <el-icon>
+                                                        <SuccessFilled />
+                                                    </el-icon>
+                                                </el-text>
+                                            </span>
+                                        </span>
+                                    </template>
+
+                                </div>
+                            </template>
+
+                            <div style="flex:1;margin-left: 30px;" class="w-full flex flex-between">
+
+                                <div class="flex">
+                                    <div class="flex flex-col flex-between" style="width: 160px;">
+                                        <div>
+                                            <span class="t-gray f-12 m-r-10">报销人: </span>
+                                            <span class="t-black f-12 b-600">{{ item.creator || "--" }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="t-gray f-12 m-r-10">报销金额:</span>
+                                            <span class="t-black f-12 b-600">{{ numberFmt(item.amount, true, "--") + " CNY"}}</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col" style="width: 200px;">
+                                        <div>
+                                            <span class="t-gray f-12 m-r-10">报销日期:</span>
+                                            <span class="t-black f-12 b-600">{{ item.day_date || "--" }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="t-gray f-12 m-r-10">钉钉编号:</span>
+                                            <span class="t-black f-12 b-600">{{ item.approval_number || '--' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 报销操作 -->
+                                <template v-if="item.id == null">
+                                    <el-button type="danger m-r-20" @click="() => {
+                                        const r = item.currency_list_group[company_name]
+                                        const company_id = r[0].company_id
+                                        onReimburseItem(item, company_id)}"> 
+                                        报销
+                                    </el-button>
+                                </template>
+
+                            </div>
+                        </div>
+
+                        <!-- 详情 -->
+                        <div class="flex-col flex-c-center gap-4 m-t-10 m-r-4 details">
+                            <div class="m-t-4 m-r-4" v-for="value in item.currency_list_group[company_name]" :key="value.id">
+                                <!-- 已报销 -->
+                                <template v-if="item.id != null">
+                                    <el-tag type="primary" size="small">{{ value.currency }}</el-tag>
+                                    <el-text class="t-green m-l-4 t-n" size="small">已复核 {{ value.reviewed_count }}笔
+                                        <el-text class="p-l-10 t-n">
+                                            {{ value.currency }} {{ value.reviewed_amount }} <el-icon class="t-green"><SuccessFilled /></el-icon>
+                                        </el-text>
+                                        
+                                        <!-- <el-text class="p-l-10 t-red" size="small">
+                                                未复核 {{value.un_reviewed_count}}笔
+                                            </el-text>
+                                            <el-text class="p-l-10">
+                                                {{ value.currency }} {{ value.un_reviewed_amount }}
+                                            </el-text> -->
+                                    </el-text>
+                                </template>
+                                <!-- 未报销 -->
+                                <template v-else>
+                                    <el-tag type="primary" size="small">{{ value.currency }}</el-tag>
+                                    <el-text class="t-green m-l-4" size="small">已复核 {{ value.reviewed_count }}笔
+                                        <el-text class="p-l-10">
+                                            {{ value.currency }} {{ value.reviewed_amount }}
+                                        </el-text>
+                                        <el-text class="p-l-10 t-red" size="small">
+                                            未复核 {{ value.un_reviewed_count }}笔
+                                        </el-text>
+                                        <el-text class="p-l-10">
+                                            {{ value.currency }} {{ value.un_reviewed_amount }}
+                                        </el-text>
+                                    </el-text>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div v-if="Object.keys(item.currency_list_group).length > 1 && (index < item.currency_list_group[company_name].length)" class="dot-line"></div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- <el-radio-group style="width: 100%;" v-model="item">
                 <div v-for="item in data" :key=item.id class="container">
                     <div class="container-info">
-                        <div style="display: flex;">
-                            <el-radio class="item-title" :value="item" :disabled="item.disabled">{{ item.account_name
-                                }}</el-radio>
+                        <div class="flex flex-between">
+                                <span class="t-black t-n f-12 b-600">{{ item.account_name }}</span>
 
-                            <!-- <el-option label="待核销" value="0"></el-option>
+                                <div >
+                                    <span class="t-gray f-12 t-n m-r-4" >{{ "sfsdfsd " }}</span>
+                                    <span class="t-black t-n f-12 b-600">{{ item.review_date }}</span>
+                                </div>
+
+                            <el-option label="待核销" value="0"></el-option>
                             <el-option label="已核销" value="1"></el-option>
-                            <el-option label="已复核" value="2"></el-option>  -->
+                            <el-option label="已复核" value="2"></el-option> 
 
                             <el-button link @click="() => {
                                     const args = []
@@ -205,9 +428,7 @@ const submitReimburse = async () => {
                                         <span class="b-600">{{ " " + info.currency }}</span>
                                     </span>
                                 </div>
-                                <!-- <p class="sub-value">已复核: {{ info.reviewed_count }}笔; {{ numberFmt(info.reviewed_amount)}}
-                                    <span>{{ " " + info.currency }}</span>
-                                </p> -->
+                
                             </div>
                         </div>
                         <div class="line"></div>
@@ -235,7 +456,7 @@ const submitReimburse = async () => {
 
                     </div>
                 </div>
-            </el-radio-group>
+            </el-radio-group> -->
 
 
         </el-scrollbar>
@@ -244,8 +465,18 @@ const submitReimburse = async () => {
         <el-dialog title="报销" width="500" v-model="show" destroy-on-close :close-on-click-modal="false">
             <el-form :model="formAdd" label-width="auto" ref="formRef"
                 :rules="{ amount: [{ required: true, message: '请填写金额', trigger: 'blur' }] }">
-                <el-form-item label="账户" prop="account_id">
-                    <el-input v-model="formAdd.account_name" type="text" disabled></el-input>
+                <el-form-item label="账户">
+                    <div class="flex flex-col w-full gap-4">
+                        <!-- <el-input v-model="formAdd.account_name" type="text" disabled></el-input> -->
+                        <span>{{ formAdd.account_name }}</span>
+                        <div class="flex flex-col w-full" style="background-color: #E5F6E4;">
+                            <span style="text-indent: 10px "
+                                class="t-black f-13">{{ getAccountDetail(formAdd.account_name)
+                                }}</span>
+                            <span class="t-red f-12" style="text-indent: 10px ">{{ getAccountTip(formAdd.account_name)
+                                }}</span>
+                        </div>
+                    </div>
                 </el-form-item>
                 <el-form-item label="复核金额">
                     <el-table :data="formAdd.list">
@@ -292,7 +523,7 @@ const submitReimburse = async () => {
     padding: 6px;
     padding-left: 10px;
     padding-right: 10px;
-    width: calc(100% - 10px);
+    width: calc(100% - 20px);
     background-color: white;
     margin-bottom: 8px;
     display: flex;
@@ -302,7 +533,16 @@ const submitReimburse = async () => {
 }
 
 .container-info {
-    flex: 1
+    flex: 1;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.has-reimburse {
+    background-image: url('../assets/images/re-complete.png');
+    background-repeat: no-repeat;
+    background-position: 100% 50%;
+    background-size: 66px 66px;
 }
 
 .red {
@@ -311,6 +551,15 @@ const submitReimburse = async () => {
 
 .green {
     color: green
+}
+
+:deep(.el-progress-bar__inner) {
+    /* background-image: linear-gradient(to right, #ff7e5f 0%, #feb47b 50%, #ff7e5f 100%); */
+    background-image: linear-gradient(to right, #b5d25e 0%, #1dca4e 100%);
+}
+
+:deep(.el-progress-bar__innerText) {
+    width: 100% !important;
 }
 
 :deep(.el-radio__label) {
@@ -361,6 +610,15 @@ const submitReimburse = async () => {
     margin-top: 10px;
     margin-bottom: 10px;
     border-bottom: 1px solid rgb(198, 198, 198);
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.dot-line {
+    width: 100%;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px dashed rgb(198, 198, 198);
     padding-left: 20px;
     padding-right: 20px;
 }

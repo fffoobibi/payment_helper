@@ -509,7 +509,7 @@ const crop = screen.onImageShortCutDown((route, src) => {
   }
 })
 
-const onCopy = async val=>{
+const onCopy = async val => {
   await navigator.clipboard.writeText(val)
   message.success('已复制！')
 }
@@ -601,22 +601,21 @@ const onCopy = async val=>{
                   查看
                 </el-button>
                 <el-button v-if="store.canModify && scope.row.voucher_ext_last.is_audit == 0" type="primary"
-                   @click="editTransit(scope.row)" link>
+                  @click="editTransit(scope.row)" link>
                   编辑
                 </el-button>
-                <el-button v-if="store.canModifyNote"  @click="noteTransit(scope.row)" type="primary"
-                  link>
+                <el-button v-if="store.canModifyNote" @click="noteTransit(scope.row)" type="primary" link>
                   备注
                 </el-button>
-                <el-button v-if="store.canCancel && scope.row.voucher_ext_last.is_audit == 1"  type="primary"
+                <el-button v-if="store.canCancel && scope.row.voucher_ext_last.is_audit == 1" type="primary"
                   @click="cancelTransit(scope.row)" link>
                   撤销
                 </el-button>
-                <el-button v-if="store.canAudit && scope.row.voucher_ext_last.is_audit == 1"  type="primary"
+                <el-button v-if="store.canAudit && scope.row.voucher_ext_last.is_audit == 1" type="primary"
                   @click="auditTransit(scope.row)" link>
                   审核
                 </el-button>
-                <el-button v-if="scope.row.voucher_ext_last.is_audit == 0 && scope.row.status == 1"  type="primary"
+                <el-button v-if="scope.row.voucher_ext_last.is_audit == 0 && scope.row.status == 1" type="primary"
                   @click="arivalTransit(scope.row)" link>
                   到账
                 </el-button>
@@ -633,23 +632,24 @@ const onCopy = async val=>{
 
 
         <!-- 新增/编辑 -->
-        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="50%" destroy-on-close 
+        <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="65%" destroy-on-close
           :close-on-click-modal="false" ref="drawRef" @closed="resetDetails">
           <template #default>
-            <el-form :model="form" label-width="auto" style="width:100%" ref="formRef" :rules="formRules" class="no-drag">
+            <el-form :model="form" label-width="auto" style="width:100%" ref="formRef" :rules="formRules"
+              class="no-drag">
 
               <el-form-item label="提现账户" prop="post.out_account_id" required :show-message="false">
                 <div class="form-item-row" v-loading="formState.out_account_id_loading">
                   <el-select v-model="form.post.out_account_id" filterable
                     :disabled="formState.getDisabledState('out_account_id')">
-
-                    <template #label="{label}">
+                    <template #label="{ label }">
                       <div class="flex flex-between ">
                         <span class="t-black">{{ label }}</span>
-                        <el-button link @click="onCopy(label)">
-                          <el-icon><CopyDocument /></el-icon>
+                        <el-button link @click.stop="onCopy(label)">
+                          <el-icon>
+                            <CopyDocument />
+                          </el-icon>
                         </el-button>
-
                       </div>
                     </template>
                     <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
@@ -659,6 +659,9 @@ const onCopy = async val=>{
                     <span :class="formState.out_account_id_color">实时余额 </span>
                     <span style="color:black">{{ formState.out_account_id_balance }}</span>
                     <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
+                    <!-- <el-button link @click="onCopy(label)">
+                          <el-icon><CopyDocument /></el-icon>
+                    </el-button> -->
                   </div>
                 </div>
               </el-form-item>
@@ -690,6 +693,16 @@ const onCopy = async val=>{
                 <div class="form-item-row" v-loading="formState.in_account_id_loading">
                   <el-select v-model="form.post.in_account_id" filterable
                     :disabled="formState.getDisabledState('in_account_id')">
+                    <template #label="{ label }">
+                      <div class="flex flex-between ">
+                        <span class="t-black">{{ label }}</span>
+                        <el-button link @click.stop="onCopy(label)">
+                          <el-icon>
+                            <CopyDocument />
+                          </el-icon>
+                        </el-button>
+                      </div>
+                    </template>
                     <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
                       :value="item.id" />
                   </el-select>
@@ -709,11 +722,11 @@ const onCopy = async val=>{
 
               <el-form-item label="提现到账金额" prop="post.received_amount" required :show-message="false">
                 <el-col :span="17">
-                  <el-input-number v-model="form.post.received_amount" :precision="2" :controls="false"
+                  <el-input-number v-model="form.post.received_amount" :precision="2" :controls="false" :validate-event="false"
                     style="width: 100%;" :disabled="formState.getDisabledState('received_amount')" />
                 </el-col>
                 <el-col :span="7">
-                  <el-select v-model="form.post.received_currency" placeholder="" style="padding-left:5px">
+                  <el-select v-model="form.post.received_currency" style="padding-left:5px" :validate-event="false">
                     <el-option v-for="item in bank.currencies" :key="item.id" :label="item.code" :value="item.code" />
                   </el-select>
                 </el-col>
@@ -784,7 +797,7 @@ const onCopy = async val=>{
           </template>
         </el-dialog>
 
-        <el-dialog v-model="form.auditShow" title="审核" width="500" destroy-on-close :close-on-click-modal="false" >
+        <el-dialog v-model="form.auditShow" title="审核" width="500" destroy-on-close :close-on-click-modal="false">
           <p>修改人: {{ form.auditPost.applicant }}</p>
           <p>提交时间: {{ timestampToFormattedString(form.auditPost.application_time) }}</p>
           <el-form-item label="修改原因: ">
@@ -812,12 +825,13 @@ h4 {
   font-weight: bold;
 }
 
-:deep(.operate button){
+:deep(.operate button) {
   padding: 0px !important;
   margin: 2px !important;
-  margin-left: 0px!important;
+  margin-left: 0px !important;
   /* margin-right: 2px !important; */
 }
+
 .form-item-row {
   display: flex;
   flex-direction: column;

@@ -96,13 +96,13 @@ const dateTimeFmt = (date, type = 1) => {
  * @param {string|number} n
  * @returns
  */
-const numberFmt = (n, strict=true) => {
-    if (!n) return ''
+const numberFmt = (n, strict=true, dft='') => {
+    if (!n) return '' || dft
     const v =  n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
     if(!strict && v.endsWith('.00')){
-        return v.replaceAll('.00', '')
+        return v.replaceAll('.00', '') || dft
     }
-    return v
+    return v || dft
 }
 
 const amountFormatter = value => `${value}`.replace(/[^\-?\d.]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')

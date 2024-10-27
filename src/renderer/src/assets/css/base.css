@@ -275,6 +275,9 @@ body {
 .m-t-10 {
   margin-top: 10px;
 }
+.m-t-20{
+  margin-top: 20px;
+}
 
 .m-l-2 {
   margin-left: 2px;
@@ -292,6 +295,14 @@ body {
   margin-right: 4px;
 }
 
+.m-r-10 {
+  margin-right: 10px;
+}
+
+.m-r-20 {
+  margin-right: 20px;
+}
+
 .m-b-2 {
   margin-bottom: 2px;
 }
@@ -302,6 +313,10 @@ body {
 
 .m-b-10 {
   margin-bottom: 10px;
+}
+
+.m-b-20{
+  margin-bottom: 20px;;
 }
 
 .p-l-10 {
