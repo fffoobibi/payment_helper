@@ -82,6 +82,9 @@ const exportToExcel = async () => {
         if (!post.end_time) {
             post.end_time = formatDate(new Date, { trancate: 'd' })
         }
+        post.is_review = [...post.is_review]
+        delete post.company_id
+
         const resp = await api.creditCard.exportList(post)
         const saveData = resp.list.map(v => {
             return {
@@ -102,6 +105,7 @@ const exportToExcel = async () => {
         })
         saveAsExcel(saveData, '信用卡导出记录' + formatDate(new Date, { sep: '_', sepLast: "_" }) + '.xlsx',)
     } catch (err) {
+        console.log('err in export ', err)
         exportLoading.value = false
     }
 }
@@ -439,7 +443,7 @@ const goto = (account_id, review_args, company_id) => {
                                         }}</span>
                                 </div>
                                 <div class="flex" style="position: fixed; top: 30px; right: 10px;z-index: 1000">
-                                    <span class="t-red f-12 m-l-4 ">农行账单日17日，还款日6日, 工行账单日19日，还款日6日</span>
+                                    <span class="t-red f-12 m-l-4 ">农行账单日17日，还款日6日;工行账单日19日，还款日6日; 汇丰账单日18号, 还款日12号</span>
                                 </div>
                                 <span class="t-red m-l-4">{{ selectedMsg }}</span>
 
@@ -556,7 +560,7 @@ const goto = (account_id, review_args, company_id) => {
         <el-form label-width="auto" :model="formAdd" :rules="rules" ref="formAddRef">
             <el-form-item label="账户" prop="account_id">
                 <el-select v-model="formAdd.account_id" placeholder="请选择" default-first-option>
-                    <el-option v-for="(item, index) in accounts" :key="index" :label="item.account_name"
+                    <el-option v-for="(item, index) in accounts.accounts" :key="index" :label="item.account_name"
                         :value="item.account_id"></el-option>
                 </el-select>
             </el-form-item>

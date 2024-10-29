@@ -33,8 +33,12 @@ const formRef = ref(null)
 
   <!-- 新增批量打款抽屉 -->
   <el-drawer v-model="show" :title="title" direction="rtl" size="600" destroy-on-close @closed="close" :close-on-click-modal="false">
-    <PaymentAdd @close="close" :batch="batch" :batch-data="batchData" @freshHistory="()=>{
-      console.log('fresh history by batch ...')
+    <PaymentAdd @close="()=>{
+        close()
+        listRef?.onSearch()
+        formRef?.freshHistroy?.()
+      }" :batch="batch" :batch-data="batchData" @freshHistory="()=>{
+      listRef?.onSearch()
       formRef?.freshHistroy?.()
     }"/>
   </el-drawer>

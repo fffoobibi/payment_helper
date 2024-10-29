@@ -258,7 +258,10 @@ watch(() => form.post.out_account_id, async () => {
 })
 
 watch(() => form.post.received_amount, () => {
-  form.post.commission = subNumbers(form.post.origin_amount, form.post.received_amount)
+  console.log('ss ', formState.in_account_id_currency, form.post.currency,  form.post.received_currency)
+  if(formState.out_account_id_currency == form.post.received_currency){
+    form.post.commission = subNumbers(form.post.origin_amount, form.post.received_amount)
+  }
 })
 
 

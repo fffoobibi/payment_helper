@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, dialog, crashReporter } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import Screenshots from 'electron-screenshots'
@@ -12,6 +12,7 @@ import { OperateDataBase } from './operatedb.js'
 import * as XLSX from 'xlsx'
 
 import _ from 'electron-updater'
+// import * as UPDATER from 'electron-updater'
 import { hash } from 'crypto'
 const autoUpdater = _.autoUpdater
 
@@ -48,22 +49,26 @@ class Updater {
   }
 
   _initMainCallback() {
-    ipcMain.on('open-update:download', (_event) => {
-      autoUpdater.downloadUpdate()
-    })
-    ipcMain.on('open-update:cancel', (_event) => { })
-    ipcMain.handle('open-update:checkForUpdates', async (_event, showIfNew) => {
-      try {
-        this.showIfNew = showIfNew
-        const rs = await autoUpdater.checkForUpdates()
-        return rs
-      } catch (err) {
-        console.error('error in checkForUpdates')
-      }
-    })
-    ipcMain.on('open-update:install', (_event) => {
-      autoUpdater.quitAndInstall(false, true)
-    })
+    try {
+      ipcMain.on('open-update:download', (_event) => {
+        autoUpdater.downloadUpdate()
+      })
+      ipcMain.on('open-update:cancel', (_event) => { })
+      ipcMain.on('open-update:install', (_event) => {
+        autoUpdater.quitAndInstall(false, true)
+      })
+      ipcMain.handle('open-update:checkForUpdates', async (_event, showIfNew) => {
+        try {
+          this.showIfNew = showIfNew
+          const rs = await autoUpdater.checkForUpdates()
+          return rs
+        } catch (err) {
+          console.error('error in checkForUpdates')
+        }
+      })
+    } catch (err) {
+      console.log('err in set up update', err)
+    }
   }
 
   init(win) {
@@ -234,30 +239,39 @@ class WindowManger {
   }
 
   onCloseType(closeType) {
-    switch (closeType) {
-      case 2: // 图片
-        this.get('preview').hide()
-        break
-      case 3: //日志
-        this.get('log').hide()
-        break
-      case 4: // 更新
-        this.destroy('update')
-        break
-      case 5: // 更新
-        this.destroy('excel')
-        break
-      case 6:
-        this.destroy('detail')
-        break
-      default:
-        break
+    try {
+      switch (closeType) {
+        case 2: // 图片
+          this.get('preview').hide()
+          break
+        case 3: //日志
+          this.get('log').hide()
+          break
+        case 4: // 更新
+          this.destroy('update')
+          break
+        case 5: // 更新
+          this.destroy('excel')
+          break
+        case 6:
+          this.destroy('detail')
+          break
+        default:
+          break
+      }
+    } catch (err) {
+      log.error('err in close type', err)
     }
+
   }
 
   onClose() {
     this.windows.forEach((frame) => {
-      frame.close()
+      try {
+        frame.close()
+      } catch (err) {
+        log.error('err in app close', err)
+      }
     })
   }
 }
@@ -323,6 +337,15 @@ log.transports.file.resolvePathFn = () => {
   }
   return logPath
 }
+// crashReporter.start()
+const crashFilePath = app.getPath('crashDumps')
+console.log('------crashFilePath------', crashFilePath)
+
+crashReporter.start({
+  productName: 'payment',
+  uploadToServer: false, // 是否上传服务器
+  ignoreSystemCrashHandler: false // 不忽略系统自带的奔溃处理，为 true 时表示忽略，奔溃时不会生成奔溃堆栈文件
+})
 
 
 const directoryPath = join(app.getPath('home'), '.payment_helper')
@@ -363,7 +386,6 @@ function createWindow() {
   }
 
   mainWindow.on('ready-to-show', () => {
-    updater.init(mainWindow)
     mainWindow.show()
   })
 
@@ -426,10 +448,12 @@ function createWindow() {
     // mainWindow.center() // 窗口居中
     // mainWindow.setResizable(false)
     // console.log('tologin ', mainWindow.getSize());
+
     mainWindow.setResizable(true)
     mainWindow.setSize(320, 320)
-    mainWindow.center() // 设置窗口不可再次调整大小
+    mainWindow.center()
     mainWindow.setResizable(false)
+    console.log('to login ')
   })
 
   // 窗口控制
@@ -454,7 +478,7 @@ function createWindow() {
           win.close()
         } else if (data.closeType == 1) {
           win.hide()
-        } else{
+        } else {
           manager.onCloseType(data.closeType)
         }
         break
@@ -721,7 +745,7 @@ function createWindow() {
         (frame) => {
           frame.webContents.send('open-detail-dialog:success', user, detailId)
         },
-        { title: 'detail', hash, width:740 },
+        { title: 'detail', hash, width: 740 },
         false,
       )
     } catch (error) {
@@ -765,6 +789,7 @@ function createWindow() {
   //     log.error('保存excel失败', err)
   //   })
 
+  updater.init(mainWindow)
   operateDb.initHandles(mainWindow)
 
 }

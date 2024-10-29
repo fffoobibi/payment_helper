@@ -19,12 +19,13 @@ const dd = useDingdingSubmitStore()
 const store = useUserStore()
 
 onBeforeMount(() => {
-  onSearch()
+  // onSearch()
+  onRefresh()
 })
 
 const { pause, resume, isActive } = useIntervalFn(() => {
   if (store.user.id) {
-    onSearch()
+    onRefresh()
   }
 }, 1000 * 60 * 10)
 
@@ -101,8 +102,8 @@ const currencies = accountStore.currencies
 
 const onAllCheck = val => {
   approves.value.forEach(item => item.isChecked = val)
-  // preprocess = val ? approves.value : []
-  preprocess = approves.value || []
+  preprocess = val ? [...approves.value] : []
+  console.log('set preprocess ', preprocess)
   types[1].count = preprocess.length
   isIndeter.value = false
   listTitle.value = val ? `已选 ${approves.value.length} 个` : `全选（${approves.value.length}）`
@@ -132,29 +133,53 @@ const onDate = val => {
   onSearch()
 }
 
-const onRefresh = () => {
-  form.page = 1
-  onSearch()
+const onScroll = options => {
+  if (form.type == 'preprocess' || noMore.value) return
+  const listHeight = document.querySelector('.el-scrollbar__view').clientHeight
+  const boxHeight = document.querySelector('.rows').clientHeight
+  if (options.scrollTop > 0 && options.scrollTop >= listHeight - boxHeight - 1 && !isLoading) {
+    console.log('on scroll')
+    isLoading = true
+    onSearch()
+  }
 }
 
-const onSearch = async (fresh=false) => {
+const onRefresh = async () => {
+  form.page = 1
+  // preprocess = []
   checkAll.value = false
+  approves.value = []
+  noMore.value = false
+  await onSearch()
+}
+
+const onSearch = async (page) => {
   try {
+    if (page !== undefined) {
+      form.page = page
+    }
     const data = await api.getPaymentList(form)
-    data.list.forEach(item => item.isChecked = false)
-    if (form.page == 1) {
-      approves.value = data.list
+    const ds = data.list.map(item => {
+      item.isChecked = false
+      return item
+    })
+
+    if (form.page === 1) {
+      approves.value = ds
       isIndeter.value = false
       scrollbarRef.value.setScrollTop(0)
     } else {
-      approves.value.push(...data.list)
-      // approves.value = approves.value.concat(data.list)
+      approves.value.push(...ds)
       isIndeter.value = approves.value.some(item => item.isChecked)
-      if (data.list.length < form.limit) {
-        noMore.value = true
-      }
+    }
+    if (approves.value.length >= data.count) {
+      noMore.value = true
+    } else {
+      noMore.value = false
+      form.page++
     }
     if (form.type == 'pending') {
+      console.log('preo ==> ', preprocess.length)
       const checks = preprocess.map(item => item.id)
       approves.value.forEach(item => {
         item.isChecked = checks.includes(item.id)
@@ -163,10 +188,11 @@ const onSearch = async (fresh=false) => {
       isIndeter.value = checks.length > 0 && checks.length != approves.value.length
       checkAll.value = checks.length == approves.value.length
       types[0].count = data.count
+      types[1].count = preprocess.length
     }
-  } catch(err){
+  } catch (err) {
     console.log('err in fresh', err)
-  }finally {
+  } finally {
     isLoading = false
   }
 }
@@ -207,10 +233,11 @@ const onSegmented = val => {
   if (val == 'processed') {
     router.push({ name: 'blank', query: { type: val } })
   }
-  noMore.value = false
+  // noMore.value = false
   if (val == 'preprocess') {
     // router.push({ name: 'blank', query: { type: val } })
     router.push({ name: 'paymentForm' })
+    console.log('pre ==> ', preprocess)
     approves.value = preprocess
     return
   }
@@ -225,20 +252,15 @@ const onSegmented = val => {
   }
 }
 
-const onScroll = options => {
-  if (form.type == 'preprocess' || noMore.value) return
-  const listHeight = document.querySelector('.el-scrollbar__view').clientHeight
-  const boxHeight = document.querySelector('.rows').clientHeight
-  if (options.scrollTop > 0 && options.scrollTop >= listHeight - boxHeight - 1 && !isLoading) {
-    isLoading = true
-    form.page++
-    onSearch()
-  }
-}
 
-const onRemove = index => {
-  approves.value.splice(index, 1)
+
+const onRemove = (item, index) => {
+  // approves.value.splice(index, 1)
   preprocess = approves.value
+  const f = preprocess.findIndex(v => v.id === item.id)
+  if (f > -1) {
+    preprocess.splice(f, 1)
+  }
   types[1].count = preprocess.length
   Message.success('移除成功')
 }
@@ -452,7 +474,7 @@ defineExpose({
     <div class="filter">
       <el-form :inline="true" :model="form" v-show="form.type != 'preprocess'" @submit.prevent>
         <el-form-item v-show="form.type != 'preprocess'">
-          <el-input v-model="form.condition" :prefix-icon="Search" placeholder="请输入关键字" @keyup.enter="onSearch"
+          <el-input v-model="form.condition" :prefix-icon="Search" placeholder="请输入关键字" @keyup.enter="onSearch(1)"
             clearable />
         </el-form-item>
         <el-form-item v-show="form.type != 'preprocess'">
@@ -498,25 +520,27 @@ defineExpose({
     <div class="list">
       <div class="list-header">
         <div class="header-checkbox w-full flex-between" v-show="form.type == 'pending'">
-          <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{listTitle}}</el-checkbox>
+          <el-checkbox class="list-title" v-model="checkAll" :indeterminate="isIndeter" @change="onAllCheck">{{
+      listTitle
+    }}</el-checkbox>
           <div class="w-full flex flex-end">
             <el-button link @click="onRefresh">
-            <el-icon :size="16">
-              <Refresh />
-            </el-icon>
-          </el-button>
-          <el-tooltip content="布局" placement="top" hide-after="0" transition="none">
-            <div class="custom-style">
-              <el-segmented v-model="cfg.layout" size="small" :options="[
+              <el-icon :size="16">
+                <Refresh />
+              </el-icon>
+            </el-button>
+            <el-tooltip content="布局" placement="top" hide-after="0" transition="none">
+              <div class="custom-style">
+                <el-segmented v-model="cfg.layout" size="small" :options="[
       { label: 'iconfont icon-buju-1x1', value: false, color: 'gray' },
       { label: 'iconfont icon-buju3', value: true, color: 'gray' }]">
-                <template #default="{ item }">
-                  <el-icon :color="item.color" :class="item.label">
-                  </el-icon>
-                </template>
-              </el-segmented>
-            </div>
-          </el-tooltip>
+                  <template #default="{ item }">
+                    <el-icon :color="item.color" :class="item.label">
+                    </el-icon>
+                  </template>
+                </el-segmented>
+              </div>
+            </el-tooltip>
           </div>
         </div>
         <div class="header-btns" v-show="form.type == 'preprocess'">
@@ -547,24 +571,25 @@ defineExpose({
         <div class="row" :class="{ active: route.path == '/payment/' + item.id, checked: item.isChecked }"
           v-for="(item, index) in approves" :key="item.id">
           <el-checkbox v-if="form.type == 'pending'" v-model="item.isChecked" @change="onCheck(item)"></el-checkbox>
-          <el-button v-if="form.type == 'preprocess'" size="small" @click="onRemove(index)" type="warning"
+          <el-button v-if="form.type == 'preprocess'" size="small" @click="onRemove(item, index)" type="warning"
             :icon="Delete" link></el-button>
           <div class="space" v-if="form.type == 'processed'"></div>
-                  <div class="row-content" @click="() => {
-              if (form.type == 'processed') {
-                onDetail(item.id, item)
-              }
-              if (!cfg.layout) {
-                onDetail(item.id, item)
-              }
-            }">
+          <div class="row-content" @click="() => {
+      if (form.type == 'processed') {
+        onDetail(item.id, item)
+      }
+      if (!cfg.layout) {
+        onDetail(item.id, item)
+      }
+    }">
             <div class="row-top">
               <div class="row-title">{{ item.process_name }}</div>
               <div class="row-time">{{ dateTimeFmt(item.create_time) }}</div>
             </div>
             <div class="row-bottom">
               <div class="row-subtitle user-select">{{ item.approval_number }}</div>
-              <div class="f-14 b-500">{{ numberFmt(item.origin_total_amount, false) }} <span class="t-red f-12 b-500">{{ item.currency }}</span></div>
+              <div class="f-14 b-500">{{ numberFmt(item.origin_total_amount, false) }} <span class="t-red f-12 b-500">{{
+      item.currency }}</span></div>
             </div>
             <div class="flex flex-col gap-2 m-t-2 w-full" v-if="cfg.layout">
               <span class="user-select more gray"><span class="gray">银行账号：</span>{{ item.bank_account || "--" }}</span>
@@ -576,7 +601,8 @@ defineExpose({
               <span class="user-select more gray"><span class="gray">申请人/部门：</span>{{ item.creator || "--" }} <span
                   class="more" style="color:#5BA3ED">{{ item.department_name }}</span> </span>
 
-              <span class="user-select more error" v-if="item.payment_error_msg"><span class="error"></span>{{item.payment_error_msg }}</span>
+              <span class="user-select more error" v-if="item.payment_error_msg"><span class="error"></span>{{
+      item.payment_error_msg }}</span>
 
               <span class="b-600 f-12 t-red">{{ paymentDetail(item) }}</span>
               <!-- <span class="b-600 f-12 t-red">{{ item.voucher_id ===0 ? '未上传用户凭证':''}}</span> -->
@@ -589,7 +615,8 @@ defineExpose({
                 <el-button size="small" type="warning" @click="onDetail(item.id, item)" link>填充</el-button>
               </div>
 
-              <div v-show="form.type === 'preprocess'" style="display: flex; justify-content: flex-start;margin-top: 5px ">
+              <div v-show="form.type === 'preprocess'"
+                style="display: flex; justify-content: flex-start;margin-top: 5px ">
                 <el-button size="small" type="warn" @click="viewPaymentDetails(item.id)" link>查看</el-button>
                 <!-- <el-button size="small" type="success" @click="onShowDialog(1, item)" link>通过</el-button> -->
                 <el-button size="small" type="danger" @click="onShowDialog(2, item)" link>拒绝</el-button>

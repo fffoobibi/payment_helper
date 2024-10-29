@@ -40,6 +40,7 @@ const shortcuts = [
 
 const startTime = defineModel('startTime', {default: ''})
 const endTime = defineModel('endTime', {default:''})
+const emit = defineEmits('update:timeOrder')
 
 const cfg = useLocalConfig()
 const tableFields = computed(()=>{
@@ -66,7 +67,8 @@ const props = defineProps({
   currency: String,
   available: Boolean,
   typeName: String,
-  balance:Number
+  balance:Number,
+  timeOrder: String
 })
 
 const queryFormRef = ref(null)
@@ -80,9 +82,8 @@ const queryForm = reactive({
     account_id: props.accountId,
     // start_time: formatDate( shortcuts[1].value(), {start: true}),
     // end_time: formatDate(new Date, {end: true}),
-
     content: '',  // 凭证号
-    rank: 'ASC',  // 倒叙，顺序 ASC DESC
+    rank:  props.timeOrder ==='ascending' ? 'ASC': 'DESC',  // 倒叙，顺序 ASC DESC
     voucher_no: '', // 编号
     page: 1,
     limit: 10,
@@ -90,6 +91,14 @@ const queryForm = reactive({
   tableData: [],
   hasSearch: false
 })
+
+watch(()=>props.timeOrder, ()=>{
+  if(props.timeOrder ==='ascending'){
+    queryForm.search.rank = 'ASC'
+  }else{
+    queryForm.search.rank = 'DESC'
+  }
+}, {deep: true})
 
 const currentPageIndex = computed(()=>{
   return queryForm.page.currentPage * queryForm.page.pageSize
@@ -137,6 +146,7 @@ const exportData = async ()=>{
   try{
     exportLoading.value=true
     const post = { ...queryForm.search }
+    post.rank = queryForm.search.rank
     // if (post.date) {
       if(startTime.value){
         post.start_time = startTime.value
@@ -194,7 +204,8 @@ const onSearch = async (page = null, pageSize = null) => {
   }
   
   const post = { ...queryForm.search }
-  
+  post.rank = queryForm.search.rank
+
   post.start_time = startTime.value
   post.end_time = endTime.value
   delete post.date
@@ -305,11 +316,15 @@ onMounted(() => {
 
     <el-table row-key="id" ref="tableRef" highlight-current-row :data="queryForm.tableData" :height="tableHeight"
       :row-class-name="renderTableRowClass" 
-      :default-sort="{ prop: 'create_time', order: 'ascending' }"
+      :default-sort="{ prop: 'create_time', order: props.timeOrder }"
       @sort-change="(d)=>{
         if(d.order =='ascending'){
+          // timeOrder = 'ASC'
+          emit('update:timeOrder','ascending')
           queryForm.search.rank = 'ASC'
-        }else{
+        }else if (d.order=='descending'){
+          // timeOrder = 'DESC'
+          emit('update:timeOrder', 'descending')
           queryForm.search.rank = 'DESC'
         }
         onSearch(1, null)

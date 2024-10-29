@@ -25,7 +25,9 @@ const optionItems = computed(() => {
 const switchAccount = () => {
   store.logOut()
   record.reset()
-  router.push({ name: 'login' })
+  router.push({ name: 'login' }).then(v=>{
+    // window.location.reload()
+  })
   electron.toLogin()
 }
 

@@ -11,6 +11,7 @@ import { viewImages } from "@/utils/tools"
 import Message from '@/utils/message'
 import Airwallex from './Airwallex.vue'
 import { debounce } from 'lodash'
+import message from '@/utils/message'
 
 const props = defineProps({
   approve: Object,
@@ -63,16 +64,28 @@ const disabled = computed(() => {
     return state.value._done
   }
 })
+
+const batchAllDone = () => {
+  const l = initBatchData.value.filter(x => x._done).length
+  if (l === initBatchData.value.length) {
+    message.success('已全部提交！')
+    emit('close')
+  }
+}
+
 const previewData = () => {
   if (index.value > 0) {
     prev()
     updateCurrent()
+    batchAllDone()
   }
 }
+
 const nextData = () => {
   if (index.value < props.batchData.length - 1) {
     next()
     updateCurrent()
+    batchAllDone()
   }
 }
 

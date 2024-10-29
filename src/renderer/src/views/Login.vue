@@ -103,7 +103,7 @@ const onSubmit = async () => {
         api.getAccountList({ user_id: res.id, limit: 500 }).then(resp => {
           accountStore.setAccounts(resp.list)
           console.log('fetch accounts success ', resp)
-        }).catch(err=>{
+        }).catch(err => {
           console.log('fetch accounts err', err)
         })
 
@@ -142,59 +142,64 @@ const onSubmit = async () => {
   <div class="login-panel">
     <Toolbar :closeType="0" onlyClose :show-records="false" />
 
-    <el-form :model="formData" :rules="formRules" ref="formRef" style="width: 240px;">
-      <div class="logo">
-        <img src="../assets/images/login-logo.webp" alt="" width="191" height="31">
-      </div>
+    <div class="flex flex-col flex-c-center flex-center w-full flex-1">
+      <el-form :model="formData" :rules="formRules" ref="formRef" style="width: 240px;">
+        <div class="logo">
+          <img src="../assets/images/login-logo.webp" alt="" width="191" height="31">
+          <!-- <img src="../assets/images/logo-test.png" alt="" width="230" height="31"> -->
+        </div>
 
-      <el-form-item prop="username">
-        <el-input v-model="username" placeholder="请输入用户名" maxLength="10" clearable @keyup.enter="() => {
+        <el-form-item prop="username">
+          <el-input v-model="username" placeholder="请输入用户名" maxLength="10" clearable @keyup.enter="() => {
       pwdRef.focus()
     }">
-          <template #prefix><i class="iconfont icon-user" style="font-size: 0.9em"></i></template>
-        </el-input>
-      </el-form-item>
+            <template #prefix><i class="iconfont icon-user" style="font-size: 0.9em"></i></template>
+          </el-input>
+        </el-form-item>
 
-      <el-form-item prop="password">
-        <el-input ref="pwdRef" v-model="password" type="password" placeholder="请输入密码" maxLength="20" show-password
-          clearable @keyup.enter="() => {
+        <el-form-item prop="password">
+          <el-input ref="pwdRef" v-model="password" type="password" placeholder="请输入密码" maxLength="20" show-password
+            clearable @keyup.enter="() => {
       onSubmit()
     }">
-          <template #prefix><i class="iconfont icon-password" style="font-size: 0.9em"></i></template>
-        </el-input>
-      </el-form-item>
+            <template #prefix><i class="iconfont icon-password" style="font-size: 0.9em"></i></template>
+          </el-input>
+        </el-form-item>
 
-      <el-form-item prop="remember" class="remember">
-        <el-checkbox v-model="remember">
-          <span class="remember-text">记住密码（保存两周）</span>
-        </el-checkbox>
-      </el-form-item>
+        <el-form-item prop="remember" class="remember">
+          <el-checkbox v-model="remember">
+            <span class="remember-text">记住密码（保存两周）</span>
+          </el-checkbox>
+        </el-form-item>
 
-      <el-form-item>
-        <el-button type="primary" :loading="updateStore.checking" @click="onSubmit('formData')" round>
-          {{ buttonLabel }}
-        </el-button>
-      </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :loading="updateStore.checking" @click="onSubmit('formData')" round>
+            {{ buttonLabel }}
+          </el-button>
+        </el-form-item>
 
-      <el-form-item>
-        <div class="message-box" v-show="errorText">
-          <el-icon color="#f56c6c">
-            <CircleCloseFilled />
-          </el-icon>
-          <el-text type="danger">{{ errorText }}</el-text>
-        </div>
-        <div class="message-empty" v-show="!errorText"></div>
-      </el-form-item>
-    </el-form>
+        <el-form-item>
+          <div class="message-box" v-show="errorText">
+            <el-icon color="#f56c6c">
+              <CircleCloseFilled />
+            </el-icon>
+            <el-text type="danger">{{ errorText }}</el-text>
+          </div>
+          <div class="message-empty" v-show="!errorText"></div>
+        </el-form-item>
+      </el-form>
 
-    <div class="footer">
-      <p>
-        {{ configStore.mode ? '' : '测试服' }}
-        <span style="font-weight: 600" v-if="!updateStore.update_available">{{ "v" + app_info.version }}</span>
-        <span style="font-size: 10pt" v-else
-          :class="[updateStore.update_available || updateStore.update_err ? 'red' : 'trans']">{{ checkMsg }}</span>
-      </p>
+      <div class="footer">
+        <p>
+          {{ configStore.mode ? '' : '测试服' }}
+          <span style="font-weight: 600" v-if="!updateStore.update_available">{{ "v" + app_info.version }}</span>
+          <span style="font-size: 10pt" v-else
+            :class="[updateStore.update_available || updateStore.update_err ? 'red' : 'trans']">{{ checkMsg }}</span>
+        </p>
+      </div>
+
     </div>
+
   </div>
 </template>
 
@@ -220,7 +225,12 @@ const onSubmit = async () => {
   width: 100%;
   height: 100%;
   border-radius: 8px;
-  background: url(../assets/images/login-bg.webp) no-repeat center;
+  /* background: url(../assets/images/login-bg.webp) no-repeat center; */
+  background-image: url(../assets/images/login-bg.webp);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
 }
 
 .logo {

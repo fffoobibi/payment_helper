@@ -667,6 +667,7 @@ const exportForm = reactive({
 
 const historyStartTime = ref(formatDate(shortcuts[1].value()[0], {start: true}))
 const historyEndTime = ref(formatDate(shortcuts[1].value()[1], {end: true}))
+const recordSort = ref('ascending')
 
 </script>
 
@@ -911,7 +912,13 @@ const historyEndTime = ref(formatDate(shortcuts[1].value()[1], {end: true}))
           <BankAccountRecord></BankAccountRecord>
         </el-tab-pane>
         <el-tab-pane v-if="form.historyShow" :label="form.historyTabLabel" name="历史">
-          <BankAccountHistory :account-id="form.history.accountId" :currency="form.history.currency" v-model:start-time="historyStartTime"
+          <BankAccountHistory :account-id="form.history.accountId" :currency="form.history.currency" 
+            @update:time-order="(v)=>{
+              console.log('change ==> ', v)
+              recordSort = v
+            }"
+            :time-order="recordSort"
+            v-model:start-time="historyStartTime"
             v-model:end-time="historyEndTime" :type-name="form.history.typeName" :available="form.history.available"
             :balance="form.history.balance" />
         </el-tab-pane>
@@ -920,9 +927,6 @@ const historyEndTime = ref(formatDate(shortcuts[1].value()[1], {end: true}))
       <!-- 盘账 -->
       <el-drawer destroy-on-close v-model="form.panzhangShow" size="50%" :title="form.pangZhangTitle"
         :close-on-click-modal="false">
-        <!-- <template #title>
-          盘账
-        </template> -->
         <el-form :model="form.panzhangPost" label-width="auto" :rules="rules" ref="formRef">
           <p style="font-size: 11pt; color:blue; margin-bottom: 10px; margin-top: -20px;" class="drag">
             {{ form.panzhangState.account_name }}
