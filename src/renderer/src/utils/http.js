@@ -86,22 +86,22 @@ instance.interceptors.response.use(
     }
 
     if (res.code === 0) {
-      if (method === 'post') {
+      // if (method === 'post') {
         // 记录操作日志
-        if (shouldRecord(url)) {
-          electron.operate.record({
-            url,
-            status: 0,
-            statusMsg: null,
-            user_id: store.user.id,
-            create_time: new Date(),
-            creator: store.user.username,
-            log_text,
-            log_params,
-            log_resp: res.response
-          })
-        }
+      if (shouldRecord(url)) {
+        electron.operate.record({
+          url,
+          status: 0,
+          statusMsg: null,
+          user_id: store.user.id,
+          create_time: new Date(),
+          creator: store.user.username,
+          log_text,
+          log_params,
+          log_resp: res.response
+        })
       }
+      // }
 
       if (env.DEV) {
         console.log(
@@ -127,7 +127,7 @@ instance.interceptors.response.use(
       }
       return Promise.resolve(returned || true)
     } else {
-      if (method === 'post') {
+      // if (method === 'post') {
         // 记录操作日志
         if (shouldRecord(url)) {
           electron.operate.record({
@@ -142,8 +142,8 @@ instance.interceptors.response.use(
             log_resp: res.response
           })
         }
+      // }
 
-      }
       if (res.code == 1007) {
         // 未登录，返回登录页
         location.href = '/login'

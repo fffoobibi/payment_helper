@@ -102,7 +102,9 @@ export const shouldRecord = (url) => {
         pathName = (new URL(url)).pathname
     }
     if (relations[pathName]) {
+        console.log('✍️ record save ==> ', url)
         return true
     }
+    console.log('❌ record block ==>', url)
     return false
 }

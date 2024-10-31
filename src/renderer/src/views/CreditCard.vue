@@ -153,7 +153,7 @@ const queryForm = reactive({
         is_review: ['0'],
     },
     searching: true,
-    statistics_currency: null,
+    statistics_currency: "CNY",
     statistics_pending: null,
     statistics_settled: null,
     hasSearch: false,
@@ -363,13 +363,22 @@ const onEditNote = async () => {
     }
 }
 
-
 const goto = (account_id, review_args, company_id) => {
     tabs.currentTab = '信用卡管理'
     queryForm.search.account_id = account_id
     queryForm.search.is_review = review_args ?? ['1', '2']
     queryForm.search.company_id = company_id
     onSearch()
+}
+
+const getRawField = (row, field, dft=null)=>{
+    if(row.has_refund){
+        return row.change_logs[0][field] ?? dft
+    }
+    if (row.has_canceled){
+        return row.change_logs[0][field] ?? dft
+    }
+    return row[field] ?? dft
 }
 
 </script>
@@ -456,40 +465,130 @@ const goto = (account_id, review_args, company_id) => {
                                 <el-empty :image-size="200" />
                             </template>
                             <el-table-column type="selection" :selectable="selectable" width="40" />
+                            <!-- <el-table-column label="">
+                                <template #default="{ row }">
+                                    <div v-if="row.has_canceled">
+
+                                    </div>
+                                    <div v-else-if="row.has_refund" class="flex flex-start flex-between p-r-10 p-l-10">
+                                        <div>
+                                            <div>
+                                            <div>钉钉编号： <span class="user-black">{{ row.change_logs[0].approval_number || "一一" }}</span>
+                                            </div>
+                                            <div>采购单号： <span class="user-black">{{ row.change_logs[0].purchase_number || "一一" }}</span>
+                                            </div>
+                                            <div v-if="row.change_logs[0].is_review == 0">
+                                                创建人：<span class="user-black">{{ row.change_logs[0].creator + " - " + (row.change_logs[0].department_name||"一一") }}</span>
+                                            </div>
+                                            <div v-else-if="row.change_logs[0].is_review == 1">
+                                                核销人：<span class="user-black">{{ row.change_logs[0].operator }}</span>
+                                            </div>
+                                            <div v-else>
+                                                复核人：<span class="user-black">{{ row.change_logs[0].reviewer }}</span>
+                                            </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <div v-else class="flex flex-start flex-between p-r-10 p-l-10" >
+                                        <div>
+                                            <div>钉钉编号： <span class="user-black">{{ row.approval_number || "一一" }}</span>
+                                            </div>
+                                            <div>采购单号： <span class="user-black">{{ row.purchase_number || "一一" }}</span>
+                                            </div>
+                                            <div v-if="row.is_review == 0">
+                                                创建人：<span class="user-black">{{ row.creator + " - " + (row.department_name||"一一") }}</span>
+                                            </div>
+                                            <div v-else-if="row.is_review == 1">
+                                                核销人：<span class="user-black">{{ row.operator }}</span>
+                                            </div>
+                                            <div v-else>
+                                                复核人：<span class="user-black">{{ row.reviewer }}</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)}}</span><span>{{ " " + row.currency }}</span></div>
+                                            <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)}}</span><span>{{" " + "CNY" }}</span></div>
+                                            <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review)}}</span></div>
+                                        </div>
+
+                                        <div>
+                                            <div>公司: {{ row.company_name }}</div>
+                                            <div v-if="row.is_review == 0">
+                                                创建：<span class="user-black">{{ timestampToFormattedString(row.create_time)
+                                                    }}</span>
+                                            </div>
+                                            <div v-else-if="row.is_review == 1">
+                                                核销：<span class="user-black">{{ timestampToFormattedString(row.update_time)
+                                                    }}</span>
+                                            </div>
+                                            <div v-else>
+                                                复核：<span class="user-black">{{ timestampToFormattedString(row.review_time)
+                                                    }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <div class="user-black">{{ row.note }}</div>
+                                        </div>
+
+                                        <div>
+                                            <el-button link type="primary" @click="editNote(row)">备注</el-button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </el-table-column> -->
+
                             <el-table-column label="摘要信息" width="240">
                                 <template #default="{ row }">
-                                    <div>
-                                        <div>钉钉编号： <span class="user-black">{{ row.approval_number || "一一" }}</span>
+                                    <div >
+                                        <div>钉钉编号： <span class="user-black">{{ getRawField(row, 'approval_number', "一一")  }}</span>
                                         </div>
-                                        <div>采购单号： <span class="user-black">{{ row.purchase_number || "一一" }}</span>
+                                        <div>采购单号： <span class="user-black">{{ getRawField(row, 'purchase_number',  "一一" ) }}</span>
                                         </div>
                                         <div v-if="row.is_review == 0">
-                                            创建人：<span class="user-black">{{ row.creator + " - " + (row.department_name
-                ||
-                "一一") }}</span>
+                                            创建人：<span class="user-black">{{ getRawField(row, 'creator', '')+  " - " + getRawField(row, 'department_name', "一一") }}</span>
                                         </div>
                                         <div v-else-if="row.is_review == 1">
-                                            核销人：<span class="user-black">{{ row.operator }}</span>
+                                            核销人：<span class="user-black">{{ getRawField(row, 'operator', '') }}</span>
                                         </div>
                                         <div v-else>
-                                            复核人：<span class="user-black">{{ row.reviewer }}</span>
+                                            复核人：<span class="user-black">{{ getRawField(row, 'reviewer', '') }}</span>
                                         </div>
                                     </div>
                                 </template>
                             </el-table-column>
                             <el-table-column label="金额">
                                 <template #default="{ row }">
-                                    <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)
-                                            }}</span><span>{{ " " +
-                row.currency }}</span></div>
-                                    <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)
-                                            }}</span><span>{{
-                " " + "CNY" }}</span></div>
-                                    <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{
-                reviewMsg(row.is_review)
-            }}</span></div>
+                                    <template v-if="row.has_refund">
+                                        <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)}}</span><span>{{ " " + row.currency }}</span></div>
+                                        <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)}}</span><span>{{" " + "CNY" }}</span></div>
+                                        <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review)}} </span>
+
+                                            <span class="t-primary m-l-4 b-600">
+                                                (有{{ row.change_logs.length-1 }}笔退款)
+                                            </span>
+                                         
+                                        </div>
+                                    </template>
+                                    <template v-else-if="row.has_canceled"> 
+                                        <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)}}</span><span>{{ " " + row.currency }}</span></div>
+                                        <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)}}</span><span>{{" " + "CNY" }}</span></div>
+                                        <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review)}} </span>
+                                            <span class="t-red m-l-4 b-600">
+                                                (重做单)
+                                            </span>
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)}}</span><span>{{ " " + row.currency }}</span></div>
+                                        <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)}}</span><span>{{" " + "CNY" }}</span></div>
+                                        <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review)}}</span></div>
+                                    </template>
                                 </template>
                             </el-table-column>
+
                             <el-table-column label="公司/时间">
                                 <template #default="{ row }">
                                     <div>公司: {{ row.company_name }}</div>
@@ -505,15 +604,15 @@ const goto = (account_id, review_args, company_id) => {
                                         复核：<span class="user-black">{{ timestampToFormattedString(row.review_time)
                                             }}</span>
                                     </div>
-                                    <!-- <div v-if="row.is_review == 1">核销时间：<span class="user-black">{{
-                timestampToFormattedString(row.update_time) }}</span></div> -->
                                 </template>
                             </el-table-column>
+
                             <el-table-column label="备注">
                                 <template #default="{ row }">
                                     <div class="user-black">{{ row.note }}</div>
                                 </template>
                             </el-table-column>
+
                             <el-table-column label="操作" width="100">
                                 <template #default="{ row }">
                                     <el-button link type="primary" @click="editNote(row)">备注</el-button>

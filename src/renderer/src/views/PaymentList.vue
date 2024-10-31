@@ -30,6 +30,7 @@ const { pause, resume, isActive } = useIntervalFn(() => {
 }, 1000 * 60 * 10)
 
 onActivated(() => {
+  console.log('refresh ...')
   onRefresh()
 })
 
@@ -103,7 +104,6 @@ const currencies = accountStore.currencies
 const onAllCheck = val => {
   approves.value.forEach(item => item.isChecked = val)
   preprocess = val ? [...approves.value] : []
-  console.log('set preprocess ', preprocess)
   types[1].count = preprocess.length
   isIndeter.value = false
   listTitle.value = val ? `已选 ${approves.value.length} 个` : `全选（${approves.value.length}）`
@@ -146,11 +146,13 @@ const onScroll = options => {
 
 const onRefresh = async () => {
   form.page = 1
-  // preprocess = []
   checkAll.value = false
   approves.value = []
   noMore.value = false
   await onSearch()
+  if (form.type == 'preprocess') {
+    approves.value = preprocess
+  }
 }
 
 const onSearch = async (page) => {
@@ -173,13 +175,16 @@ const onSearch = async (page) => {
       isIndeter.value = approves.value.some(item => item.isChecked)
     }
     if (approves.value.length >= data.count) {
-      noMore.value = true
+      if (form.type == 'pending' || form.type == 'processed') {
+        noMore.value = true
+      } else {
+        noMore.value = false
+      }
     } else {
       noMore.value = false
       form.page++
     }
     if (form.type == 'pending') {
-      console.log('preo ==> ', preprocess.length)
       const checks = preprocess.map(item => item.id)
       approves.value.forEach(item => {
         item.isChecked = checks.includes(item.id)
@@ -190,6 +195,7 @@ const onSearch = async (page) => {
       types[0].count = data.count
       types[1].count = preprocess.length
     }
+
   } catch (err) {
     console.log('err in fresh', err)
   } finally {
@@ -235,10 +241,9 @@ const onSegmented = val => {
   }
   // noMore.value = false
   if (val == 'preprocess') {
-    // router.push({ name: 'blank', query: { type: val } })
     router.push({ name: 'paymentForm' })
-    console.log('pre ==> ', preprocess)
     approves.value = preprocess
+    noMore.value = false
     return
   }
   form.page = 1
@@ -255,7 +260,6 @@ const onSegmented = val => {
 
 
 const onRemove = (item, index) => {
-  // approves.value.splice(index, 1)
   preprocess = approves.value
   const f = preprocess.findIndex(v => v.id === item.id)
   if (f > -1) {
@@ -454,7 +458,8 @@ const onAbnoraml = async () => {
 }
 
 defineExpose({
-  onSearch
+  onSearch,
+  onRefresh
 })
 
 </script>

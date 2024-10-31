@@ -29,6 +29,7 @@ const initBatchData = ref(props.batchData.map(v => {
   v._done = false
   return v
 }))
+
 const shortStore = useScreenShortStore()
 const store = useUserStore()
 const accountStore = useAccountStore()
@@ -65,27 +66,35 @@ const disabled = computed(() => {
   }
 })
 
-const batchAllDone = () => {
+const batchAllDoneCheck = () => {
   const l = initBatchData.value.filter(x => x._done).length
-  if (l === initBatchData.value.length) {
-    message.success('已全部提交！')
-    emit('close')
-  }
+  return l === initBatchData.value.length
 }
 
 const previewData = () => {
-  if (index.value > 0) {
-    prev()
-    updateCurrent()
-    batchAllDone()
+  if (batchAllDoneCheck()) {
+    message.success('已全部提交！')
+    emit('close')
+  } else {
+    if (index.value > 0) {
+      prev()
+      updateCurrent()
+      // batchAllDoneCheck()
+    }
   }
+
 }
 
 const nextData = () => {
-  if (index.value < props.batchData.length - 1) {
-    next()
-    updateCurrent()
-    batchAllDone()
+  if (batchAllDoneCheck()) {
+    message.success('已全部提交！')
+    emit('close')
+  } else {
+    if (index.value < props.batchData.length - 1) {
+      next()
+      updateCurrent()
+      // batchAllDoneCheck()
+    }
   }
 }
 

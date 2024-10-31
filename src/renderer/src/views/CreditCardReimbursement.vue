@@ -24,7 +24,6 @@ const getAccountDetail = account_name => {
 }
 
 const getAccountTip = account_name => {
-    console.log('get ttt ', account_name)
     const map = {
         '汇丰银行': '账单日18号,还款日12号',
         '农业银行':'账单日17日，还款日6日',

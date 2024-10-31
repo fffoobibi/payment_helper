@@ -404,6 +404,11 @@ const formRules = reactive({
     {
       required: true, validator: (rule, value, callback) => {
         const a = (formState.available_balance || "0").replaceAll(",", "")
+        // 到账不需要校验余额
+        if(form.mode == 'arival'){
+            callback()
+            return 
+        }
         if (parseFloat(a) < 0) {
           callback("可用余额不能为负数!")
         } else {
@@ -483,8 +488,8 @@ const onSubmitForm = async () => {
         data.currency = formState.in_account_id_currency
         data.in_account_title_id = 195
         try {
-          console.log(form.attrs.attachment_list);
-          const resp = await api.transit.arrivalTransit(data)
+          // console.log(form.attrs.attachment_list);
+          await api.transit.arrivalTransit(data)
           form.show = false
           resetForm()
           message.success("在途资金已到账!")
@@ -634,7 +639,7 @@ const onCopy = async val => {
           :total="pageInfo.totalCount" />
 
 
-        <!-- 新增/编辑 -->
+        <!-- 新增/编辑/到账 -->
         <el-drawer v-model="form.show" :title="formState.formTitle" direction="rtl" size="65%" destroy-on-close
           :close-on-click-modal="false" ref="drawRef" @closed="resetDetails">
           <template #default>
