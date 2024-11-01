@@ -115,7 +115,7 @@ const accountParser = value => value.replace(/\s/g, '')
  * @param {number} timestamp
  * @returns
  */
-const timestampToFormattedString = (timestamp, sep = false, getNormal = false) => {
+const timestampToFormattedString = (timestamp, sep = false, getNormal = false, simpleYear=false) => {
     // 确保时间戳是以秒为单位
     if (!timestamp) {
         return ''

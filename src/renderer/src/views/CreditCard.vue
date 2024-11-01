@@ -1,7 +1,7 @@
 <script setup>
 import { reactive, ref, watch, onActivated, computed } from 'vue'
 import { useUserStore, useAccountStore } from "@/stores"
-import { timestampToFormattedString, numberFmt, formatDate, until } from "@/utils/format"
+import { timestampToFormattedString, numberFmt, formatDate, until, dateTimeFmt } from "@/utils/format"
 import { useClient } from "@/utils/client"
 import { setUpExportToExcel, useFutureControl } from "@/utils/tools"
 import { computedAsync } from "@vueuse/core"
@@ -190,6 +190,7 @@ const onSearch = async (page = null, pageSize = null) => {
     post.is_review = post.is_review.join(',')
     try {
         const resp = await api.creditCard.getList(post)
+        resp.list.forEach(v => v.is_loading = false)
         queryForm.tableData = resp.list
         queryForm.statistics_currency = resp.statistics_currency
         queryForm.statistics_pending = numberFmt(resp.statistics_pending)
@@ -371,14 +372,27 @@ const goto = (account_id, review_args, company_id) => {
     onSearch()
 }
 
-const getRawField = (row, field, dft=null)=>{
-    if(row.has_refund){
-        return row.change_logs[0][field] ?? dft
-    }
-    if (row.has_canceled){
-        return row.change_logs[0][field] ?? dft
-    }
+const getRawField = (row, field, dft = null) => {
     return row[field] ?? dft
+    // if(row.has_refund){
+    //     return row.change_logs[0][field] ?? dft
+    // }
+    // if (row.has_canceled){
+    //     return row.change_logs[0][field] ?? dft
+    // }
+    // return row[field] ?? dft
+}
+
+const updateChangeLogs = async row => {
+    try {
+        row.is_loading = true
+        const resp = await api.creditCard.getCreditChangeLogs({ credit_card_id: row.id })
+        row.change_logs = resp
+    } catch (err) {
+
+    } finally {
+        row.is_loading = false
+    }
 }
 
 </script>
@@ -391,7 +405,8 @@ const getRawField = (row, field, dft=null)=>{
                     <div class="pannel">
                         <el-form :inline="true" :model="queryForm.search" class="query-form-inline" ref="queryFormRef">
                             <el-form-item label="" v-loading="accountsLoading">
-                                <el-select v-model="queryForm.search.account_id" placeholder="请选择" default-first-option style="width: 210px">
+                                <el-select v-model="queryForm.search.account_id" placeholder="请选择" default-first-option
+                                    style="width: 210px">
                                     <el-option v-for="(item, index) in accounts.accounts" :key="index"
                                         :label="item.account_name" :value="item.account_id"></el-option>
                                 </el-select>
@@ -452,7 +467,8 @@ const getRawField = (row, field, dft=null)=>{
                                         }}</span>
                                 </div>
                                 <div class="flex" style="position: fixed; top: 30px; right: 10px;z-index: 1000">
-                                    <span class="t-red f-12 m-l-4 ">农行账单日17日，还款日6日;工行账单日19日，还款日6日; 汇丰账单日18号, 还款日12号</span>
+                                    <span class="t-red f-12 m-l-4 ">农行账单日17日，还款日6日;工行账单日19日，还款日6日; 汇丰账单日18号,
+                                        还款日12号</span>
                                 </div>
                                 <span class="t-red m-l-4">{{ selectedMsg }}</span>
 
@@ -460,11 +476,86 @@ const getRawField = (row, field, dft=null)=>{
                         </el-form>
 
                         <el-table :data="queryForm.tableData" :height="tableHeight" highlight-current-row
-                            :show-header="queryForm.page.totalCount > 0" @selection-change="onTableCheck" row-key="id">
+                            :show-header="queryForm.page.totalCount > 0" @selection-change="onTableCheck" row-key="id"
+                            :row-class-name=" ({row}) =>{
+                                if(row.cancellation_count || row.refund_count){
+                                    return ''
+                                }
+                                return 'block-change-logs'
+                            }"
+                            @expand-change="row => {
+                                if(row.cancellation_count || row.refund_count){
+                                    updateChangeLogs(row)
+                                    console.log('fetch logs ')
+                                }
+                                console.log('expand ', row)}">
                             <template #empty>
                                 <el-empty :image-size="200" />
                             </template>
                             <el-table-column type="selection" :selectable="selectable" width="40" />
+                            <el-table-column type="expand">
+                                <template #default="{ row }">
+                                    <div v-if="row.cancellation_count" v-loading="row.is_loading" style="margin-left:50px">
+                                        <span class="b-600" style="margin-left:50px">{{ row.cancellation_count }}笔作废单</span>
+                                        <el-table :data="row.change_logs">
+                                            <el-table-column label="#" width="40">
+                                                <template #default="scope">
+                                                    <span>{{scope.$index+1}}</span>
+                                                </template>
+                                            </el-table-column>
+                                            <el-table-column label="审批编号" #default="scope" width="200"> 
+                                               <span class="t-black">{{ scope.row.approval_number }}</span>
+                                            </el-table-column>
+                                            <el-table-column label="人命币金额" #default="scope">
+                                                <span class="t-black">{{ numberFmt(scope.row.cny_total_amount) }} CNY</span>
+                                            </el-table-column>
+                                            <el-table-column label="原始金额"  #default="scope">
+                                                <span class="t-black">{{ numberFmt(scope.row.origin_total_amount) }} {{scope.row.currency}} </span>
+                                            </el-table-column>
+                                            <el-table-column label="退款" #default="scope">
+                                                <span v-if="scope.row.refund_count" class="t-red">
+                                                    {{ scope.row.refund_count }}笔, 共{{ numberFmt(scope.row.refund_cny_amount)}} CNY
+                                                </span>
+                                                <span v-else class="t-black"> 无退款</span>
+                                            </el-table-column>
+                                            
+                                            <el-table-column label="创建时间" #default="scope">
+                                                <span>{{timestampToFormattedString(scope.row.create_time)}}</span>
+                                            </el-table-column>
+                                            <el-table-column label="作废时间" #default="scope">
+                                                <span>{{timestampToFormattedString(scope.row.cancellation_time)}}</span>
+                                            </el-table-column>
+                                        </el-table>
+                                    </div>
+                                    <div v-else-if="row.refund_count" v-loading="row.is_loading" style="margin-left:50px">
+                                        <span class="b-600" style="margin-left:50px">{{ row.refund_count }}笔退款, 合计<span class="b-500">{{numberFmt(row.refund_amount)}} {{row.currency}}, {{ numberFmt(row.refund_cny_amount) }} CNY</span></span>
+                                        <el-table :data="row.change_logs">
+                                            <el-table-column label="#" width="40">
+                                                <template #default="scope">
+                                                    <span>{{scope.$index+1}}</span>
+                                                </template>
+                                            </el-table-column>
+                                            <el-table-column label="原始金额" #default="scope">
+                                                <span class="t-black">{{ numberFmt(scope.row.refund_amount) }} {{ scope.row.refund_currency }}</span>
+                                            </el-table-column>
+                                             <el-table-column label="人命币金额" #default="scope">
+                                                <span class="t-black">{{ numberFmt(scope.row.refund_cny_amount) }} CNY</span>
+                                            </el-table-column>
+                                            <el-table-column label="备注" #default="scope" >
+                                                <span class="t-black">{{ scope.row.note }} CNY</span>
+                                            </el-table-column>
+                                            <el-table-column label="退款时间" #default="scope">
+                                                <span class="t-black">{{ timestampToFormattedString(scope.row.create_time) }}</span>
+                                            </el-table-column>
+                                            <el-table-column label="退款创建人" #default="scope">
+                                                <span class="t-black">{{ scope.row.creator }}</span>
+                                            </el-table-column>
+                                        </el-table>
+                                    </div>
+
+                                </template>
+
+                            </el-table-column>
                             <!-- <el-table-column label="">
                                 <template #default="{ row }">
                                     <div v-if="row.has_canceled">
@@ -542,13 +633,16 @@ const getRawField = (row, field, dft=null)=>{
 
                             <el-table-column label="摘要信息" width="240">
                                 <template #default="{ row }">
-                                    <div >
-                                        <div>钉钉编号： <span class="user-black">{{ getRawField(row, 'approval_number', "一一")  }}</span>
+                                    <div>
+                                        <div>钉钉编号： <span class="user-black">{{ getRawField(row, 'approval_number', "一一")
+                                                }}</span>
                                         </div>
-                                        <div>采购单号： <span class="user-black">{{ getRawField(row, 'purchase_number',  "一一" ) }}</span>
+                                        <div>采购单号： <span class="user-black">{{ getRawField(row, 'purchase_number', "一一"
+            ) }}</span>
                                         </div>
                                         <div v-if="row.is_review == 0">
-                                            创建人：<span class="user-black">{{ getRawField(row, 'creator', '')+  " - " + getRawField(row, 'department_name', "一一") }}</span>
+                                            创建人：<span class="user-black">{{ getRawField(row, 'creator', '') + " - " +
+                getRawField(row, 'department_name', "一一") }}</span>
                                         </div>
                                         <div v-else-if="row.is_review == 1">
                                             核销人：<span class="user-black">{{ getRawField(row, 'operator', '') }}</span>
@@ -561,31 +655,15 @@ const getRawField = (row, field, dft=null)=>{
                             </el-table-column>
                             <el-table-column label="金额">
                                 <template #default="{ row }">
-                                    <template v-if="row.has_refund">
-                                        <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)}}</span><span>{{ " " + row.currency }}</span></div>
-                                        <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)}}</span><span>{{" " + "CNY" }}</span></div>
-                                        <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review)}} </span>
-
-                                            <span class="t-primary m-l-4 b-600">
-                                                (有{{ row.change_logs.length-1 }}笔退款)
-                                            </span>
-                                         
+                                        <div>金额：<span class="user-black bold">{{
+                                                numberFmt(row.origin_total_amount) }}</span><span>{{ " " + row.currency
+                                                                                }}</span></div>
+                                                                        <div>人民币：<span class="user-black bold">{{
+                                                numberFmt(row.cny_total_amount) }}</span><span>{{ " " + "CNY" }}</span>
+                                                                        </div>
+                                                                        <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{
+                                                reviewMsg(row.is_review) }}</span>
                                         </div>
-                                    </template>
-                                    <template v-else-if="row.has_canceled"> 
-                                        <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)}}</span><span>{{ " " + row.currency }}</span></div>
-                                        <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)}}</span><span>{{" " + "CNY" }}</span></div>
-                                        <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review)}} </span>
-                                            <span class="t-red m-l-4 b-600">
-                                                (重做单)
-                                            </span>
-                                        </div>
-                                    </template>
-                                    <template v-else>
-                                        <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)}}</span><span>{{ " " + row.currency }}</span></div>
-                                        <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)}}</span><span>{{" " + "CNY" }}</span></div>
-                                        <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review)}}</span></div>
-                                    </template>
                                 </template>
                             </el-table-column>
 
@@ -604,6 +682,11 @@ const getRawField = (row, field, dft=null)=>{
                                         复核：<span class="user-black">{{ timestampToFormattedString(row.review_time)
                                             }}</span>
                                     </div>
+                                    <div v-if="row.cancellation_count" ><el-tag effect="dark" type="danger" size="small">重做单</el-tag></div>
+                                    <div v-else-if="row.refund_count"><el-tag effect="dark" type="warning" size="small">{{row.refund_count}}笔退款</el-tag>
+                                        
+                                    </div>
+
                                 </template>
                             </el-table-column>
 
@@ -709,6 +792,10 @@ h4 {
 
 .el-form--inline .el-form-item {
     margin: 0 8px 8px 0;
+}
+
+:deep(.block-change-logs .el-table__expand-icon){
+    display: none;
 }
 
 :deep(.el-date-editor) {

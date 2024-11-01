@@ -10,7 +10,8 @@ const creditCard = {
     checkReview: data => http({ url: '/creditCard/checkReview', params: data }),
     getReimburseList: data => http({ url: '/creditCard/getReimburseList', params: data }),
     reimburse: data => http({ url: '/creditCard/reimburse', params: data }),
-    getReimburseDatail: data=>http({url:'/creditCard/getReimburseDatail', params: data})
+    getReimburseDatail: data => http({ url: '/creditCard/getReimburseDatail', params: data }),
+    getCreditChangeLogs: data => http({ url: '/creditCard/creditChangeLogs', params: data, showLoading: false })
 }
 
 export default creditCard
