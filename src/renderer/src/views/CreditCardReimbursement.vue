@@ -25,9 +25,9 @@ const getAccountDetail = account_name => {
 
 const getAccountTip = account_name => {
     const map = {
-        '汇丰银行': '账单日18号,还款日12号',
-        '农业银行':'账单日17日，还款日6日',
-        '工商银行': '账单日19日，还款日6日',
+        '汇丰银行': '账单日18号, 还款日12号',
+        '农业银行':'账单日17日, 还款日6日',
+        '工商银行': '账单日19日, 还款日6日',
     }
     const c = accountsInfo.value[account_name].bank
     const keys = Object.keys(map)
@@ -260,7 +260,7 @@ const submitReimburse = async () => {
                                     }
                                     const r = item.currency_list_group[company_name]
                                     const company_id = r[0].company_id
-                                    emits('toCard', item.account_id, args, [company_id])
+                                    emits('toCard', item.account_id, args, [company_id], queryForm.search.start_time, queryForm.search.end_time)
                                 }">
                                 查看记录
                             </el-button>
@@ -270,59 +270,62 @@ const submitReimburse = async () => {
                             <div :class="['flex-col', 'w-full', item.currency_list_group[company_name][0].reimburse == null ? '': 'has-reimburse']">
                                 <div :class="['flex', 'flex-row']">
                                 <!-- 左侧 -->
-                                <div v-for="value in item.currency_list_group[company_name]" :key="value.currency" class="flex flex-col flex-c-center" style="width: 360px">
-                                    
-                                    <!-- 已报销 -->
-                                    <template v-if="value.reimburse">
-                                        <div class="flex flex-row w-full flex-between">
-                                            <el-progress style="width: 280px" class="m-r-10" :text-inside="true" :stroke-width="20"
-                                                :percentage="100" status="success">
-                                            <div class="flex flex-start w-full">
-                                                <span class="p-l-10 f-11">已复核 {{ value.reviewed_count }}笔</span>
-                                            </div>
-                                            </el-progress>
-                                            <span class="t-black m-r-4 f-12 b-600">{{ value.reviewed_count }}笔</span>
-                                            <span class="t-gray m-r-4 f-12 b-600">/</span>
-                                            <span class="t-black m-r-4 f-12 b-600">{{ value.reviewed_count + value.un_reviewed_count}}笔</span>
-                                        </div>
-                    
-                                    </template>
-
-                                    <!-- 未报销 -->
-                                    <template v-else>
+                                <div>
+                                    <div v-for="value in item.currency_list_group[company_name]" :key="value.currency" class="flex flex-col flex-c-center" style="width: 360px">
                                         
-                                        <!-- 全部未复核 -->
-                                        <template v-if="value.un_reviewed_amount == 0">
-                                            <span class="t-red b-500 w-full">{{ value.reviewed_count }}笔&nbsp; {{value.currency }}
-                                                {{ value.reviewed_amount }}
-                                                <span class="t-green t-n f-12">
-                                                    &nbsp;&nbsp;全部复核结束 <el-icon>
-                                                        <SuccessFilled />
-                                                    </el-icon>
-                                                </span>
-                                            </span>
+                                        <!-- 已报销 -->
+                                        <template v-if="value.reimburse">
+                                            <div class="flex flex-row w-full flex-between">
+                                                <el-progress style="width: 280px" class="m-r-10" :text-inside="true" :stroke-width="20"
+                                                    :percentage="100" status="success">
+                                                <div class="flex flex-start w-full">
+                                                    <span class="p-l-10 f-11">已复核 {{ value.reviewed_count }}笔</span>
+                                                </div>
+                                                </el-progress>
+                                                <span class="t-black m-r-4 f-12 b-600">{{ value.reviewed_count }}笔</span>
+                                                <span class="t-gray m-r-4 f-12 b-600">/</span>
+                                                <span class="t-black m-r-4 f-12 b-600">{{ value.reviewed_count + value.un_reviewed_count}}笔</span>
+                                            </div>
+                        
                                         </template>
 
+                                        <!-- 未报销 -->
                                         <template v-else>
-                                            <span class="t-red b-500 w-full">{{ value.un_reviewed_count }}笔&nbsp;
-                                                {{ value.currency }} {{ value.un_reviewed_amount }}
-                                                <span class="t-red t-n f-12">
-                                                    &nbsp;未复核
-                                                </span>
-                                                <span v-if="value.reviewed_count" class="t-red b-500">{{value.reviewed_count }}笔 &nbsp;&nbsp; {{ value.currency }}
+                                            
+                                            <!-- 全部未复核 -->
+                                            <template v-if="value.un_reviewed_amount == 0">
+                                                <span class="t-red b-500 w-full">{{ value.reviewed_count }}笔&nbsp; {{value.currency }}
                                                     {{ value.reviewed_amount }}
-                                                    <el-text class="t-green t-n f-12" size="small">
-                                                        &nbsp;已复核 <el-icon>
+                                                    <span class="t-green t-n f-12">
+                                                        &nbsp;&nbsp;全部复核结束 <el-icon>
                                                             <SuccessFilled />
                                                         </el-icon>
-                                                    </el-text>
+                                                    </span>
                                                 </span>
-                                            </span>
+                                            </template>
+
+                                            <template v-else>
+                                                <span class="t-red b-500 w-full">{{ value.un_reviewed_count }}笔&nbsp;
+                                                    {{ value.currency }} {{ value.un_reviewed_amount }}
+                                                    <span class="t-red t-n f-12">
+                                                        &nbsp;未复核
+                                                    </span>
+                                                    <span v-if="value.reviewed_count" class="t-red b-500">{{value.reviewed_count }}笔 &nbsp;&nbsp; {{ value.currency }}
+                                                        {{ value.reviewed_amount }}
+                                                        <el-text class="t-green t-n f-12" size="small">
+                                                            &nbsp;已复核 <el-icon>
+                                                                <SuccessFilled />
+                                                            </el-icon>
+                                                        </el-text>
+                                                    </span>
+                                                </span>
+                                            </template>
+
                                         </template>
 
-                                    </template>
-
+                                    </div>
                                 </div>
+
 
                                 <!-- 右侧 -->
                                 <div style="flex:1;margin-left: 30px;" :class="['w-full', 'flex', 'flex-between', ]">

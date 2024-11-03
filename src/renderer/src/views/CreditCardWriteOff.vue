@@ -58,11 +58,13 @@ const onSubmit = async () => {
         payment_id: item.payment_id,
         amount: item.origin_total_amount,
         currency: item.currency,
-        note: item.note
+        note: item.note,
+        type: item.type
       }
     })
 
     try {
+      console.log('items', items)
       await api.creditCard.review({
         item_list: JSON.stringify(items)
       })
@@ -76,6 +78,7 @@ const onSubmit = async () => {
     const items = table.data.map(item => {
       return {
         id: item.id,
+        type: item.type
       }
     })
     try {
@@ -126,10 +129,11 @@ const onSubmit = async () => {
       </template>
     </el-table-column>
   </el-table>
-  <div class="total-amount flex gap-4">
+  <div class="total-amount flex gap-4 flex-c-center">
     <span class="label">{{ props.mode === 0 ? '本次核销金额：' : '本次复核金额' }}</span>
-    <div v-for="item in totalAmountCNY" class="flex gap-2 flex-start">
-      <span class="amount" v-for="item in totalAmountCNY">{{ numberFmt(item.value) }}</span>
+    <div v-for="item in totalAmountCNY" class="flex gap-2 flex-c-center">
+      <!-- <span class="amount" v-for="item in totalAmountCNY">{{ numberFmt(item.value) }}</span> -->
+      <span class="amount t-red" >{{ numberFmt(item.value) }}</span>
       <span class="currency">{{ item.currency }}</span>
     </div>
     <!-- <span class="amount" v-for="item in totalAmountCNY">{{ numberFmt(totalAmountCNY.toFixed(2)) }}</span>

@@ -364,8 +364,10 @@ const onEditNote = async () => {
     }
 }
 
-const goto = (account_id, review_args, company_id) => {
+const goto = (account_id, review_args, company_id, start_time, end_time) => {
     tabs.currentTab = '信用卡管理'
+    queryForm.search.start_time = start_time
+    queryForm.search.end_time = end_time
     queryForm.search.account_id = account_id
     queryForm.search.is_review = review_args ?? ['1', '2']
     queryForm.search.company_id = company_id
