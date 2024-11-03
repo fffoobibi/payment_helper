@@ -422,14 +422,14 @@ const updateChangeLogs = async row => {
 
                             </el-form-item>
                             <el-form-item>
-                                <el-select style="width: 170px" v-model="queryForm.search.company_id" multiple>
+                                <el-select style="width: 190px" v-model="queryForm.search.company_id" multiple>
                                     <el-option v-for="item in accounts.companies" :label="item.company_name"
                                         :value="item.id"></el-option>
                                 </el-select>
                             </el-form-item>
                             <el-form-item>
                                 <el-input v-model="queryForm.search.content" placeholder="钉钉编号/采购单号"
-                                    style="width: 180px" clearable></el-input>
+                                    style="width: 160px" clearable></el-input>
                             </el-form-item>
                             <el-form-item>
                                 <el-select multiple max-collapse-tags="2" collapse-tags collapse-tags-tooltip
@@ -478,22 +478,23 @@ const updateChangeLogs = async row => {
                         <el-table :data="queryForm.tableData" :height="tableHeight" highlight-current-row
                             :show-header="queryForm.page.totalCount > 0" @selection-change="onTableCheck" row-key="id"
                             :row-class-name=" ({row}) =>{
-                                if(row.cancellation_count || row.refund_count){
-                                    return ''
-                                }
-                                return 'block-change-logs'
+                                // if(row.cancellation_count || row.refund_count){
+                                //     return ''
+                                // }
+                                // return 'block-change-logs'
                             }"
                             @expand-change="row => {
-                                if(row.cancellation_count || row.refund_count){
-                                    updateChangeLogs(row)
-                                    console.log('fetch logs ')
-                                }
+                                // if(row.cancellation_count || row.refund_count){
+                                //     updateChangeLogs(row)
+                                //     console.log('fetch logs ')
+                                // }
                                 console.log('expand ', row)}">
                             <template #empty>
                                 <el-empty :image-size="200" />
                             </template>
                             <el-table-column type="selection" :selectable="selectable" width="40" />
-                            <el-table-column type="expand">
+
+                            <!-- <el-table-column type="expand">
                                 <template #default="{ row }">
                                     <div v-if="row.cancellation_count" v-loading="row.is_loading" style="margin-left:50px">
                                         <span class="b-600" style="margin-left:50px">{{ row.cancellation_count }}笔作废单</span>
@@ -555,94 +556,18 @@ const updateChangeLogs = async row => {
 
                                 </template>
 
-                            </el-table-column>
-                            <!-- <el-table-column label="">
-                                <template #default="{ row }">
-                                    <div v-if="row.has_canceled">
-
-                                    </div>
-                                    <div v-else-if="row.has_refund" class="flex flex-start flex-between p-r-10 p-l-10">
-                                        <div>
-                                            <div>
-                                            <div>钉钉编号： <span class="user-black">{{ row.change_logs[0].approval_number || "一一" }}</span>
-                                            </div>
-                                            <div>采购单号： <span class="user-black">{{ row.change_logs[0].purchase_number || "一一" }}</span>
-                                            </div>
-                                            <div v-if="row.change_logs[0].is_review == 0">
-                                                创建人：<span class="user-black">{{ row.change_logs[0].creator + " - " + (row.change_logs[0].department_name||"一一") }}</span>
-                                            </div>
-                                            <div v-else-if="row.change_logs[0].is_review == 1">
-                                                核销人：<span class="user-black">{{ row.change_logs[0].operator }}</span>
-                                            </div>
-                                            <div v-else>
-                                                复核人：<span class="user-black">{{ row.change_logs[0].reviewer }}</span>
-                                            </div>
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                    <div v-else class="flex flex-start flex-between p-r-10 p-l-10" >
-                                        <div>
-                                            <div>钉钉编号： <span class="user-black">{{ row.approval_number || "一一" }}</span>
-                                            </div>
-                                            <div>采购单号： <span class="user-black">{{ row.purchase_number || "一一" }}</span>
-                                            </div>
-                                            <div v-if="row.is_review == 0">
-                                                创建人：<span class="user-black">{{ row.creator + " - " + (row.department_name||"一一") }}</span>
-                                            </div>
-                                            <div v-else-if="row.is_review == 1">
-                                                核销人：<span class="user-black">{{ row.operator }}</span>
-                                            </div>
-                                            <div v-else>
-                                                复核人：<span class="user-black">{{ row.reviewer }}</span>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div>金额：<span class="user-black bold">{{ numberFmt(row.origin_total_amount)}}</span><span>{{ " " + row.currency }}</span></div>
-                                            <div>人民币：<span class="user-black bold">{{ numberFmt(row.cny_total_amount)}}</span><span>{{" " + "CNY" }}</span></div>
-                                            <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review)}}</span></div>
-                                        </div>
-
-                                        <div>
-                                            <div>公司: {{ row.company_name }}</div>
-                                            <div v-if="row.is_review == 0">
-                                                创建：<span class="user-black">{{ timestampToFormattedString(row.create_time)
-                                                    }}</span>
-                                            </div>
-                                            <div v-else-if="row.is_review == 1">
-                                                核销：<span class="user-black">{{ timestampToFormattedString(row.update_time)
-                                                    }}</span>
-                                            </div>
-                                            <div v-else>
-                                                复核：<span class="user-black">{{ timestampToFormattedString(row.review_time)
-                                                    }}</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div>
-                                            <div class="user-black">{{ row.note }}</div>
-                                        </div>
-
-                                        <div>
-                                            <el-button link type="primary" @click="editNote(row)">备注</el-button>
-                                        </div>
-                                    </div>
-                                </template>
                             </el-table-column> -->
-
+        
                             <el-table-column label="摘要信息" width="240">
                                 <template #default="{ row }">
                                     <div>
                                         <div>钉钉编号： <span class="user-black">{{ getRawField(row, 'approval_number', "一一")
                                                 }}</span>
                                         </div>
-                                        <div>采购单号： <span class="user-black">{{ getRawField(row, 'purchase_number', "一一"
-            ) }}</span>
+                                        <div>采购单号： <span class="user-black">{{ getRawField(row, 'purchase_number', "一一") }}</span>
                                         </div>
                                         <div v-if="row.is_review == 0">
-                                            创建人：<span class="user-black">{{ getRawField(row, 'creator', '') + " - " +
-                getRawField(row, 'department_name', "一一") }}</span>
+                                            创建人：<span class="user-black">{{ getRawField(row, 'creator', '') + " - " + getRawField(row, 'department_name', "一一") }}</span>
                                         </div>
                                         <div v-else-if="row.is_review == 1">
                                             核销人：<span class="user-black">{{ getRawField(row, 'operator', '') }}</span>
@@ -655,15 +580,9 @@ const updateChangeLogs = async row => {
                             </el-table-column>
                             <el-table-column label="金额">
                                 <template #default="{ row }">
-                                        <div>金额：<span class="user-black bold">{{
-                                                numberFmt(row.origin_total_amount) }}</span><span>{{ " " + row.currency
-                                                                                }}</span></div>
-                                                                        <div>人民币：<span class="user-black bold">{{
-                                                numberFmt(row.cny_total_amount) }}</span><span>{{ " " + "CNY" }}</span>
-                                                                        </div>
-                                                                        <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{
-                                                reviewMsg(row.is_review) }}</span>
-                                        </div>
+                                    <div>金额：<span class="user-black bold">{{numberFmt(row.origin_total_amount) }}</span><span>{{ " " + row.currency}}</span></div>
+                                    <div>人民币：<span class="user-black bold">{{numberFmt(row.type==4? row.refund_cny_amount : row.cny_total_amount) }}</span><span>{{ " " + "CNY" }}</span></div>
+                                    <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review) }}</span></div>
                                 </template>
                             </el-table-column>
 
@@ -682,10 +601,10 @@ const updateChangeLogs = async row => {
                                         复核：<span class="user-black">{{ timestampToFormattedString(row.review_time)
                                             }}</span>
                                     </div>
-                                    <div v-if="row.cancellation_count" ><el-tag effect="dark" type="danger" size="small">重做单</el-tag></div>
-                                    <div v-else-if="row.refund_count"><el-tag effect="dark" type="warning" size="small">{{row.refund_count}}笔退款</el-tag>
-                                        
-                                    </div>
+                                    <div v-if="row.type==2" ><el-tag effect="dark" type="danger" size="small">重做单</el-tag></div>
+                                    <div v-else-if="row.type==4"><el-tag effect="dark" type="warning" size="small">退款单</el-tag></div>
+                                    <div v-else-if="row.type==3"><el-tag effect="dark" type="primary" size="small">年费单</el-tag></div>
+
 
                                 </template>
                             </el-table-column>
