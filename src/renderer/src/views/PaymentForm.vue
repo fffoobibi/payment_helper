@@ -159,9 +159,9 @@ const onSubmit = async el => {
         if (!valid) return false
         const data = {
             approval_number: form.approval_number,
-            origin_total_amount: form.origin_total_amount,
+            origin_total_amount: form.origin_total_amount?.replaceAll(',', ''),
             currency: form.currency,
-            commission: form.commission,
+            commission: form.commission.replaceAll(',', ''),
             attachment_list: [],
             account_items: [
                 {

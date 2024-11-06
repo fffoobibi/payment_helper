@@ -101,6 +101,7 @@ electron.onOpenExcel(
 electron.onUpdater((name, value, ...args) => {
   switch (name) {
     case 'checking-for-update':
+      console.log('checking ...')
       updateStore.update_err = false
       updateStore.checking = true
       break;

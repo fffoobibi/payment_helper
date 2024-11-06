@@ -3,6 +3,8 @@ import { useUserStore } from '@/stores/index'
 import { computedAsync } from '@vueuse/core'
 import { ref, watch, toRaw, computed } from 'vue'
 import { debounce } from "lodash"
+import * as CONSTANTS from "../../../main/constants"
+
 const env = import.meta.env
 
 const Keys = {
@@ -360,7 +362,7 @@ const useLocalConfig = defineStore('localConfig', () => {
   //更新测试服
   const r = 'http://192.168.0.10:20010/upload'
   // const r = 'http://36.32.174.26:5018/updates'
-  const { refV: versionTestUrl, update: updateTestVersion } = makeGlobal(r, async () => {
+  const { refV: versionTestUrl, update: updateTestVersion } = makeGlobal(CONSTANTS.debugFeedUrl, async () => {
     return await getGlobalConfig(Globals.versionTestUrl)
   }, Globals.versionTestUrl, { debounced: true, autoSave: true })
 

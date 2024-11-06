@@ -10,6 +10,7 @@ import fs from 'fs'
 import db from './db.js'
 import { OperateDataBase } from './operatedb.js'
 import * as XLSX from 'xlsx'
+import * as CONSTANTS from './constants.js'
 
 import _ from 'electron-updater'
 // import * as UPDATER from 'electron-updater'
@@ -89,20 +90,13 @@ class Updater {
       autoUpdater.logger = log
       const isPro = store.get('pro')?.value ?? true
       // const debugFeedLocalUrl = 'http://36.32.174.26:5018/updates'
-      const debugFeedLocalUrl = 'http://192.168.0.10:20010/upload'
-      const feedUrl = isPro ? (store.get('versionFormalUrl')?.value ?? "https://bd.baizhoucn.com/upload") : (store.get('versionTestUrl')?.value ?? debugFeedLocalUrl)
-
+      // const debugFeedLocalUrl = 'http://192.168.0.10:20010/upload'
+      // const debugFeedLocalUrl = CONSTANTS.debugFeedLocalUrl
+      const feedUrl = isPro ? (store.get('versionFormalUrl')?.value ?? CONSTANTS.feedUrl) : (store.get('versionTestUrl')?.value ?? CONSTANTS.debugFeedUrl)
       if (is.dev) {
         autoUpdater.forceDevUpdateConfig = true
       }
       autoUpdater.setFeedURL(feedUrl)
-
-      // if (is.dev) {
-      //   autoUpdater.forceDevUpdateConfig = true
-      //   autoUpdater.updateConfigPath = join(__dirname, '../../dev-app-update.yml')
-      // } else {
-      //   autoUpdater.setFeedURL('https://bd.baizhoucn.com/upload')
-      // }
 
       autoUpdater.on('checking-for-update', () => {
         this.sendStatusToWindow('checking-for-update', 'Checking for update...')
@@ -129,9 +123,9 @@ class Updater {
       })
 
       this._initMainCallback()
-      autoUpdater.checkForUpdatesAndNotify().then((info) => {
-        // console.log('info ', info)
-      })
+      // autoUpdater.checkForUpdatesAndNotify().then((info) => {
+      //   // console.log('info ', info)
+      // })
     }
   }
 }

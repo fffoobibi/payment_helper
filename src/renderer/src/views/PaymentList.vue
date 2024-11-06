@@ -5,7 +5,7 @@ import { dateTimeFmt, numberFmt, subNumbers } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
 import Message from '@/utils/message'
-import { useAccountStore, useExcelStore, useDingdingSubmitStore, useUserStore } from '@/stores'
+import { useAccountStore, useExcelStore, useDingdingSubmitStore, useUserStore, useScreenShortStore } from '@/stores'
 import PaymentMerge from './PaymentMerge.vue'
 import PaymentInfo from './PaymentInfo.vue'
 import BankTransferAdd from './BankTransferAdd.vue'
@@ -17,6 +17,7 @@ const router = useRouter()
 const cfg = useLocalConfig()
 const dd = useDingdingSubmitStore()
 const store = useUserStore()
+const shortStore = useScreenShortStore()
 
 onBeforeMount(() => {
   // onSearch()
@@ -30,7 +31,6 @@ const { pause, resume, isActive } = useIntervalFn(() => {
 }, 1000 * 60 * 10)
 
 onActivated(() => {
-  console.log('refresh ...')
   onRefresh()
 })
 
@@ -216,6 +216,7 @@ const onDetail = (id, item) => {
     firstItem.value = item.items[0]
     if (bankAccountTitleIds.includes(firstItem.value.account_title_id)) {
       showAddDrawer.value = true
+      shortStore.setTag('transferAdd')
     } else {
       preSubmitdingding(item)
     }
@@ -256,8 +257,6 @@ const onSegmented = val => {
     router.push({ name: 'paymentForm' })
   }
 }
-
-
 
 const onRemove = (item, index) => {
   preprocess = approves.value
@@ -765,8 +764,14 @@ defineExpose({
 
   <!-- 银行转账抽屉 -->
   <el-drawer v-model="showAddDrawer" title="新增银行转账" direction="rtl" size="600" :close-on-press-escape="false"
+    @closed="()=>{
+        shortStore.reSetTag()
+    }"
     :close-on-click-modal="false" destroy-on-close>
-    <BankTransferAdd :item="firstItem" @close="showAddDrawer = false" />
+    <BankTransferAdd :item="firstItem" @on-success="()=>{
+        showAddDrawer = false
+        shortStore.reSetTag()
+    }" />
   </el-drawer>
 
 </template>

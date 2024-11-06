@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from "pinia"
 import Toolbar from '@/components/Toolbar.vue'
@@ -41,6 +41,7 @@ const checkMsg = computed(() => {
 })
 
 const buttonLabel = computed(() => {
+  console.log('aaa ', updateStore.canUpdate, updateStore.checking)
   if (updateStore.checking) {
     return "更新检查中"
   }
@@ -66,6 +67,15 @@ const formRules = reactive({
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
   ]
+})
+
+onMounted(async ()=>{
+  try{
+    updateStore.checking=true
+  const r = await updater.checkUpdates(true)
+  }finally{
+    updateStore.checking = false
+  }
 })
 
 const onSubmit = async () => {

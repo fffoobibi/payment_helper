@@ -292,7 +292,7 @@ const download = () => {
             <p>版本：{{ "v" + update.version.version }}</p>
             <el-scrollbar v-if="(!update.downloading) && (!update.update_success)"
               :height="update.downloading ? '50px' : '140px'">
-              <div style="font-size: 10pt; color:black" v-html="update.version.content">
+              <div style="font-size: 10pt; color:black" v-html="update.version.content?.trim()">
               </div>
             </el-scrollbar>
             <div style="display: flex; width: 100%;" v-if="update.downloading || update.update_success">

@@ -95,6 +95,7 @@ const exportToExcel = async () => {
                 '钉钉编号': v.approval_number,
                 '采购单号': v.purchase_number,
                 '金额': v.origin_total_amount,
+                '原始币种': v.currency,
                 '人民币总金额': v.cny_total_amount,
                 '账号名称': v.account_name,
                 '核销状态': reviewMsg(v.is_review),
@@ -151,6 +152,7 @@ const queryForm = reactive({
         company_id: [],
         content: '',
         is_review: ['0'],
+        ids: '',
     },
     searching: true,
     statistics_currency: "CNY",
@@ -188,6 +190,9 @@ const onSearch = async (page = null, pageSize = null) => {
     }
     post.company_id = post.company_id.join(',')
     post.is_review = post.is_review.join(',')
+    if(!isReimburse.value){
+        post.ids = ''
+    }
     try {
         const resp = await api.creditCard.getList(post)
         resp.list.forEach(v => v.is_loading = false)
@@ -364,14 +369,19 @@ const onEditNote = async () => {
     }
 }
 
-const goto = (account_id, review_args, company_id, start_time, end_time) => {
+const isReimburse = ref(false)
+const goto = (account_id, review_args, company_id, start_time, end_time, ids) => {
     tabs.currentTab = '信用卡管理'
     queryForm.search.start_time = start_time
     queryForm.search.end_time = end_time
     queryForm.search.account_id = account_id
     queryForm.search.is_review = review_args ?? ['1', '2']
     queryForm.search.company_id = company_id
-    onSearch()
+    queryForm.search.ids = ids
+    isReimburse.value=true
+    // onSearch().finally(()=>{
+    //     queryForm.search.ids = ''
+    // })
 }
 
 const getRawField = (row, field, dft = null) => {
@@ -396,13 +406,20 @@ const updateChangeLogs = async row => {
         row.is_loading = false
     }
 }
+const onTabChange = (label)=>{
+    console.log('tab change ', label)
+    if(queryForm.search.ids) {
+
+    }
+    isReimburse.value=false
+}
 
 </script>
 
 <template>
     <Layout>
         <template #layout-main-inner>
-            <el-tabs v-model="tabs.currentTab" type="border-card" class="bank-tabs">
+            <el-tabs v-model="tabs.currentTab" type="border-card" class="bank-tabs" @tab-change="onTabChange">
                 <el-tab-pane label="信用卡管理" name="信用卡管理">
                     <div class="pannel">
                         <el-form :inline="true" :model="queryForm.search" class="query-form-inline" ref="queryFormRef">
@@ -473,6 +490,9 @@ const updateChangeLogs = async row => {
                                         还款日12号</span>
                                 </div>
                                 <span class="t-red m-l-4">{{ selectedMsg }}</span>
+                                <el-checkbox  v-model="isReimburse" v-show="isReimburse">
+                                    <span class="b-600">报销记录明细查询</span>
+                                </el-checkbox>
 
                             </el-form-item>
                         </el-form>

@@ -96,11 +96,11 @@ export class OperateDataBase {
                 const minte = 60 * 1000
                 const day = 24 * 60 * minte
                 const delta = 60 * day
-                this.deleteRaw('operate_log', `create_time <= ${n} - ${delta}`).then(r => {
-                    console.log('delete success')
-                }).catch(err => {
-                    console.log('delete fail ', err)
-                })
+            this.deleteRaw('operate_log', `create_time <= ${n} - ${delta}`).then(r => {
+                console.log('delete success')
+            }).catch(err => {
+                console.log('delete fail ', err)
+            })
             }
         })
         if (!is_init) {

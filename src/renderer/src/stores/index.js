@@ -228,7 +228,7 @@ const useScreenShortStore = defineStore('screenShortCutStore', () => {
       // todo
     }
   }
-  return { image, onImageShortCutDown, setTag: _setTag}
+  return { image, onImageShortCutDown, setTag: _setTag, reSetTag}
 })
 
 const useDingdingSubmitStore = defineStore('dingdingStore', () => {

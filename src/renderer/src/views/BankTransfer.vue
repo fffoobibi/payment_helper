@@ -226,6 +226,8 @@ const formRules = reactive({
     {
       required: true, validator: (rule, value, callback) => {
         const a = (formState.available_balance || "0").replaceAll(",", "")
+        callback()
+        return
         if (parseFloat(a) < 0) {
           callback("可用余额不能为负数!")
         } else {

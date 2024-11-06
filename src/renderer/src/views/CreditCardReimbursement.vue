@@ -2,9 +2,10 @@
 import { reactive, onMounted, ref } from "vue"
 import { useClient } from "../utils/client"
 import api from "@/api"
-import { formatDate, numberFmt, amountFormatter, amountParser, until, getMonthDaysFromDate } from "@/utils/format"
+import { formatDate, numberFmt, amountFormatter, amountParser, until, getMonthDaysFromDate, mulNumbers, sumArray } from "@/utils/format"
 import message from "../utils/message";
 import { computed } from "vue";
+import { watch } from "vue";
 const { height } = useClient()
 
 const props = defineProps({
@@ -126,8 +127,6 @@ onMounted(() => {
     onSearch()
 })
 
-
-
 const onReimburse = async () => {
 
     if (item.value == null) {
@@ -178,14 +177,31 @@ const formAdd = reactive({
     account_name: '',
     list: [],
 })
+
+const updateTotalCnyAmount = ()=>{
+    formAdd.amount = sumArray(formAdd.list, x=>{
+        console.log('mul ', x.rate, x.amount)
+        return mulNumbers(x.rate, x.amount, 2)}, 2)
+    console.log('r ', formAdd.amount)
+}
+
+watch(()=>formAdd.list, ()=>{
+    updateTotalCnyAmount()
+}, {deep: true})
+
 const submitReimburse = async () => {
     formRef.value.validate(async valid => {
         if (valid) {
             try {
+                const details = formAdd.list.map(v=>{
+                    const cny = mulNumbers(v.rate, v.amount)
+                    const l = v.ids.split(',').length
+                    return l + `笔账单, 合计 ${v.amount} ${v.currency}, 人民币金额: ${cny} CNY `
+                }).join('\n')
                 const d = { ...formAdd }
+                d.note = `${details} \n ${d.note}`
                 delete d.account_name
                 delete d.list
-                console.log('d ==> ', d)
                 await api.creditCard.reimburse(d)
                 show.value = false
                 message.success('报销已提交!')
@@ -258,9 +274,12 @@ const submitReimburse = async () => {
                                     if (item.reviewed_count) {
                                         args.push('2')
                                     }
+                                    
                                     const r = item.currency_list_group[company_name]
                                     const company_id = r[0].company_id
-                                    emits('toCard', item.account_id, args, [company_id], queryForm.search.start_time, queryForm.search.end_time)
+                                    const ids = r.map(v=> v.ids).join(',')
+                                    console.log('ids ', ids)
+                                    emits('toCard', item.account_id, args, [company_id], queryForm.search.start_time, queryForm.search.end_time, ids)
                                 }">
                                 查看记录
                             </el-button>
@@ -275,11 +294,11 @@ const submitReimburse = async () => {
                                         
                                         <!-- 已报销 -->
                                         <template v-if="value.reimburse">
-                                            <div class="flex flex-row w-full flex-between">
+                                            <div class="flex flex-row w-full flex-between m-b-4">
                                                 <el-progress style="width: 280px" class="m-r-10" :text-inside="true" :stroke-width="20"
                                                     :percentage="100" status="success">
                                                 <div class="flex flex-start w-full">
-                                                    <span class="p-l-10 f-11">已复核 {{ value.reviewed_count }}笔</span>
+                                                    <span class="p-l-10 f-11">已复核 {{ value.reviewed_count }}笔 {{ value.currency }}</span>
                                                 </div>
                                                 </el-progress>
                                                 <span class="t-black m-r-4 f-12 b-600">{{ value.reviewed_count }}笔</span>
@@ -486,7 +505,7 @@ const submitReimburse = async () => {
         </el-scrollbar>
 
         <!-- 报销操作 -->
-        <el-dialog title="报销" width="500" v-model="show" destroy-on-close :close-on-click-modal="false">
+        <el-dialog title="报销" width="800" v-model="show" destroy-on-close :close-on-click-modal="false">
             <el-form :model="formAdd" label-width="auto" ref="formRef"
                 :rules="{ amount: [{ required: true, message: '请填写金额', trigger: 'blur' }] }">
                 <el-form-item label="账户">
@@ -504,10 +523,14 @@ const submitReimburse = async () => {
                 </el-form-item>
                 <el-form-item label="复核金额">
                     <el-table :data="formAdd.list">
-                        <el-table-column label="币种" prop="currency"></el-table-column>
+                        <el-table-column label="币种" prop="currency" ></el-table-column>
                         <el-table-column label="金额" prop="amount"></el-table-column>
-                        <el-table-column label="汇率" prop="rate"></el-table-column>
-                        <el-table-column label="人命币金额" prop="amount_cny"></el-table-column>
+                        <el-table-column label="汇率" prop="rate" #default="{row}">
+                            <el-input-number v-model="row.rate" :controls="false"></el-input-number>
+                        </el-table-column>
+                        <el-table-column label="人民币金额" prop="amount_cny" #default="{row}">
+                            <span>{{ numberFmt(mulNumbers(row.rate, row.amount)) }}</span>
+                        </el-table-column>
                     </el-table>
                 </el-form-item>
                 <el-form-item label="金额" prop="amount">
@@ -519,7 +542,7 @@ const submitReimburse = async () => {
                     </el-input>
                 </el-form-item>
                 <el-form-item label="备注" prop="note">
-                    <el-input v-model="formAdd.note" type="textarea" spellcheck="false" maxlength="100"
+                    <el-input v-model="formAdd.note" type="textarea" spellcheck="false" maxlength="500" :rows="4"
                         show-word-limit />
 
                 </el-form-item>

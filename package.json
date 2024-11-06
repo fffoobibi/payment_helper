@@ -1,6 +1,6 @@
 {
   "name": "payment_helper",
-  "version": "2.0.7",
+  "version": "2.0.9",
   "description": "An Electron application with Vue",
   "main": "./out/main/index.js",
   "author": "https://www.baizhoucn.com",

@@ -224,6 +224,37 @@ const addNumbers = (v1, v2, digit = 2) => {
     return rs
 }
 
+/**
+ *  计算相乘
+ * @param {number|string|null} v1
+ * @param {number|string|null} v2
+ * @returns string
+ * 
+ */
+const mulNumbers = (v1, v2, digit=2)=>{
+    const a = new Decimal((v1 || '0').toString().replaceAll(',', ''))
+    const b = new Decimal((v2 || '0').toString().replaceAll(',', ''))
+    const rs = a.mul(b).toFixed(digit)
+    return rs
+}
+
+/**
+ *  数组求和
+ * @param { Array } arr
+ * @param {()=>any | null} v2
+ * @returns string
+ * 
+ */
+const sumArray = (arr, callback, digit=2)=>{
+    let r = 0
+    arr.forEach(v=>{
+        let x = callback ? callback(v): v
+        console.log('sub', r, x)
+        r = addNumbers(r, x, digit)
+    })
+    return r
+}
+
 const maxText = (str, length = 10) => {
     if (!str) {
         return ''
@@ -298,6 +329,8 @@ export {
     formatDate,
     subNumbers,
     addNumbers,
+    mulNumbers,
+    sumArray,
     maxText,
     amountFormatter,
     amountParser,

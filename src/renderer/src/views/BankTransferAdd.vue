@@ -4,7 +4,7 @@ import { numberFmt, subNumbers } from "@/utils/format"
 import api from "../api"
 import { setUpCapture } from '@/utils/tools'
 import message from "../utils/message"
-import { useAccountStore } from "@/stores"
+import { useAccountStore, useScreenShortStore } from "@/stores"
 import { Check, Close } from '@element-plus/icons-vue'
 
 const bank = useAccountStore()
@@ -18,6 +18,10 @@ watch(() => props.item, () => {
   resetForm()
 })
 
+
+// form.post.out_account_title_id = 181 //"财务费 - 内部转账支出"
+//   form.post.in_account_title_id = 197 // "收入 - 内部转账收入"
+
 const form = reactive({
   show: true,
   mode: 'add',
@@ -30,8 +34,8 @@ const form = reactive({
     received_amount: null,
     received_currency: null,
     note: props.item.note,
-    in_account_title_id: null,
-    out_account_title_id: null,
+    in_account_title_id: 197,
+    out_account_title_id: 181,
     attachment_list: [],
 
     voucher_ext_id: null,
@@ -145,6 +149,8 @@ const formRules = reactive({
     {
       required: true, validator: (rule, value, callback) => {
         const a = (formState.available_balance || "0").replaceAll(",", "")
+        callback()
+        return
         if (parseFloat(a) < 0) {
           callback("可用余额不能为负数!")
         } else {
@@ -166,13 +172,21 @@ const formRules = reactive({
   ]
 })
 
+const shortStore = useScreenShortStore()
+shortStore.onImageShortCutDown((route, src, tag) => {
+    if (route.name == 'paymentForm' && tag === 'transferAdd') {
+      form.post.attachment_list.push({ url: src })
+    }
+})
 const crop = setUpCapture(src => {
   form.post.attachment_list.push({ url: src })
 })
 
+const formRef = ref(null)
 const onSubmit = async () => {
   if (form.mode == 'add') {
     form.validateMinCount = 1
+    // emit('onSuccess')
     formRef.value.validate().then(async valid => {
       if (valid) {
         try {
@@ -227,7 +241,6 @@ const onSubmit = async () => {
       <div style=" display: flex;flex-direction: column;width: 100%;">
         <div style=" display: flex;justify-content: center; width: 100%;">
           <el-input-number v-model="form.post.origin_amount" style="width:70%"
-            :max="formState.out_account_id_balance?.replaceAll(',', '')"
             :disabled="formState.getDisabledState('origin_amount')" :precision="2" :controls="false">
             <template #suffix>
               <p>{{ form.currency }}</p>
@@ -240,8 +253,7 @@ const onSubmit = async () => {
         <p>
           <span :class="formState.available_color">可用余额</span>
           <span :class="formState.available_color">{{ " " + formState.available_balance }}</span>
-          <span :class="formState.available_color == 'transparent' ? 'transparent' : 'red'">{{ " " +
-formState.out_account_id_currency }}</span>
+          <span :class="formState.available_color == 'transparent' ? 'transparent' : 'red'">{{ " " + formState.out_account_id_currency }}</span>
         </p>
       </div>
 

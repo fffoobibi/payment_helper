@@ -135,7 +135,12 @@ const form = reactive({
     application_time: null,
     user_id: store.user.id,
     voucher_ext_id: null
-  }
+  },
+  replainShow: false,
+  replainPost: {
+    voucher_ext_id: null,
+    attachment_list: []
+  },
 })
 
 const resetForm = () => {
@@ -258,8 +263,8 @@ watch(() => form.post.out_account_id, async () => {
 })
 
 watch(() => form.post.received_amount, () => {
-  console.log('ss ', formState.in_account_id_currency, form.post.currency,  form.post.received_currency)
-  if(formState.out_account_id_currency == form.post.received_currency){
+  console.log('ss ', formState.in_account_id_currency, form.post.currency, form.post.received_currency)
+  if (formState.out_account_id_currency == form.post.received_currency) {
     form.post.commission = subNumbers(form.post.origin_amount, form.post.received_amount)
   }
 })
@@ -404,10 +409,13 @@ const formRules = reactive({
     {
       required: true, validator: (rule, value, callback) => {
         const a = (formState.available_balance || "0").replaceAll(",", "")
+        // 去除所有限制
+        callback()
+        return
         // 到账不需要校验余额
-        if(form.mode == 'arival'){
-            callback()
-            return 
+        if (form.mode == 'arival') {
+          callback()
+          return
         }
         if (parseFloat(a) < 0) {
           callback("可用余额不能为负数!")
@@ -509,17 +517,48 @@ const handleClose = () => {
   resetForm()
 }
 
-const crop = screen.onImageShortCutDown((route, src) => {
+const crop = screen.onImageShortCutDown((route, src, tag) => {
   if (route.name === 'fundInTransit') {
-    form.post.attachment_list.push({
-      url: src
-    })
+    if (tag == '/transit/replenish') {
+      form.replainPost.attachment_list.push({ url: src })
+    } else {
+      form.post.attachment_list.push({
+        url: src
+      })
+    }
   }
 })
 
 const onCopy = async val => {
   await navigator.clipboard.writeText(val)
   message.success('已复制！')
+}
+
+const upload = ref(null)
+const prepareReplenish = row => {
+  screen.setTag('/transit/replenish')
+  form.replainPost.voucher_ext_id = row.voucher_ext_id
+  form.replainShow = true
+}
+// 凭证图提交
+const submitPicture = async () => {
+  try {
+    if(!form.replainPost.attachment_list.length){
+      message.warning("请添加凭证图片")
+      return 
+    }
+    const attachment_list = JSON.stringify(await upload.value.uploadImage())
+    const post = { ...form.replainPost }
+    post.attachment_list = attachment_list
+    // console.log(post)
+    await api.transit.replenishTransit(post)
+    message.success('凭证图已上传！')
+    form.replainShow = false
+    screen.reSetTag()
+  } catch (err) {
+
+  }
+
 }
 
 </script>
@@ -627,6 +666,7 @@ const onCopy = async val => {
                   @click="arivalTransit(scope.row)" link>
                   到账
                 </el-button>
+                <el-button link type="warning" @click="prepareReplenish(scope.row)">补图</el-button>
               </div>
 
             </template>
@@ -730,8 +770,9 @@ const onCopy = async val => {
 
               <el-form-item label="提现到账金额" prop="post.received_amount" required :show-message="false">
                 <el-col :span="17">
-                  <el-input-number v-model="form.post.received_amount" :precision="2" :controls="false" :validate-event="false"
-                    style="width: 100%;" :disabled="formState.getDisabledState('received_amount')" />
+                  <el-input-number v-model="form.post.received_amount" :precision="2" :controls="false"
+                    :validate-event="false" style="width: 100%;"
+                    :disabled="formState.getDisabledState('received_amount')" />
                 </el-col>
                 <el-col :span="7">
                   <el-select v-model="form.post.received_currency" style="padding-left:5px" :validate-event="false">
@@ -792,7 +833,6 @@ const onCopy = async val => {
           </template>
         </el-dialog>
 
-
         <el-dialog v-model="form.cancelShow" title="撤销" width="500" destroy-on-close :close-on-click-modal="false">
           <span>撤销修改审核么</span>
           <template #footer>
@@ -817,6 +857,28 @@ const onCopy = async val => {
               <el-button type="primary" @click="submitAuditTransit">
                 确认
               </el-button>
+            </div>
+          </template>
+        </el-dialog>
+
+        <el-dialog v-model="form.replainShow" title="补图" width="500" estroy-on-close :close-on-click-modal="false"
+          @closed="()=>{
+            form.replainPost.voucher_ext_id = null
+            form.replainPost.attachment_list = []
+          }"
+        >
+          <el-form>
+            <el-form-item label="凭证图片" required>
+              <Upload action="upload" ref="upload" v-model="form.replainPost.attachment_list" :limit="10" dir="transit"
+                :size="66"></Upload>
+            </el-form-item>
+          </el-form>
+
+          <template #footer>
+            <div class="dialog-footer">
+              <!-- <el-button type="danger" link @click="crop">截图</el-button> -->
+              <el-button @click="form.replainShow = false">关闭</el-button>
+              <el-button type="primary" @click="submitPicture">确定</el-button>
             </div>
           </template>
         </el-dialog>
