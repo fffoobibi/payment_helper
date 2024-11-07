@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, watch, ref } from 'vue'
 import { addNumbers, dateTimeFmt, numberFmt } from '@/utils/format'
 import { Close, Check } from '@element-plus/icons-vue'
 import api from '@/api';
@@ -8,7 +8,7 @@ import message from '../utils/message';
 
 const props = defineProps({
   rows: Array,
-  mode: Number
+  mode: Number  // 0 核销 1 复核
 })
 
 const table = reactive({
@@ -40,11 +40,8 @@ const totalAmountCNY = computed(() => {
   const ret = []
   Object.keys(rs).forEach(key => {
     ret.push({ value: numberFmt(rs[key].reduce((acc, cur) => addNumbers(acc, cur), 0)), currency: key })
-    // return table.data.reduce((acc, cur) => acc + parseFloat(cur.origin_total_amount), 0)
   })
-  console.log('ret ==> ', ret, rs)
   return ret
-  // return table.data.reduce((acc, cur) => acc + parseFloat(cur.origin_total_amount), 0)
 })
 
 const emit = defineEmits(['close'])
@@ -53,18 +50,22 @@ const onSubmit = async () => {
 
   // 核销
   if (props.mode === 0) {
+    if(!updatetime.value){
+      message.warning("请选择核销账期！")
+      return
+    }
     const items = table.data.map(item => {
       return {
         payment_id: item.payment_id,
         amount: item.origin_total_amount,
         currency: item.currency,
         note: item.note,
-        type: item.type
+        type: item.type,
+        update_time: updatetime.value.getTime() / 1000
       }
     })
 
     try {
-      console.log('items', items)
       await api.creditCard.review({
         item_list: JSON.stringify(items)
       })
@@ -92,6 +93,9 @@ const onSubmit = async () => {
   }
 
 }
+
+const updatetime = ref(new Date())
+
 </script>
 
 
@@ -129,22 +133,24 @@ const onSubmit = async () => {
       </template>
     </el-table-column>
   </el-table>
+
   <div class="total-amount flex gap-4 flex-c-center">
     <span class="label">{{ props.mode === 0 ? '本次核销金额：' : '本次复核金额' }}</span>
     <div v-for="item in totalAmountCNY" class="flex gap-2 flex-c-center">
-      <!-- <span class="amount" v-for="item in totalAmountCNY">{{ numberFmt(item.value) }}</span> -->
-      <span class="amount t-red" >{{ numberFmt(item.value) }}</span>
+      <span class="amount t-red">{{ numberFmt(item.value) }}</span>
       <span class="currency">{{ item.currency }}</span>
     </div>
-    <!-- <span class="amount" v-for="item in totalAmountCNY">{{ numberFmt(totalAmountCNY.toFixed(2)) }}</span>
-    <span class="currency">{{ props.rows[0].currency }}</span> -->
-    <!-- <span class="amount" v-for="item in totalAmountCNY">{{ numberFmt(totalAmountCNY.toFixed(2)) }}</span> -->
+  </div>
+  <div class="flex flex-between w-full">
+    <el-form-item label="核销账期">
+      <el-date-picker v-model="updatetime" type="month" placeholder="核销账期" :disabled="mode==1" />
+    </el-form-item>
+    <div>
+      <el-button type="primary" :icon="Check" @click="onSubmit">提交</el-button>
+      <el-button :icon="Close" @click="emit('close')">取消</el-button>
+    </div>
   </div>
 
-  <div class="btn-group">
-    <el-button type="primary" :icon="Check" @click="onSubmit">提交</el-button>
-    <el-button :icon="Close" @click="emit('close')">取消</el-button>
-  </div>
 
 </template>
 

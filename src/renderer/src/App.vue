@@ -10,6 +10,7 @@ import updater from "@/utils/update"
 import appInfo from '../../../package.json'
 import logger from './utils/logger'
 import { ref } from "vue"
+import EventBus from "./utils/eventbus"
 
 
 const shortStore = useScreenShortStore()
@@ -158,6 +159,10 @@ electron.onOpenDetailDialog((user, detailId) => {
   dialogStore.dynamic.detailId = detailId
   dialogStore.dynamic.fetchDetailFlag= true
   router.push({ name: "detail" })
+})
+
+EventBus.on('close',()=>{
+  console.log('clsoe ./...')
 })
 
 </script>

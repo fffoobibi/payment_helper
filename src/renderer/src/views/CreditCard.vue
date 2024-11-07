@@ -378,21 +378,12 @@ const goto = (account_id, review_args, company_id, start_time, end_time, ids) =>
     queryForm.search.is_review = review_args ?? ['1', '2']
     queryForm.search.company_id = company_id
     queryForm.search.ids = ids
+    queryForm.search.content = ''
     isReimburse.value=true
-    // onSearch().finally(()=>{
-    //     queryForm.search.ids = ''
-    // })
 }
 
 const getRawField = (row, field, dft = null) => {
     return row[field] ?? dft
-    // if(row.has_refund){
-    //     return row.change_logs[0][field] ?? dft
-    // }
-    // if (row.has_canceled){
-    //     return row.change_logs[0][field] ?? dft
-    // }
-    // return row[field] ?? dft
 }
 
 const updateChangeLogs = async row => {

@@ -5,6 +5,7 @@ import { useLocalConfig } from "@/stores/config"
 import { useOperateRecords, useUserStore } from "@/stores"
 import { dateTimeFmt } from "@/utils/format"
 import message from '../utils/message'
+import EventBus from "../utils/eventbus"
 
 const configStore = useLocalConfig()
 const store = useUserStore()
@@ -18,7 +19,7 @@ const recordRef = ref(null)
 const { current, treeData, treeProps, treeExpand, totalCount, todayCount } = storeToRefs(recordStore)
 
 const isMax = ref(false)
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'appClose'])
 const props = defineProps({
   title: {
     type: String,
@@ -110,6 +111,7 @@ const onMaximize = () => {
   onWindow(isMax.value ? 'maximize' : 'unmaximize')
 }
 const onClose = () => {
+  EventBus.emit('close')
   onWindow('close', { closeType: closeType.value })
   emit('close')
 }

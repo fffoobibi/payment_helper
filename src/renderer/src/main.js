@@ -14,6 +14,7 @@ import Upload from './components/Upload.vue'
 import ContextMenu from './components/ContextMenu.vue'
 import LoadingList from './components/LoadingList.vue'
 import MonaCoEditor from './components/MonaCoEditor.vue'
+import MdSelect from './components/MdSelect.vue'
 
 import JsonViewer from "vue3-json-viewer";
 import "vue3-json-viewer/dist/index.css"; // 引入样式
@@ -34,7 +35,7 @@ app.component('Upload', Upload)
 app.component('ContextMenu', ContextMenu)
 app.component('LoadingList', LoadingList)
 app.component('MonaCoEditor', MonaCoEditor)
-// app.component('MonaCoJson', MonaCoJson)
+app.component('MdSelect', MdSelect)
 
 // app.directive('feathers', {
 //   mounted: (el, bind) => {
