@@ -28,7 +28,8 @@ const Keys = {
   uploadFormalUrl: 'uploadFormalUrl',
   uploadTestUrl: 'uploadTestUrl',
   histories: 'histories',
-  records: 'records'
+  records: 'records',
+  select: 'select'
 }
 
 const Globals = {
@@ -308,6 +309,11 @@ const useLocalConfig = defineStore('localConfig', () => {
     return await getConfig(Keys.records, undefined)
   }, Keys.records)
 
+  // 下拉框顺序
+  const { refV: select, update: updateSelect } = makeScope({}, async () => {
+    return await getConfig(Keys.select)
+  }, Keys.select,)
+
   // 操作日志
   const { refV: operate, update: updateOperate } = makeScope(true, async () => {
     return await getConfig(Keys.operate)
@@ -448,7 +454,10 @@ const useLocalConfig = defineStore('localConfig', () => {
     updateRecords,
 
     closeMode,
-    updateCloseMode
+    updateCloseMode,
+
+    select, 
+    updateSelect
 
   }
 })

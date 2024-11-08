@@ -1,12 +1,18 @@
 <script setup>
 import EventBus from "../utils/eventbus"
-import { ref, computed, watch } from "vue"
+import { ref, computed, watch, onMounted } from "vue"
+import logger from "../utils/logger"
+import {useLocalConfig} from "../stores/config"
 
+const cfg = useLocalConfig()
 EventBus.on('close', ()=>{
-    console.log('close by envent')
+    logger.info('close by envent')
+})
+onMounted(()=>{
+    console.log('user ==> ', cfg.select)
 })
 const props = defineProps({
-    identify: [String, null],
+    identify: String,
     showMaxCount: {
         default: 5,
         type: Number
@@ -19,9 +25,10 @@ const props = defineProps({
 
 const _d = ref([])
 watch(() => props.data, () => {
+    const profile = cfg.select[props.identify] ?? {}
     const arr = props.data.map(v => {
         const a = { ...v }
-        a.__order = 0
+        a.__order = profile[v.id] ?? 0
         return a
     })
     _d.value.splice(0)
@@ -34,10 +41,15 @@ const orders = computed(() => {
 
 const change = v => {
     const index = _d.value.findIndex(it => it.value == v)
-    console.log('value  ', index)
     if (index > -1) {
         _d.value[index].__order += 1
         console.log('find ==>', index,)
+        const profile = cfg.select[props.identify]
+        if(!profile){
+            cfg.select[props.identify] = {}
+        }
+        cfg.select[props.identify][_d.value[index].id] = _d.value[index].__order
+        cfg.updateSelect()
     }
 }
 </script>

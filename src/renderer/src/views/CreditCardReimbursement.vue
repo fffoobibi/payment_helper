@@ -1,12 +1,14 @@
 <script setup>
-import { reactive, onMounted, ref } from "vue"
+import { reactive, onMounted, ref, toRaw } from "vue"
 import { useClient } from "../utils/client"
 import api from "@/api"
 import { formatDate, numberFmt, amountFormatter, amountParser, until, getMonthDaysFromDate, mulNumbers, sumArray } from "@/utils/format"
 import message from "../utils/message";
 import { computed } from "vue";
 import { watch } from "vue";
+import {useUserStore} from "../stores/index"
 const { height } = useClient()
+const store = useUserStore()
 
 const props = defineProps({
     accounts: Array
@@ -147,20 +149,32 @@ const onReimburse = async () => {
     }
 }
 
-const onReimburseItem = async (v, company_id) => {
+const defaultSubmitDeptInfo = (cp)=>{
+    const r = store.user.depart_list.filter(it=>it.dept_name.includes(cp))
+    if(r.length){
+        return r[0].dept_id
+    }
+    return store.user.depart_list[0].dept_id
+}
+
+const onReimburseItem = async (v, company_id, details, cp) => {
     try {
+        const s = new Set(details.map(it=>it.currency))
         item.value = v
-        const d = await api.creditCard.getReimburseDatail({ account_id: item.value.account_id, review_date: item.value.review_date })
+        const d = await api.creditCard.getReimburseDatail({ account_id: item.value.account_id, review_date: item.value.review_date, company_id })
         formAdd.account_id = d.account_id
         formAdd.account_name = d.account_name
-        formAdd.list = d.list
+        formAdd.list = d.list.filter(it=>s.has(it.currency))
         formAdd.amount = d.total_amount_cny
         formAdd.review_date = item.value.review_date
         formAdd.company_id = company_id
         formAdd.note = ''
+        formAdd.dept_id = defaultSubmitDeptInfo(cp)
+        formAdd.ids = details.map(it=>it.ids).join(',')
         show.value = true
+        console.log('item ', formAdd)
     } catch (err) {
-
+        console.log('err ==> ', err)
     }
 }
 
@@ -168,21 +182,20 @@ const show = ref(false)
 const item = ref(null)
 const formRef = ref(null)
 const formAdd = reactive({
+    dept_id: null,
     account_id: null,
     review_date: '',
     amount: '',
     note: '',
     company_id: '',
-
     account_name: '',
+    ids: '',
     list: [],
 })
 
 const updateTotalCnyAmount = ()=>{
     formAdd.amount = sumArray(formAdd.list, x=>{
-        console.log('mul ', x.rate, x.amount)
         return mulNumbers(x.rate, x.amount, 2)}, 2)
-    console.log('r ', formAdd.amount)
 }
 
 watch(()=>formAdd.list, ()=>{
@@ -200,6 +213,11 @@ const submitReimburse = async () => {
                 }).join('\n')
                 const d = { ...formAdd }
                 d.note = `${details} \n ${d.note}`
+                d.detail_list = JSON.stringify([ ...d.list.map(it=> {
+                    const item = toRaw(it)
+                    item.amount_cny = mulNumbers(item.amount, item.rate, 2)
+                    return item
+                })])
                 delete d.account_name
                 delete d.list
                 await api.creditCard.reimburse(d)
@@ -210,7 +228,6 @@ const submitReimburse = async () => {
             } catch (err) {
 
             }
-
         }
     })
 }
@@ -234,7 +251,6 @@ const submitReimburse = async () => {
 
             <el-form-item>
                 <el-button type="primary" @click="onSearch">查询</el-button>
-                <!-- <el-button type="danger" @click="onReimburse">报销</el-button> -->
                 <el-text type="danger" style="margin-left: 10px;" size="default"> 共{{ data.length }}条记录</el-text>
             </el-form-item>
         </el-form>
@@ -251,8 +267,6 @@ const submitReimburse = async () => {
                     <div class="flex flex-between p-r-10">
                         <span class="t-black t-n f-14 b-600">{{ item.account_name }}</span>
                         <div>
-                            <!-- <span class="t-gray f-12 t-n m-r-10">{{ item.account_name.includes('工行') ? '账单日19日，还款日6日' :
-                    (item.account_name.includes('农行') ? '账单日17日，还款日6日' : '') }}</span> -->
                             <span class="t-gray f-12 t-n m-r-10">{{ getAccountTip(item.account_name)}}</span>
                             <span class="t-black t-n f-12 b-600">{{ item.review_date }}</span>
                         </div>
@@ -345,7 +359,6 @@ const submitReimburse = async () => {
                                     </div>
                                 </div>
 
-
                                 <!-- 右侧 -->
                                 <div style="flex:1;margin-left: 30px;" :class="['w-full', 'flex', 'flex-between', ]">
 
@@ -376,7 +389,7 @@ const submitReimburse = async () => {
                                         <el-button type="danger m-r-20" @click="() => {
                                             const r = item.currency_list_group[company_name]
                                             const company_id = r[0].company_id
-                                            onReimburseItem(item, company_id)
+                                            onReimburseItem(item, company_id, r, company_name)
                                             }">
                                             报销
                                         </el-button>
@@ -425,89 +438,18 @@ const submitReimburse = async () => {
                 </div>
             </div>
 
-            <!-- <el-radio-group style="width: 100%;" v-model="item">
-                <div v-for="item in data" :key=item.id class="container">
-                    <div class="container-info">
-                        <div class="flex flex-between">
-                                <span class="t-black t-n f-12 b-600">{{ item.account_name }}</span>
-
-                                <div >
-                                    <span class="t-gray f-12 t-n m-r-4" >{{ "sfsdfsd " }}</span>
-                                    <span class="t-black t-n f-12 b-600">{{ item.review_date }}</span>
-                                </div>
-
-                            <el-option label="待核销" value="0"></el-option>
-                            <el-option label="已核销" value="1"></el-option>
-                            <el-option label="已复核" value="2"></el-option> 
-
-                            <el-button link @click="() => {
-                                    const args = []
-                                    if (item.un_reviewed_count){
-                                        args.push('1')
-                                    }
-                                    if(item.reviewed_count){
-                                        args.push('2')
-                                    }
-                                    emits('toCard', item.account_id, args)
-                                }">
-                                查看记录
-                            </el-button>
-                        </div>
-
-                        <div style="display: flex; justify-content: flex-start; gap:4px;margin-bottom: 4px; margin-top: 10px"
-                            v-for="info in item.currency_list" :key="info.currency">
-                            <p class="sub-title">
-                                {{ info.currency }}
-                            </p>
-                            <div class="sub-content">
-
-                                <div class="sub-value-un f-12 flex flex-between gap-4">
-                                    <span class="f-13 b-500">
-                                        未复核: {{ info.un_reviewed_count}}笔; {{numberFmt(info.un_reviewed_amount)}}
-                                        <span class="b-600">{{ " " + info.currency }}</span> 
-                                    </span>
-                                    <span class="p-r-10 f-13 b-500">
-                                        已复核: {{ info.reviewed_count }}笔; {{ numberFmt(info.reviewed_amount)}}
-                                        <span class="b-600">{{ " " + info.currency }}</span>
-                                    </span>
-                                </div>
-                
-                            </div>
-                        </div>
-                        <div class="line"></div>
-                        <div class="total">
-                            <div style="color:red;font-size:12px">合计：</div>
-                            <div style="display: flex; align-items: center; justify-content: space-between;flex: 1;">
-                                <p class="total-header">未复核: {{ item.un_reviewed_count }}笔;</p>
-                                <p class="total-footer" style="color:darkgreen">已复核: {{ item.reviewed_count }}笔;</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="operator">
-                        <div class="operator-title">报销金额: <span style="padding-left: 5px; font-weight: 500;">
-                                {{ numberFmt(item.amount)
-                    || "一一" }} {{ " CNY" }}</span> </div>
-                        <div class="operator-title">报销日期: <span style="padding-left: 5px;"> {{ item.day_date
-                    ||
-                    "一一" }}</span></div>
-                        <div class="operator-title">钉钉编号: <span style="padding-left: 5px;">{{ item.approval_number ||
-                    "一一" }}</span></div>
-                        <div class="operator-title">报销状态: <span style="padding-left: 5px; "
-                                :class="[item.id === null ? 'red' : 'green']"> {{ item.id === null ? "未报销" : "已报销"
-                                }}</span>
-                        </div>
-
-                    </div>
-                </div>
-            </el-radio-group> -->
-
-
         </el-scrollbar>
 
         <!-- 报销操作 -->
         <el-dialog title="报销" width="800" v-model="show" destroy-on-close :close-on-click-modal="false">
             <el-form :model="formAdd" label-width="auto" ref="formRef"
-                :rules="{ amount: [{ required: true, message: '请填写金额', trigger: 'blur' }] }">
+                :rules="{ amount: [{ required: true, message: '请填写金额', trigger: 'blur' }], dept_id: [{ required: true, message: '请选择部门', trigger: 'blur' }] }">
+                <el-form-item label="部门" prop="dept_id">
+                    <el-select v-model="formAdd.dept_id">
+                        <el-option v-for="item in store.user.depart_list" :label="item.dept_name" :value="item.dept_id">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
                 <el-form-item label="账户">
                     <div class="flex flex-col w-full gap-4">
                         <!-- <el-input v-model="formAdd.account_name" type="text" disabled></el-input> -->
@@ -584,9 +526,16 @@ const submitReimburse = async () => {
     padding-left: 10px;
     padding-right: 10px;
 }
+.has-submit{
+    background-image: url('../assets/images/has-submit.svg');
+    background-repeat: no-repeat;
+    background-position: 98% -20%;
+    background-size: 66px 66px;
 
+}
 .has-reimburse {
-    background-image: url('../assets/images/re-complete.png');
+    /* background-image: url('../assets/images/re-complete.png'); */
+    background-image: url('../assets/images/has-submit.svg');
     background-repeat: no-repeat;
     background-position: 98% -20%;
     background-size: 66px 66px;

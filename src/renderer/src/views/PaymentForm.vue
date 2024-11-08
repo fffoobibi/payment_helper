@@ -419,7 +419,7 @@ defineExpose({
                     </div>
                 </el-form-item>
                 <el-form-item label="付款账号" prop="account_id" required>
-                    <el-select v-model="form.account_id" filterable :empty-values="[null, undefined]" :value-on-clear="null">
+                    <el-select v-model="form.account_id" filterable :empty-values="[null, undefined]" :value-on-clear="null" :data="accounts">
                         <template #label="{ label }">
                             <div class="flex flex-between ">
                                 <span class="t-black">{{ label }}</span>
@@ -549,27 +549,6 @@ defineExpose({
                     </el-select>
                 </div>
             </div>
-            <!-- <div v-for="item in recordData" :key="item.voucher_id" class="flex-col gap-4 record-container">
-                <div class="flex flex-between">
-                    <span class="t-black f-14 b-500">编号 {{ item.sn }} </span>
-                    <span class="t-gray f-14">{{ timestampToFormattedString(item.create_time) }} </span>
-                </div>
-                <div class="flex flex-between">
-                    <div class="flex flex-col">
-                        <span class="t-black f-14">{{ item.creator }} ({{ item.department_name }})</span>
-                        <div>
-                            <span class="t-black f-14">支出金额 </span>
-                            <span class="t-red f-14">{{ numberFmt(item.origin_total_amount) + " " }}</span>
-                            <span class="t-gray f-14">{{ item.currency }}</span>
-                        </div>
-                    </div>
-                    <div class="flex flex-col flex-c-end">
-                        <span class="t-black f-14">{{ item.voucher_ext_last.account_name }}</span>
-                        <span class="t-black f-14">收款账号 {{ " " + item.voucher_ext_last.receiving_account }}</span>
-                    </div>
-
-                </div>
-            </div> -->
 
             <LoadingList :fetch="onSearchRecord" ref="listRef" :height="listHeight"
                 :maps="{ data: 'list', total: 'count', key: 'voucher_id' }" @on-fetch-start="onFetchStart"

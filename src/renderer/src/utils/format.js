@@ -249,7 +249,6 @@ const sumArray = (arr, callback, digit=2)=>{
     let r = 0
     arr.forEach(v=>{
         let x = callback ? callback(v): v
-        console.log('sub', r, x)
         r = addNumbers(r, x, digit)
     })
     return r
