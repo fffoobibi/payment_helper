@@ -74,12 +74,11 @@ const batchAllDoneCheck = () => {
 const previewData = () => {
   if (batchAllDoneCheck()) {
     message.success('已全部提交！')
-    emit('close')
+    emit('closeBatch')
   } else {
     if (index.value > 0) {
       prev()
       updateCurrent()
-      // batchAllDoneCheck()
     }
   }
 
@@ -88,12 +87,11 @@ const previewData = () => {
 const nextData = () => {
   if (batchAllDoneCheck()) {
     message.success('已全部提交！')
-    emit('close')
+    emit('closeBatch')
   } else {
     if (index.value < props.batchData.length - 1) {
       next()
       updateCurrent()
-      // batchAllDoneCheck()
     }
   }
 }
@@ -104,7 +102,7 @@ onMounted(() => {
   }
 })
 
-const emit = defineEmits(['close', 'freshPending', 'freshHistory'])
+const emit = defineEmits(['close', 'freshPending', 'freshHistory', 'closeBatch'])
 
 const cfgStore = useLocalConfig()
 const { autoClick, autoConfirm } = storeToRefs(cfgStore)
@@ -211,7 +209,7 @@ const onSubmit = async el => {
       const resp = await api.addPaymentRecord(data)
       Message.success("打款提交成功")
       emit('freshPending')
-      emit('freshHistory')
+      // emit('freshHistory')
       if (props.batch) {
         state.value._done = true
       }
@@ -245,28 +243,9 @@ const onSubmit = async el => {
       }
       if (props.batch) {
         nextData()
-      } else {
-        // emit('close')
-      }
-      // 是否自动点单
-      // if (autoClick.value) {
-      //   // 是否需要确认
-      //   if (autoConfirm.value) {
-      //     confirmDialogVisible.value = true
-      //   } else {
-      //     onConfirm()
-      //   }
-      // } else {
-      //   if (props.batch) {
-      //     nextData()
-      //   } else {
-      //     emit('close')
-      //   }
-      // }
+      } 
     } catch (error) {
-      // state.value._done = true
-      // console.log('fresh ...')
-      // emit('freshHistory')
+
     }
   })
 }
@@ -513,7 +492,7 @@ onMounted(async () => {
     <template #footer>
       <div class="dialog-footer">
         <el-button type="primary" @click="() => {
-    centerDialogVisible = false
+        centerDialogVisible = false
     // emit('close')
   }">
           关闭

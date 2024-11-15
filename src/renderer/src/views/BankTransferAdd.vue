@@ -12,7 +12,7 @@ const bank = useAccountStore()
 const props = defineProps({
   item: Object
 })
-const emit = defineEmits(['onSuccess', 'onFail'])
+const emit = defineEmits(['onSuccess', 'onFail', 'closeTransfer'])
 
 watch(() => props.item, () => {
   resetForm()
@@ -62,8 +62,9 @@ const resetForm = () => {
 }
 
 const handleCancel = () => {
-  resetForm()
-  form.show = false
+  // resetForm()
+  // form.show = false
+  emit('closeTransfer')
 }
 
 const formState = reactive({
@@ -119,7 +120,7 @@ watch(() => form.post.in_account_id, async () => {
     const resp = await api.getAccountDetail({ account_id: form.post.in_account_id })
     formState.in_account_id_color = 'black'
     formState.in_account_id_loading = false
-    formState.in_account_id_balance = numberFmt(resp.available_balance)
+    formState.in_account_id_balance = numberFmt(resp.ending_balance)
     formState.in_account_id_currency = resp.currency
     form.post.received_currency = resp.currency
   } else {
@@ -135,7 +136,7 @@ watch(() => form.post.out_account_id, async () => {
     const resp = await api.getAccountDetail({ account_id: form.post.out_account_id })
     formState.out_account_id_color = 'black'
     formState.out_account_id_loading = false
-    formState.out_account_id_balance = numberFmt(resp.available_balance)
+    formState.out_account_id_balance = numberFmt(resp.ending_balance)
     formState.out_account_id_currency = resp.currency
     form.post.currency = resp.currency
   } else {
@@ -216,10 +217,14 @@ const onSubmit = async () => {
 
     <el-form-item label="转出账户" prop="out_account_id" required :show-message="false">
       <div style=" display: flex;flex-direction: column;width: 100%;" v-loading="formState.out_account_id_loading">
-        <el-select v-model="form.post.out_account_id" filterable @change="handleBankChange"
-          :disabled="formState.getDisabledState('out_account_id')">
-          <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" />
-        </el-select>
+        <md-select v-model="form.post.out_account_id" filterable @change="handleBankChange"
+          :disabled="formState.getDisabledState('out_account_id')"
+          :data="bank.accounts" 
+          :maps="{label: 'account_name', value: 'id'}" 
+          identify="bank-transfer:out"
+          >
+          <!-- <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" /> -->
+        </md-select>
 
         <div style="display: flex;justify-content: flex-start;align-items: center">
           <p><span :class="formState.out_account_id_color">实时余额 </span>
@@ -261,10 +266,14 @@ const onSubmit = async () => {
 
     <el-form-item label="转入账户" prop="in_account_id" required :show-message="false">
       <div style=" display: flex;flex-direction: column;width: 100%;" v-loading="formState.in_account_id_loading">
-        <el-select v-model="form.post.in_account_id" filterable
-          :disabled="formState.getDisabledState('in_account_id')">
-          <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" />
-        </el-select>
+        <md-select v-model="form.post.in_account_id" filterable
+          :disabled="formState.getDisabledState('in_account_id')"
+          :data="bank.accounts" 
+          :maps="{label: 'account_name', value: 'id'}" 
+          identify="bank-transfer:in"
+          >
+          <!-- <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" /> -->
+        </md-select>
 
         <div style="display: flex;justify-content: flex-start;align-items: center">
           <p><span :class="formState.in_account_id_color">实时余额 </span>

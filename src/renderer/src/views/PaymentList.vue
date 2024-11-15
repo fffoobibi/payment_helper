@@ -138,7 +138,6 @@ const onScroll = options => {
   const listHeight = document.querySelector('.el-scrollbar__view').clientHeight
   const boxHeight = document.querySelector('.rows').clientHeight
   if (options.scrollTop > 0 && options.scrollTop >= listHeight - boxHeight - 1 && !isLoading) {
-    console.log('on scroll')
     isLoading = true
     onSearch()
   }
@@ -249,9 +248,8 @@ const onSegmented = val => {
   }
   form.page = 1
   form.payment_date = ''
-  form.condition = ''
+  // form.condition = ''
   form.currency = ''
-
   onSearch()
   if (val == 'pending') {
     router.push({ name: 'paymentForm' })
@@ -560,6 +558,7 @@ defineExpose({
           <el-tooltip content="合并打款" placement="top">
             <el-button type="primary" size="small" :icon="Files" @click="onMergePayment" plain></el-button>
           </el-tooltip>
+          <!-- <el-button @click="()=>onRefresh()">test</el-button> -->
         </div>
         <el-form class="header-form" :inline="true" :model="form" v-show="form.type == 'processed'" @submit.prevent>
           <el-form-item>
@@ -763,14 +762,15 @@ defineExpose({
   </el-dialog>
 
   <!-- 银行转账抽屉 -->
-  <el-drawer v-model="showAddDrawer" title="新增银行转账" direction="rtl" size="600" :close-on-press-escape="false"
-    @closed="()=>{
-        shortStore.reSetTag()
-    }"
-    :close-on-click-modal="false" destroy-on-close>
-    <BankTransferAdd :item="firstItem" @on-success="()=>{
-        showAddDrawer = false
-        shortStore.reSetTag()
+  <el-drawer v-model="showAddDrawer" title="新增银行转账" direction="rtl" size="600" :close-on-press-escape="false" @closed="() => {
+      shortStore.reSetTag()
+    }" :close-on-click-modal="false" destroy-on-close>
+    <BankTransferAdd :item="firstItem" @close-transfer="() => {
+      showAddDrawer = false
+      shortStore.reSetTag()
+    }" @on-success="() => {
+      showAddDrawer = false
+      shortStore.reSetTag()
     }" />
   </el-drawer>
 

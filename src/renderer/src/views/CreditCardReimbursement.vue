@@ -299,8 +299,8 @@ const submitReimburse = async () => {
                             </el-button>
                         </div>
 
-                        <div :class="['flex','flex-row', 'm-t-10', 'flex-c-center', 'row', ]">
-                            <div :class="['flex-col', 'w-full', item.currency_list_group[company_name][0].reimburse == null ? '': 'has-reimburse']">
+                        <div class="flex flex-row m-t-10 flex-c-center row">
+                            <div :class="['flex-col', 'w-full', item.currency_list_group[company_name][0].reimburse == null ? '': `reimburse-status-${item.currency_list_group[company_name][0].reimburse.status}`]">
                                 <div :class="['flex', 'flex-row']">
                                 <!-- 左侧 -->
                                 <div>
@@ -533,11 +533,26 @@ const submitReimburse = async () => {
     background-size: 66px 66px;
 
 }
-.has-reimburse {
+
+/* .has-reimburse { */
     /* background-image: url('../assets/images/re-complete.png'); */
-    background-image: url('../assets/images/has-submit.svg');
+    /* background-image: url('../assets/images/has-submit.svg');
     background-repeat: no-repeat;
     background-position: 98% -20%;
+    background-size: 66px 66px; */
+/* } */
+
+.reimburse-status-0{
+    background-image: url('../assets/images/has-submit.svg');
+    background-repeat: no-repeat;
+    background-position: 98% 0%;
+    background-size: 66px 66px;
+}
+
+.reimburse-status-1{
+    background-image: url('../assets/images/re-complete.png');
+    background-repeat: no-repeat;
+    background-position: 98% 0%;
     background-size: 66px 66px;
 }
 

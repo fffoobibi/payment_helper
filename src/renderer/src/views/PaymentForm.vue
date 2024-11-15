@@ -419,7 +419,7 @@ defineExpose({
                     </div>
                 </el-form-item>
                 <el-form-item label="付款账号" prop="account_id" required>
-                    <el-select v-model="form.account_id" filterable :empty-values="[null, undefined]" :value-on-clear="null" :data="accounts">
+                    <md-select v-model="form.account_id" filterable :empty-values="[null, undefined]" :value-on-clear="null" :data="accounts" identify="payment-form">
                         <template #label="{ label }">
                             <div class="flex flex-between ">
                                 <span class="t-black">{{ label }}</span>
@@ -432,7 +432,7 @@ defineExpose({
                         </template>
                         <el-option v-for="item in accounts" :label="item.label" :value="item.value">
                         </el-option>
-                    </el-select>
+                    </md-select>
                 </el-form-item>
                 <el-form-item label="支付方式" v-if="airwallexStore.airwallex_binding.includes(form.account_id)" required>
                     <el-col :span="17">
@@ -551,7 +551,8 @@ defineExpose({
             </div>
 
             <LoadingList :fetch="onSearchRecord" ref="listRef" :height="listHeight"
-                :maps="{ data: 'list', total: 'count', key: 'voucher_id' }" @on-fetch-start="onFetchStart"
+                :maps="{ data: 'list', total: 'count', key: 'voucher_id' }" 
+                @on-fetch-start="onFetchStart"
                 @on-fetch-done="onFetchDone">
                 <template #empty>
                     <el-empty :image-size="120" />

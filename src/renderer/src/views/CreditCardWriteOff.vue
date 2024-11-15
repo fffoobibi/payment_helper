@@ -1,10 +1,9 @@
 <script setup>
-import { computed, reactive, watch, ref } from 'vue'
+import { computed, reactive, watch, ref, toRaw } from 'vue'
 import { addNumbers, dateTimeFmt, numberFmt } from '@/utils/format'
 import { Close, Check } from '@element-plus/icons-vue'
-import api from '@/api';
-import message from '../utils/message';
-
+import api from '@/api'
+import message from '../utils/message'
 
 const props = defineProps({
   rows: Array,
@@ -12,7 +11,7 @@ const props = defineProps({
 })
 
 const table = reactive({
-  data: props.rows
+  data: [...props.rows.map(v=>({...toRaw(v)}))]
 })
 
 const disabled = computed(() => {
@@ -23,7 +22,7 @@ const disabled = computed(() => {
 })
 
 watch(() => props.rows, () => {
-  table.data = props.rows
+  table.data =[...props.rows.map(v=>({...toRaw(v)}))]
 })
 
 const totalAmountCNY = computed(() => {
@@ -32,9 +31,9 @@ const totalAmountCNY = computed(() => {
   table.data.forEach(v => {
     if (!s.has(v.currency)) {
       s.add(v.currency)
-      rs[v.currency] = [v.origin_total_amount]
+      rs[v.currency] = [v.__amount]
     } else {
-      rs[v.currency].push(v.origin_total_amount)
+      rs[v.currency].push(v.__amount)
     }
   })
   const ret = []
@@ -57,7 +56,7 @@ const onSubmit = async () => {
     const items = table.data.map(item => {
       return {
         payment_id: item.payment_id,
-        amount: item.origin_total_amount,
+        amount: item.__amount,
         currency: item.currency,
         note: item.note,
         type: item.type,
@@ -108,15 +107,9 @@ const updatetime = ref(new Date())
         {{ scope.row.department_name }}丨{{ scope.row.company_name }}
       </template>
     </el-table-column>
-    <!-- <el-table-column label="金额" width="120" align="right">
+    <el-table-column label="金额" width="140">
       <template #default="scope">
-        <span class="amount">{{ numberFmt(scope.row.origin_total_amount) }}</span>
-        <span class="currency">{{ scope.row.currency }}</span>
-      </template>
-    </el-table-column> -->
-    <el-table-column label="金额" width="140" align="left">
-      <template #default="scope">
-        <el-input v-model="scope.row.origin_total_amount" onkeyup="value=value.replace(/[^\-?\d.]/g,'')"
+        <el-input v-model="scope.row.__amount" onkeyup="value=value.replace(/[^\-?\d.]/g,'')"
           :disabled="disabled" class="input-amount">
           <template #append>{{ scope.row.currency }}</template>
         </el-input>

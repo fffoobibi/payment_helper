@@ -21,10 +21,9 @@ const formRef = ref(null)
         <transition name="fade">
           <keep-alive>
             <component :is="Component" :detail-id="$route.params.id" @open-batch="openBatch" ref="formRef"
-      
-            @freshPending="()=>{
-              listRef?.onSearch()
-            }"></component> 
+
+              @freshPending="()=>listRef?.onSearch()">
+            </component> 
           </keep-alive>
         </transition>
       </RouterView>
@@ -35,16 +34,19 @@ const formRef = ref(null)
   <el-drawer v-model="show" :title="title" direction="rtl" size="600" destroy-on-close @closed="close" :close-on-click-modal="false">
     <PaymentAdd :batch="batch" :batch-data="batchData" 
         @close="()=>{
-        close()
-        // listRef?.onSearch()
-        listRef?.onRefresh()
-        formRef?.freshHistroy?.()
-      }" 
+          close()
+          listRef?.onRefresh()
+          formRef?.freshHistroy?.()
+        }" 
+        @freshPending="()=>listRef?.onRefresh()"
+        @close-batch="()=>{
+          close()
+          formRef?.freshHistroy?.()
+        }"
         @freshHistory="()=>{
-        // listRef?.onSearch()
-        listRef?.onRefresh()
-        formRef?.freshHistroy?.()
-    }"/>
+          listRef?.onRefresh()
+          formRef?.freshHistroy?.()
+        }"/>
   </el-drawer>
 
 </template>

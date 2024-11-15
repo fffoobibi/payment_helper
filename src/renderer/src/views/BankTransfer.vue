@@ -547,8 +547,12 @@ const onCopy = async v => {
 
               <el-form-item label="转出账户" prop="out_account_id" required :show-message="false">
                 <div class="form-item-detail" v-loading="formState.out_account_id_loading">
-                  <el-select v-model="form.post.out_account_id" filterable
-                    :disabled="formState.getDisabledState('out_account_id')">
+                  <md-select v-model="form.post.out_account_id" filterable
+                    :disabled="formState.getDisabledState('out_account_id')"
+                    :data="bank.accounts" 
+                    :maps="{label: 'account_name', value: 'id'}" 
+                    identify="bank-transfer:out"
+                    >
                     <template #label="{ label }">
                       <div class="flex flex-between ">
                         <span class="t-black">{{ label }}</span>
@@ -559,9 +563,8 @@ const onCopy = async v => {
                         </el-button>
                       </div>
                     </template>
-                    <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
-                      :value="item.id" />
-                  </el-select>
+                    <!-- <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" /> -->
+                  </md-select>
                   <div>
                     <span :class="formState.out_account_id_color">实时余额 </span>
                     <span style="color:black">{{ formState.out_account_id_balance }}</span>
@@ -604,8 +607,12 @@ const onCopy = async v => {
 
               <el-form-item label="转入账户" prop="in_account_id" required :show-message="false">
                 <div class="form-item-detail" v-loading="formState.in_account_id_loading">
-                  <el-select v-model="form.post.in_account_id" filterable
-                    :disabled="formState.getDisabledState('in_account_id')">
+                  <md-select v-model="form.post.in_account_id" filterable
+                    :disabled="formState.getDisabledState('in_account_id')"
+                    :data="bank.accounts" 
+                    :maps="{label: 'account_name', value: 'id'}" 
+                    identify="bank-transfer:in"
+                    >
                     <template #label="{ label }">
                       <div class="flex flex-between ">
                         <span class="t-black">{{ label }}</span>
@@ -616,9 +623,8 @@ const onCopy = async v => {
                         </el-button>
                       </div>
                     </template>
-                    <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
-                      :value="item.id" />
-                  </el-select>
+                    <!-- <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" /> -->
+                  </md-select>
                   <div>
                     <span :class="formState.in_account_id_color">实时余额 </span>
                     <span style="color:black">{{ formState.in_account_id_balance }}</span>
@@ -637,8 +643,8 @@ const onCopy = async v => {
               <el-form-item label="到账金额" prop="received_amount" required :show-message="false">
                 <div style=" display: flex; justify-content: center;width: 100%;">
                   <el-input-number v-model="form.post.received_amount"
-                    :disabled="formState.getDisabledState('received_amount')" :precision="2" :controls="false" :validate-event="false"
-                    style="width: 70%">
+                    :disabled="formState.getDisabledState('received_amount')" :precision="2" :controls="false"
+                    :validate-event="false" style="width: 70%">
                     <template #suffix>
                       <p>{{ form.currency }}</p>
                     </template>
@@ -668,19 +674,22 @@ const onCopy = async v => {
 
               </el-form-item>
 
+              <el-form-item>
+                <div class="flex flex-end w-full">
+                  <el-button v-if="!formState.getDisabledState('crop')" link type="danger" @click="crop">
+                    <el-icon>
+                      <PictureFilled />
+                    </el-icon>截图
+                  </el-button>
+                  <el-button @click="handleCancel">取消</el-button>
+                  <el-button v-show="!formState.getDisabledState('button')" type="primary"
+                    @click="onSubmit">确认</el-button>
+                </div>
+              </el-form-item>
+
             </el-form>
           </template>
-          <template #footer>
-            <div style="flex: auto">
-              <el-button v-if="!formState.getDisabledState('crop')" link type="danger" @click="crop">
-                <el-icon>
-                  <PictureFilled />
-                </el-icon>截图
-              </el-button>
-              <el-button @click="handleCancel">取消</el-button>
-              <el-button v-show="!formState.getDisabledState('button')" type="primary" @click="onSubmit">确认</el-button>
-            </div>
-          </template>
+
         </el-drawer>
 
         <el-dialog v-model="form.noteShow" title="备注修改" width="500" destroy-on-close :close-on-click-modal="false">

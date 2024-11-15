@@ -408,11 +408,15 @@ watch(() => form.post.account_id, async () => {
                     <el-form-item label="支出账号" prop="post.account_id" required>
                         <div style=" display: flex;flex-direction: column;width: 100%;"
                             v-loading="formState.out_account_id_loading">
-                            <el-select v-model="form.post.account_id" filterable
-                                :disabled="formState.getDisabledState('account_id')">
+                            <md-select v-model="form.post.account_id" filterable
+                                :disabled="formState.getDisabledState('account_id')"
+                                :data="bank.accounts" 
+                                :maps="{label: 'account_name', value: 'id'}" 
+                                identify="bank-account-payout:out"
+                                >
                                 <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
                                     :value="item.id" />
-                            </el-select>
+                            </md-select>
 
                             <div style="display: flex;justify-content: space-between;align-items: center">
                                 <div><span :class="formState.out_account_id_color">实时余额 </span>
@@ -461,15 +465,25 @@ watch(() => form.post.account_id, async () => {
                             dir="incomes" :size="66" :disabled="formState.getDisabledState('attachment_list')"></Upload>
 
                     </el-form-item>
+                    <el-form-item>
+                        <div class="flex flex-end w-full">
+                        <!-- <el-button link type="danger" @click="crop">
+                            <el-icon>
+                                <PictureFilled />
+                            </el-icon>截图
+                        </el-button> -->
+                        <el-button type="primary" @click="onSubmit">提交</el-button>
+                    </div>
+                    </el-form-item>
 
-                    <div style="display: flex;justify-content: flex-end;position: fixed;bottom: 20px;right: 20px;">
+                    <!-- <div style="display: flex;justify-content: flex-end;position: fixed;bottom: 20px;right: 20px;">
                         <el-button link type="danger" @click="crop">
                             <el-icon>
                                 <PictureFilled />
                             </el-icon>截图
                         </el-button>
                         <el-button type="primary" @click="onSubmit">提交</el-button>
-                    </div>
+                    </div> -->
 
                 </el-form>
             </div>

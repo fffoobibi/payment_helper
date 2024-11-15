@@ -212,7 +212,8 @@ const http = (config) => {
     'X-Requested-With': 'XMLHttpRequest',
     'target-url': targetUrl,
     'version': appInfo.version,
-    'token': token
+    'token': token,
+    // 'Cookie': 'XDEBUG_SESSION=local'
   }
   if (method === 'post') {
     const logParams = { ...params }

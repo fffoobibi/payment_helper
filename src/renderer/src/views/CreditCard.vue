@@ -190,7 +190,7 @@ const onSearch = async (page = null, pageSize = null) => {
     }
     post.company_id = post.company_id.join(',')
     post.is_review = post.is_review.join(',')
-    if(!isReimburse.value){
+    if (!isReimburse.value) {
         post.ids = ''
     }
     try {
@@ -203,11 +203,10 @@ const onSearch = async (page = null, pageSize = null) => {
         queryForm.page.totalCount = resp.count
         queryForm.page.pageSize = resp.limit
     } catch (err) {
-        console.log('err ==> ', err);
+        console.log('err ==> ', err)
     } finally {
         queryForm.searching = false
     }
-
 }
 
 
@@ -296,6 +295,16 @@ const onWriteOff = () => {
 
 const onTableCheck = val => {
     checkRows.value = val
+    // 核销
+    if(mode.value==0){
+        checkRows.value.forEach(v=>{
+            v.__amount = v.origin_total_amount
+        })
+    }else{
+        checkRows.value.forEach(v=>{
+            v.__amount = v.total_amount_review
+        })
+    }
     console.log(val)
 }
 
@@ -379,11 +388,27 @@ const goto = (account_id, review_args, company_id, start_time, end_time, ids) =>
     queryForm.search.company_id = company_id
     queryForm.search.ids = ids
     queryForm.search.content = ''
-    isReimburse.value=true
+    isReimburse.value = true
+    onSearch()
 }
 
 const getRawField = (row, field, dft = null) => {
     return row[field] ?? dft
+}
+
+const renderRowClass = ({ row }) => {
+    // if(row.cancellation_count || row.refund_count){
+    //     return ''
+    // }
+    // return 'block-change-logs'
+}
+
+const expandChange = row => {
+    // if(row.cancellation_count || row.refund_count){
+    //     updateChangeLogs(row)
+    //     console.log('fetch logs ')
+    // }
+    console.log('expand ', row)
 }
 
 const updateChangeLogs = async row => {
@@ -397,12 +422,13 @@ const updateChangeLogs = async row => {
         row.is_loading = false
     }
 }
-const onTabChange = (label)=>{
+
+const onTabChange = (label) => {
     console.log('tab change ', label)
-    if(queryForm.search.ids) {
+    if (queryForm.search.ids) {
 
     }
-    isReimburse.value=false
+    isReimburse.value = false
 }
 
 </script>
@@ -466,42 +492,30 @@ const onTabChange = (label)=>{
                                 </el-button>
                             </el-form-item>
                             <el-form-item>
-                                <div v-loading="queryForm.searching">
-                                    <span
-                                        style="background-color: #6DBEAD; color: white; padding: 4px 4px; margin-right: 10px; font-size: 10pt">待核销总额
-                                        {{ numberFmt(queryForm.statistics_pending) + " " + queryForm.statistics_currency
-                                        }}</span>
-                                    <span
-                                        style="background-color: #9BA9E6; color: white; padding: 4px 4px; font-size: 10pt">核销总额
-                                        {{ numberFmt(queryForm.statistics_settled) + " " + queryForm.statistics_currency
-                                        }}</span>
-                                </div>
                                 <div class="flex" style="position: fixed; top: 30px; right: 10px;z-index: 1000">
                                     <span class="t-red f-12 m-l-4 ">农行账单日17日，还款日6日;工行账单日19日，还款日6日; 汇丰账单日18号,
                                         还款日12号</span>
                                 </div>
-                                <span class="t-red m-l-4">{{ selectedMsg }}</span>
-                                <el-checkbox  v-model="isReimburse" v-show="isReimburse">
+                                <el-checkbox v-model="isReimburse" v-show="isReimburse" class="m-l-4">
                                     <span class="b-600">报销记录明细查询</span>
                                 </el-checkbox>
-
+                                <Transition>
+                                    <div v-if="!queryForm.searching" class="m-l-4">
+                                        <span
+                                            style="background-color: #6DBEAD; color: white; padding: 4px 4px; margin-right: 10px; font-size: 10pt">待核销总额
+                                            {{ numberFmt(queryForm.statistics_pending) + " " + queryForm.statistics_currency}}</span>
+                                        <span
+                                            style="background-color: #9BA9E6; color: white; padding: 4px 4px; font-size: 10pt">核销总额
+                                            {{ numberFmt(queryForm.statistics_settled) + " " + queryForm.statistics_currency}}</span>
+                                    </div>
+                                </Transition>
+                                <span class="t-red m-l-4 m-r-4">{{ selectedMsg }}</span>
                             </el-form-item>
                         </el-form>
 
                         <el-table :data="queryForm.tableData" :height="tableHeight" highlight-current-row
                             :show-header="queryForm.page.totalCount > 0" @selection-change="onTableCheck" row-key="id"
-                            :row-class-name=" ({row}) =>{
-                                // if(row.cancellation_count || row.refund_count){
-                                //     return ''
-                                // }
-                                // return 'block-change-logs'
-                            }"
-                            @expand-change="row => {
-                                // if(row.cancellation_count || row.refund_count){
-                                //     updateChangeLogs(row)
-                                //     console.log('fetch logs ')
-                                // }
-                                console.log('expand ', row)}">
+                            :row-class-name="renderRowClass" @expand-change="expandChange">
                             <template #empty>
                                 <el-empty :image-size="200" />
                             </template>
@@ -570,14 +584,14 @@ const onTabChange = (label)=>{
                                 </template>
 
                             </el-table-column> -->
-        
+
                             <el-table-column label="摘要信息" width="240">
                                 <template #default="{ row }">
                                     <div>
-                                        <div>钉钉编号： <span class="user-black">{{ getRawField(row, 'approval_number', "一一")
-                                                }}</span>
+                                        <div>钉钉编号： <span class="user-black">{{ getRawField(row, 'approval_number', "一一") }}</span>
                                         </div>
-                                        <div>采购单号： <span class="user-black">{{ getRawField(row, 'purchase_number', "一一") }}</span>
+                                        <div>采购单号： <span class="user-black">{{ getRawField(row, 'purchase_number', "一一")
+                                                }}</span>
                                         </div>
                                         <div v-if="row.is_review == 0">
                                             创建人：<span class="user-black">{{ getRawField(row, 'creator', '') + " - " + getRawField(row, 'department_name', "一一") }}</span>
@@ -593,15 +607,16 @@ const onTabChange = (label)=>{
                             </el-table-column>
                             <el-table-column label="金额">
                                 <template #default="{ row }">
-                                    <div>金额：<span class="user-black bold">{{numberFmt(row.origin_total_amount) }}</span><span>{{ " " + row.currency}}</span></div>
-                                    <div>人民币：<span class="user-black bold">{{numberFmt(row.type==4? row.refund_cny_amount : row.cny_total_amount) }}</span><span>{{ " " + "CNY" }}</span></div>
-                                    <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review) }}</span></div>
+                                    <div>金额：<span class="user-black bold">{{ numberFmt(row.is_review == 0 ? row.origin_total_amount: row.total_amount_review)}}</span><span>{{ " " + row.currency }}</span></div>
+                                    <!-- <div>人民币：<span class="user-black bold">{{ numberFmt(row.type == 4 ? row.refund_cny_amount : row.cny_total_amount) }}</span><span>{{ " " + "CNY" }}</span></div> -->
+                                    <div>状态：<span :class="['user-black', reviewClass(row.is_review)]">{{reviewMsg(row.is_review)}}</span></div>
+                                    <div>公司：{{ row.company_name }}</div>
+
                                 </template>
                             </el-table-column>
 
-                            <el-table-column label="公司/时间">
+                            <el-table-column label="时间">
                                 <template #default="{ row }">
-                                    <div>公司: {{ row.company_name }}</div>
                                     <div v-if="row.is_review == 0">
                                         创建：<span class="user-black">{{ timestampToFormattedString(row.create_time)
                                             }}</span>
@@ -614,10 +629,14 @@ const onTabChange = (label)=>{
                                         复核：<span class="user-black">{{ timestampToFormattedString(row.review_time)
                                             }}</span>
                                     </div>
-                                    <div v-if="row.type==2" ><el-tag effect="dark" type="danger" size="small">重做单</el-tag></div>
-                                    <div v-else-if="row.type==4"><el-tag effect="dark" type="warning" size="small">退款单</el-tag></div>
-                                    <div v-else-if="row.type==3"><el-tag effect="dark" type="primary" size="small">年费单</el-tag></div>
-
+                                    <div v-if="row.type == 2"><el-tag effect="dark" type="danger"
+                                            size="small">重做单</el-tag></div>
+                                    <div v-else-if="row.type == 6"><el-tag effect="dark" type="info"
+                                            size="small">备用金</el-tag></div>
+                                    <div v-else-if="row.type == 4"><el-tag effect="dark" type="warning"
+                                            size="small">退款单</el-tag></div>
+                                    <div v-else-if="row.type == 3"><el-tag effect="dark" type="primary"
+                                            size="small">年费单</el-tag></div>
 
                                 </template>
                             </el-table-column>
@@ -726,7 +745,7 @@ h4 {
     margin: 0 8px 8px 0;
 }
 
-:deep(.block-change-logs .el-table__expand-icon){
+:deep(.block-change-logs .el-table__expand-icon) {
     display: none;
 }
 
@@ -861,5 +880,14 @@ h4 {
     padding: 0px !important;
     margin: 0px !important;
     background-color: transparent !important;
+}
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
 }
 </style>

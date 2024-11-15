@@ -543,9 +543,9 @@ const prepareReplenish = row => {
 // 凭证图提交
 const submitPicture = async () => {
   try {
-    if(!form.replainPost.attachment_list.length){
+    if (!form.replainPost.attachment_list.length) {
       message.warning("请添加凭证图片")
-      return 
+      return
     }
     const attachment_list = JSON.stringify(await upload.value.uploadImage())
     const post = { ...form.replainPost }
@@ -688,8 +688,11 @@ const submitPicture = async () => {
 
               <el-form-item label="提现账户" prop="post.out_account_id" required :show-message="false">
                 <div class="form-item-row" v-loading="formState.out_account_id_loading">
-                  <el-select v-model="form.post.out_account_id" filterable
-                    :disabled="formState.getDisabledState('out_account_id')">
+                  <md-select v-model="form.post.out_account_id" filterable
+                    :disabled="formState.getDisabledState('out_account_id')" 
+                    :data="bank.accounts" 
+                    :maps="{label: 'account_name', value: 'id'}" 
+                    identify="fund-in-transit:out">
                     <template #label="{ label }">
                       <div class="flex flex-between ">
                         <span class="t-black">{{ label }}</span>
@@ -700,16 +703,12 @@ const submitPicture = async () => {
                         </el-button>
                       </div>
                     </template>
-                    <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
-                      :value="item.id" />
-                  </el-select>
+                    <!-- <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" /> -->
+                  </md-select>
                   <div>
                     <span :class="formState.out_account_id_color">实时余额 </span>
                     <span style="color:black">{{ formState.out_account_id_balance }}</span>
                     <span style="color:red">{{ " " + formState.out_account_id_currency }}</span>
-                    <!-- <el-button link @click="onCopy(label)">
-                          <el-icon><CopyDocument /></el-icon>
-                    </el-button> -->
                   </div>
                 </div>
               </el-form-item>
@@ -739,8 +738,12 @@ const submitPicture = async () => {
 
               <el-form-item label="到账账户" prop="post.in_account_id" required :show-message="false">
                 <div class="form-item-row" v-loading="formState.in_account_id_loading">
-                  <el-select v-model="form.post.in_account_id" filterable
-                    :disabled="formState.getDisabledState('in_account_id')">
+                  <md-select v-model="form.post.in_account_id" filterable
+                    :disabled="formState.getDisabledState('in_account_id')"
+                    :data="bank.accounts" 
+                    :maps="{label: 'account_name', value: 'id'}" 
+                    identify="fund-in-transit:in"
+                    >
                     <template #label="{ label }">
                       <div class="flex flex-between ">
                         <span class="t-black">{{ label }}</span>
@@ -751,9 +754,8 @@ const submitPicture = async () => {
                         </el-button>
                       </div>
                     </template>
-                    <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name"
-                      :value="item.id" />
-                  </el-select>
+                    <!-- <el-option v-for="item in bank.accounts" :key="item.id" :label="item.account_name" :value="item.id" /> -->
+                  </md-select>
                   <div>
                     <span :class="formState.in_account_id_color">实时余额 </span>
                     <span style="color:black">{{ formState.in_account_id_balance }}</span>
@@ -798,9 +800,29 @@ const submitPicture = async () => {
 
               </el-form-item>
 
+              <el-form-item>
+                <div class="no-drag flex flex-end w-full">
+                  <el-tooltip effect="dark" content="创建在途资金后, 系统会自动创建支出记录, 无需手动创建支出记录!" placement="top">
+                    <el-button link>
+                      <el-icon>
+                        <QuestionFilled />
+                      </el-icon>
+                    </el-button>
+                  </el-tooltip>
+                  <el-button v-show="!formState.getDisabledState('crop')" link type="danger" @click="crop">截图
+                    <el-icon>
+                      <PictureFilled />
+                    </el-icon>
+                  </el-button>
+                  <el-button @click="cancelClick">取消</el-button>
+                  <el-button v-show="!formState.getDisabledState('button')" type="primary"
+                    @click="onSubmitForm">确认</el-button>
+                </div>
+              </el-form-item>
+
             </el-form>
           </template>
-          <template #footer>
+          <!-- <template #footer>
             <div style="flex: auto" class="no-drag">
               <el-tooltip effect="dark" content="创建在途资金后, 系统会自动创建支出记录, 无需手动创建支出记录!" placement="top">
                 <el-button link>
@@ -818,7 +840,7 @@ const submitPicture = async () => {
               <el-button v-show="!formState.getDisabledState('button')" type="primary"
                 @click="onSubmitForm">确认</el-button>
             </div>
-          </template>
+          </template> -->
         </el-drawer>
 
         <el-dialog v-model="form.noteShow" title="备注修改" width="500" destroy-on-close :close-on-click-modal="false">
@@ -862,11 +884,10 @@ const submitPicture = async () => {
         </el-dialog>
 
         <el-dialog v-model="form.replainShow" title="补图" width="500" estroy-on-close :close-on-click-modal="false"
-          @closed="()=>{
-            form.replainPost.voucher_ext_id = null
-            form.replainPost.attachment_list = []
-          }"
-        >
+          @closed="() => {
+          form.replainPost.voucher_ext_id = null
+          form.replainPost.attachment_list = []
+        }">
           <el-form>
             <el-form-item label="凭证图片" required>
               <Upload action="upload" ref="upload" v-model="form.replainPost.attachment_list" :limit="10" dir="transit"
